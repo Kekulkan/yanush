@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Message, MessageRole, ActiveSession, AnalysisResult } from '../types';
 import { sendMessageToGemini, analyzeChatSession, generateGhostResponse } from '../services/geminiService';
@@ -24,7 +23,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
   const [isPrompterLoading, setIsPrompterLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -74,7 +72,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
       } finally { setIsPrompterLoading(false); }
   };
 
-  const handleStop = async (e: React.MouseEvent) => {
+  const handleStop = async (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (!confirm('ЗАВЕРШИТЬ СЕАНС И ПОЛУЧИТЬ ВЕРДИКТ?')) return;
@@ -219,7 +217,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
                   {isListening ? <Mic size={18} /> : <MicOff size={18} />}
               </button>
               <button 
-                onMouseDown={handleStop}
+                type="button"
+                onPointerDown={handleStop}
                 className="px-4 md:px-6 py-2.5 md:py-3 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white text-[9px] md:text-[10px] font-black uppercase rounded-2xl border border-rose-500/20 transition-all z-[600]"
               >СТОП</button>
           </div>
@@ -279,11 +278,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
                   className="w-full bg-slate-900 border border-white/10 rounded-[24px] md:rounded-[28px] p-4 md:p-6 pr-14 md:pr-16 text-white text-sm outline-none resize-none h-16 md:h-18 focus:border-blue-500/50 transition-all placeholder:text-slate-700 disabled:opacity-50" 
               />
               <button 
+                type="button"
                 onClick={() => handleSend()} 
                 disabled={!input.trim() || isLoading || isAnalyzing} 
                 className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-xl md:rounded-2xl bg-white text-slate-950 hover:bg-blue-500 hover:text-white transition-all disabled:opacity-20 active:scale-95"
               >
-                {/* Fix: Removed non-existent responsive 'md:size' prop from Lucide Send icon */}
                 <Send size={20} />
               </button>
           </div>

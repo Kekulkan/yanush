@@ -1,4 +1,3 @@
-
 import { TeacherProfile, StudentProfile, Accentuation, ContextModule, ActiveSession } from '../types';
 import { DEFAULT_ACCENTUATIONS, DEFAULT_CONTEXT_MODULES } from '../constants';
 import { ACCESS_LIMITS } from './authService';
@@ -22,27 +21,30 @@ const AVATAR_DB = {
  * Склонение имен для родительного падежа (кого? чего?)
  */
 const declineNameGenitive = (name: string, gender: 'male' | 'female'): string => {
+    const n = name.trim();
     if (gender === 'male') {
-        if (name === 'Дмитрий') return 'Дмитрия';
-        if (name === 'Матвей') return 'Матвея';
-        if (name === 'Илья') return 'Ильи';
-        if (name === 'Никита') return 'Никиты';
+        if (n === 'Дмитрий') return 'Дмитрия';
+        if (n === 'Матвей') return 'Матвея';
+        if (n === 'Илья') return 'Ильи';
+        if (n === 'Никита') return 'Никиты';
+        if (n === 'Глеб') return 'Глеба';
+        if (n === 'Артем' || n === 'Артём') return 'Артёма';
+        
         // Если заканчивается на согласную (кроме й)
         const vowels = ['а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я', 'й'];
-        if (!vowels.includes(name.slice(-1))) {
-            return name + 'а';
+        if (!vowels.includes(n.slice(-1).toLowerCase())) {
+            return n + 'а';
         }
     } else {
-        if (name.endsWith('ия')) return name.slice(0, -2) + 'ии';
-        if (name.endsWith('я')) return name.slice(0, -1) + 'и';
-        if (name.endsWith('а')) {
-            // Вероника -> Вероники, Ольга -> Ольги
-            const preLast = name.slice(-2, -1);
-            if (['г', 'к', 'х', 'ж', 'ч', 'ш', 'щ'].includes(preLast)) return name.slice(0, -1) + 'и';
-            return name.slice(0, -1) + 'ы';
+        if (n.endsWith('ия')) return n.slice(0, -2) + 'ии';
+        if (n.endsWith('я')) return n.slice(0, -1) + 'и';
+        if (n.endsWith('а')) {
+            const preLast = n.slice(-2, -1).toLowerCase();
+            if (['г', 'к', 'х', 'ж', 'ч', 'ш', 'щ'].includes(preLast)) return n.slice(0, -1) + 'и';
+            return n.slice(0, -1) + 'ы';
         }
     }
-    return name;
+    return n;
 };
 
 export const resolveGenderTokens = (text: string, student: StudentProfile): string => {
@@ -50,7 +52,7 @@ export const resolveGenderTokens = (text: string, student: StudentProfile): stri
     
     // 1. Имена (сначала родительный, потом обычный)
     resolved = resolved.replace(/{name_gen}/g, declineNameGenitive(student.name, student.gender));
-    resolved = resolved.replace(/{name}/g, student.name);
+    resolved = resolved.replace(/{name}/g, student.name.trim());
 
     // 2. Сложные токены {муж|жен} или {муж|жен|множ}
     const genderRegex = /\{([^{}|]*)\|([^{}|]*)\}/g;
@@ -96,7 +98,7 @@ export const buildDynamicPrompt = (teacher: TeacherProfile, student: StudentProf
     [ЯЗЫКОВОЙ ПРОТОКОЛ: СТРОГО КИРИЛЛИЦА, РУССКИЙ ЯЗЫК]
     [SYSTEM ROLE: GM / NARRATOR / STUDENT]
     
-    ТЫ — ПОДРОСТОК: ${student.name}, ${student.age} лет.
+    ТЫ — ПОДРОСТОК: ${student.name.trim()}, ${student.age} лет.
     ПСИХОТИП: ${randomAcc.name}. Интенсивность ${intensity}/5.
     
     СИТУАЦИЯ: ${incident.prompt_text}
