@@ -1,29 +1,51 @@
-
+// api/proxy.js
 export default async function handler(req, res) {
-  const { url } = req.query;
-  // Ключ, полученный на proxyapi.ru, должен лежать в переменной окружения API_KEY на Vercel
-  const apiKey = process.env.API_KEY;
+  // Ключ ProxyAPI должен лежать в переменной окружения API_KEY на Vercel
+  const API_KEY = process.env.API_KEY;
 
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API_KEY not configured' });
+  if (!API_KEY) {
+    return res.status(500).json({ error: "Missing API_KEY env var (ProxyAPI key)" });
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // ProxyAPI.ru использует тот же формат пути, что и Google, но другой домен
-    const proxyUrl = `https://api.proxyapi.ru/google/v1beta/models/${url}?key=${apiKey}`;
-    
-    const response = await fetch(proxyUrl, {
-      method: req.method,
+    // Ожидаем действие вида: gemini-2.0-flash-lite:generateContent
+    const action = String(req.query.url || "").trim();
+
+    // Мини-валидация, чтобы не проксировать произвольные пути
+    if (!action || !/^gemini[-\w.]*:(generateContent|streamGenerateContent)$/.test(action)) {
+      return res.status(400).json({
+        error:
+          "Bad url parameter. Expected like 'gemini-2.0-flash-lite:generateContent' " +
+          "or 'gemini-2.0-flash-lite:streamGenerateContent'.",
+      });
+    }
+
+    const targetUrl = `https://api.proxyapi.ru/google/v1beta/models/${encodeURIComponent(action)}`;
+
+    const upstream = await fetch(targetUrl, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
       },
-      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
+      body: JSON.stringify(req.body ?? {}),
     });
 
-    const data = await response.json();
-    res.status(response.status).json(data);
-  } catch (error) {
-    console.error('Proxy Error:', error);
-    res.status(500).json({ error: 'Proxy error' });
+    // Пробуем вернуть JSON, но если вдруг вернётся не-JSON — вернём как текст
+    const text = await upstream.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
+
+    return res.status(upstream.status).json(data);
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || String(e) });
   }
 }

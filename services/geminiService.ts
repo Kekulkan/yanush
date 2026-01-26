@@ -10,6 +10,8 @@ type GeminiChatResponse = {
   violation_reason?: string;
 };
 
+const MODEL_ACTION = "gemini-2.0-flash-lite:generateContent"; // поменяй на gemini-2.0-flash:generateContent если proxy вернёт "model not found"
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -23,12 +25,12 @@ function extractGeminiText(data: any): string {
     .join("");
 }
 
-async function postViaProxy(modelAction: string, body: any, timeoutMs = 60_000): Promise<any> {
+async function postViaProxy(body: any, timeoutMs = 60_000): Promise<any> {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const r = await fetch(`/api/proxy?url=${encodeURIComponent(modelAction)}`, {
+    const r = await fetch(`/api/proxy?url=${encodeURIComponent(MODEL_ACTION)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -38,8 +40,7 @@ async function postViaProxy(modelAction: string, body: any, timeoutMs = 60_000):
     const data = await r.json().catch(() => ({}));
 
     if (!r.ok) {
-      const msg = data?.error || `Proxy request failed (${r.status})`;
-      throw new Error(msg);
+      throw new Error(data?.error || `Proxy request failed (${r.status})`);
     }
 
     return data;
@@ -49,8 +50,6 @@ async function postViaProxy(modelAction: string, body: any, timeoutMs = 60_000):
 }
 
 function buildContentsFromMessages(messages: Message[]) {
-  // В Gemini API роли: user | model. SYSTEM мы не прокидываем как отдельную роль,
-  // потому что в твоём проекте системный контекст уже есть в constructedPrompt.
   return messages
     .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
     .map((m) => ({
@@ -60,8 +59,7 @@ function buildContentsFromMessages(messages: Message[]) {
 }
 
 /**
- * Главный запрос чата (то, что дергает ChatInterface).
- * Важно: возвращает объект {text, thought, trust, stress, game_over, violation_reason}.
+ * Чат: возвращает JSON-объект, который ожидает ChatInterface.
  */
 export async function sendMessageToGemini(
   messages: Message[],
@@ -69,8 +67,8 @@ export async function sendMessageToGemini(
   _userText: string
 ): Promise<GeminiChatResponse> {
   const instruction = `
-ТЫ — симулятор студента. Отвечай ТОЛЬКО СТРОГИМ JSON (без \`\`\`).
-Схема ответа:
+Отвечай ТОЛЬКО СТРОГИМ JSON (без \`\`\`).
+Схема:
 {
   "text": "реплика студента",
   "thought": "внутренний ход мысли (для админа)",
@@ -92,32 +90,25 @@ export async function sendMessageToGemini(
 
   const body = {
     contents,
-    generationConfig: {
-      temperature: 0.7,
-    },
+    generationConfig: { temperature: 0.7 },
   };
 
-  // Быстро и стабильно для диалога:
-  const data = await postViaProxy("gemini-2.0-flash-lite:generateContent", body, 60_000);
+  const data = await postViaProxy(body, 60_000);
   const modelText = extractGeminiText(data);
 
-  // Пытаемся распарсить JSON-ответ
   try {
     const parsed = JSON.parse(modelText);
-
-    const trust = clamp(Number(parsed?.trust ?? 0), 0, 100);
-    const stress = clamp(Number(parsed?.stress ?? 0), 0, 100);
 
     return {
       text: String(parsed?.text ?? ""),
       thought: String(parsed?.thought ?? ""),
-      trust,
-      stress,
+      trust: clamp(Number(parsed?.trust ?? 0), 0, 100),
+      stress: clamp(Number(parsed?.stress ?? 0), 0, 100),
       game_over: Boolean(parsed?.game_over ?? false),
       violation_reason: parsed?.violation_reason ? String(parsed.violation_reason) : "",
     };
   } catch {
-    // Фолбэк: чтобы UI не ломался даже если модель нарушила формат
+    // Фолбэк, чтобы UI не падал
     return {
       text: modelText || "Пустой ответ модели.",
       thought: "",
@@ -130,8 +121,7 @@ export async function sendMessageToGemini(
 }
 
 /**
- * Генерация "вердикта комиссии" (то, что показывается после окончания/стопа).
- * ChatInterface использует: analysis.overall_score, analysis.summary, analysis.commission[].
+ * Анализ: комиссия, общий балл, резюме.
  */
 export async function analyzeChatSession(
   messages: Message[],
@@ -148,7 +138,7 @@ export async function analyzeChatSession(
 Акцентуация/профиль: ${accentuation}
 Причина завершения: ${reason}
 
-Ответь ТОЛЬКО СТРОГИМ JSON (без \`\`\`), минимум поля:
+Ответь ТОЛЬКО СТРОГИМ JSON (без \`\`\`):
 {
   "overall_score": число 0..100,
   "summary": "1-2 предложения итог",
@@ -166,19 +156,15 @@ export async function analyzeChatSession(
         parts: [{ text: `${instruction}\n\nСТЕНОГРАММА:\n${transcript}` }],
       },
     ],
-    generationConfig: {
-      temperature: 0.4,
-    },
+    generationConfig: { temperature: 0.4 },
   };
 
-  // Для анализа можно и flash; если захочешь “глубже”, поменяй на gemini-1.5-pro
-  const data = await postViaProxy("gemini-2.0-flash-lite:generateContent", body, 90_000);
+  const data = await postViaProxy(body, 90_000);
   const modelText = extractGeminiText(data);
 
   try {
     const parsed = JSON.parse(modelText);
 
-    // Нормализуем к ожидаемой форме
     const overall_score = clamp(Number(parsed?.overall_score ?? 0), 0, 100);
     const summary = String(parsed?.summary ?? "");
 
@@ -190,7 +176,6 @@ export async function analyzeChatSession(
       verdict: String(m?.verdict ?? ""),
     }));
 
-    // Если твой AnalysisResult содержит доп.поля — они сохранятся через spread.
     return {
       ...(parsed as AnalysisResult),
       overall_score,
@@ -198,20 +183,16 @@ export async function analyzeChatSession(
       commission,
     };
   } catch {
-    // Фолбэк, чтобы экран не падал
     return {
       overall_score: 0,
       summary: "Не удалось распарсить JSON-ответ анализа.",
-      commission: [
-        { name: "Система", role: "Ошибка", score: 0, verdict: modelText || "Пустой ответ." },
-      ],
+      commission: [{ name: "Система", role: "Ошибка", score: 0, verdict: modelText || "Пустой ответ." }],
     } as unknown as AnalysisResult;
   }
 }
 
 /**
- * "Суфлёр" — подсказка педагогу (кнопка Zap).
- * Возвращает одну короткую рекомендацию.
+ * Суфлёр (Zap): короткая подсказка без JSON.
  */
 export async function generateGhostResponse(
   messages: Message[],
@@ -227,7 +208,7 @@ export async function generateGhostResponse(
   const instruction = `
 Ты — суфлёр педагога. Дай ОДНУ короткую реплику/подсказку (1–2 предложения),
 которая улучшит контакт, снизит стресс студента и повысит доверие.
-Не упоминай, что ты ИИ. Без JSON. Только текст подсказки.
+Не упоминай, что ты ИИ. Без JSON. Только текст.
 
 Контекст (кратко): ${contextSummary}
 Педагог: ${teacher?.name ? String(teacher.name) : "не указан"}
@@ -240,12 +221,10 @@ export async function generateGhostResponse(
         parts: [{ text: `${instruction}\n\nПОСЛЕДНИЕ РЕПЛИКИ:\n${lastTurns}` }],
       },
     ],
-    generationConfig: {
-      temperature: 0.8,
-    },
+    generationConfig: { temperature: 0.8 },
   };
 
-  const data = await postViaProxy("gemini-2.0-flash-lite:generateContent", body, 45_000);
+  const data = await postViaProxy(body, 45_000);
   const modelText = extractGeminiText(data);
 
   return (modelText || "").trim() || "Сформулируйте короткий вопрос и уточните, что именно сейчас сложнее всего.";
