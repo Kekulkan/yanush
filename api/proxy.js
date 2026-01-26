@@ -1,15 +1,9 @@
 export default async function handler(req, res) {
   const API_KEY = process.env.API_KEY;
 
-  // ping должен работать по GET
-  if (req.query.ping === "1") {
-    return res.status(200).json({ hasKey: Boolean(API_KEY), keyLen: API_KEY ? API_KEY.length : 0 });
+  if (req.method === "GET") {
+    return res.status(200).json({ ok: true, route: "/api/proxy", ts: Date.now() });
   }
-
-  if (!API_KEY) {
-    return res.status(500).json({ error: "Missing API_KEY env var (ProxyAPI key)" });
-  }
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
