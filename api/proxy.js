@@ -2,7 +2,10 @@
 export default async function handler(req, res) {
   // Ключ ProxyAPI должен лежать в переменной окружения API_KEY на Vercel
   const API_KEY = process.env.API_KEY;
-
+  if (req.query.ping === "1") {
+    return res.status(200).json({ hasKey: Boolean(API_KEY), keyLen: API_KEY ? API_KEY.length : 0 });
+  }
+  
   if (!API_KEY) {
     return res.status(500).json({ error: "Missing API_KEY env var (ProxyAPI key)" });
   }
