@@ -1,6 +1,13 @@
 // services/geminiService.ts
-import { Message, MessageRole, GlobalSettings, AnalysisResult } from "../types";
+import { Message, MessageRole, GlobalSettings, AnalysisResult, AdvisoryFeedback, AquariumDialogue } from "../types";
 import { DEFAULT_SETTINGS } from "../constants";
+import { 
+  buildMainCommissionPrompt, 
+  buildAdvisoryCommissionPrompt, 
+  buildAquariumPrompt,
+  getActiveAdvisoryMembers,
+  ADVISORY_COMMISSION
+} from "./commissionService";
 
 type GeminiChatResponse = {
   text: string;
@@ -215,36 +222,151 @@ export const sendMessageToGemini = async (
 export const analyzeChatSession = async (
   history: Message[],
   scenarioName: string,
-  endReason: string
+  endReason: string,
+  options?: { includeAdvisory?: boolean; includeAquarium?: boolean }
 ): Promise<AnalysisResult> => {
-  const transcript = history.map((m) => `${m.role}: ${m.content}`).join("\n");
+  const transcript = history.map((m) => {
+    let line = `${m.role}: ${m.content}`;
+    if (m.state?.thought) line += `\n[МЫСЛЬ: ${m.state.thought}]`;
+    return line;
+  }).join("\n\n");
 
-  const prompt = `Проведи педагогический анализ. Сценарий: ${scenarioName}. Причина завершения: ${endReason}.
-Транскрипт:
-${transcript}
-
-Верни строго JSON со структурой:
-{
-  "overall_score": number,
-  "summary": string,
-  "commission": [
-    { "title": string, "severity": "low"|"medium"|"high", "description": string }
-  ]
-}`;
-
-  const body = {
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ОСНОВНАЯ КОМИССИЯ (влияет на итоговый балл)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const mainPrompt = buildMainCommissionPrompt(transcript, scenarioName, endReason);
+  
+  const mainBody = {
+    contents: [{ role: "user", parts: [{ text: mainPrompt }] }],
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.4,
       responseMimeType: "application/json",
     },
   };
 
-  const data = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, body, 90_000);
-  const modelText = extractGeminiText(data);
+  const mainData = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, mainBody, 120_000);
+  const mainText = extractGeminiText(mainData);
+  const mainJsonStr = extractFirstJsonObject(mainText) ?? stripCodeFences(mainText);
+  
+  let result: AnalysisResult;
+  try {
+    const parsed = JSON.parse(mainJsonStr);
+    result = {
+      overall_score: parsed.overall_score ?? 50,
+      summary: parsed.summary ?? "Анализ завершён.",
+      commission: Array.isArray(parsed.commission) ? parsed.commission.map((c: any) => ({
+        name: c.name || "Эксперт",
+        role: c.role || "Специалист",
+        score: c.score ?? 50,
+        verdict: c.verdict || "Без комментариев."
+      })) : [],
+      timestamp: Date.now()
+    };
+  } catch (e) {
+    console.error("Ошибка парсинга основной комиссии:", e);
+    result = {
+      overall_score: 50,
+      summary: "Не удалось сформировать вердикт.",
+      commission: [],
+      timestamp: Date.now()
+    };
+  }
 
-  const jsonStr = extractFirstJsonObject(modelText) ?? stripCodeFences(modelText);
-  return JSON.parse(jsonStr);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // СОВЕЩАТЕЛЬНАЯ КОМИССИЯ (не влияет на балл, триггерная)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  if (options?.includeAdvisory !== false) {
+    try {
+      const activeAdvisory = getActiveAdvisoryMembers(history);
+      
+      if (activeAdvisory.length > 0) {
+        const advisoryPrompt = buildAdvisoryCommissionPrompt(transcript, activeAdvisory);
+        
+        const advisoryBody = {
+          contents: [{ role: "user", parts: [{ text: advisoryPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,  // Выше для более характерных реплик
+            responseMimeType: "application/json",
+          },
+        };
+
+        const advisoryData = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, advisoryBody, 90_000);
+        const advisoryText = extractGeminiText(advisoryData);
+        const advisoryJsonStr = extractFirstJsonObject(advisoryText);
+        
+        if (advisoryJsonStr) {
+          const advisoryParsed = JSON.parse(advisoryJsonStr);
+          if (Array.isArray(advisoryParsed.advisory)) {
+            result.advisory = advisoryParsed.advisory.map((a: any) => {
+              const member = ADVISORY_COMMISSION.find(m => m.id === a.id);
+              return {
+                member: member || {
+                  id: a.id,
+                  name: a.name || "???",
+                  title: a.title || "???",
+                  age: 0,
+                  triggers: [],
+                  prompt: ""
+                },
+                verdict: a.verdict || "Без комментариев.",
+                score: a.score,
+                triggered_by: a.triggered_by || []
+              } as AdvisoryFeedback;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Ошибка совещательной комиссии:", e);
+      // Не фатально — продолжаем без совещательной
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // АКВАРИУМ (премиум — обсуждение между членами совещательной комиссии)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  if (options?.includeAquarium && result.advisory && result.advisory.length >= 2) {
+    try {
+      const activeForAquarium = result.advisory.map(a => ({
+        member: a.member,
+        triggeredBy: a.triggered_by || []
+      }));
+      
+      const aquariumPrompt = buildAquariumPrompt(transcript, activeForAquarium);
+      
+      const aquariumBody = {
+        contents: [{ role: "user", parts: [{ text: aquariumPrompt }] }],
+        generationConfig: {
+          temperature: 0.85,  // Ещё выше для живых диалогов
+          responseMimeType: "application/json",
+        },
+      };
+
+      const aquariumData = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, aquariumBody, 90_000);
+      const aquariumText = extractGeminiText(aquariumData);
+      const aquariumJsonStr = extractFirstJsonObject(aquariumText);
+      
+      if (aquariumJsonStr) {
+        const aquariumParsed = JSON.parse(aquariumJsonStr);
+        if (Array.isArray(aquariumParsed.aquarium)) {
+          result.aquarium = aquariumParsed.aquarium.map((d: any) => ({
+            speaker: d.speaker,
+            speakerName: d.speaker_name || d.speakerName || "???",
+            text: d.text || "...",
+            replyTo: d.reply_to || d.replyTo || undefined
+          } as AquariumDialogue));
+        }
+      }
+    } catch (e) {
+      console.error("Ошибка аквариума:", e);
+      // Не фатально
+    }
+  }
+
+  return result;
 };
 
 export const generateGhostResponse = async (

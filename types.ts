@@ -127,10 +127,64 @@ export interface CommissionFeedback {
   score: number;
 }
 
+// === ОСНОВНАЯ КОМИССИЯ (влияет на итоговый балл) ===
+export interface MainCommissionMember {
+  id: string;
+  name: string;
+  role: string;
+  specialty: string;
+  evaluationFocus: string;  // На что обращает внимание
+  prompt: string;           // Системный промпт для генерации вердикта
+}
+
+// === СОВЕЩАТЕЛЬНАЯ КОМИССИЯ (не влияет на балл, триггерная) ===
+export type AdvisoryMemberType = 
+  | 'zlatogorsky'      // Олигарх-попечитель
+  | 'nasonov'          // Партийный функционер
+  | 'upalnamochenov'   // Участковый ПДН
+  | 'onufry'           // Боевой священник
+  | 'timokha'          // Зумер-блогер (всегда активен)
+  | 'zashchitnikova'   // Гиперопекающая мать
+  | 'oboronosposobnov' // Военрук
+  | 'svetovzor'        // Инста-психолог
+  | 'pravdorub';       // Анонимный хейтер (20% шанс)
+
+export interface AdvisoryCommissionMember {
+  id: AdvisoryMemberType;
+  name: string;
+  title: string;
+  age: number;
+  triggers: string[];         // Ключевые слова/темы для пробуждения
+  alwaysActive?: boolean;     // Для Тимохи
+  randomChance?: number;      // Для Правдоруба (0.2 = 20%)
+  prompt: string;             // Полный промпт персонажа
+  conflictsWith?: AdvisoryMemberType[]; // С кем конфликтует в "Аквариуме"
+}
+
+export interface AdvisoryFeedback {
+  member: AdvisoryCommissionMember;
+  verdict: string;
+  score?: number;             // Опциональная оценка (не влияет на итог)
+  triggered_by?: string[];    // Какие триггеры сработали
+}
+
+// Обсуждение в "Аквариуме" (премиум)
+export interface AquariumDialogue {
+  speaker: AdvisoryMemberType;
+  speakerName: string;
+  text: string;
+  replyTo?: AdvisoryMemberType;
+}
+
 export interface AnalysisResult {
   overall_score: number;
   summary: string;
+  // Основная комиссия (влияет на балл)
   commission: CommissionFeedback[];
+  // Совещательная комиссия (не влияет на балл)
+  advisory?: AdvisoryFeedback[];
+  // Обсуждение "Аквариум" (премиум)
+  aquarium?: AquariumDialogue[];
   timestamp: number;
 }
 

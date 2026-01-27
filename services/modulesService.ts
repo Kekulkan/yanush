@@ -82,6 +82,11 @@ export function isModuleCompatible(
   accentuationId: string,
   selectedModuleIds: string[] = []
 ): boolean {
+  // Проверка дубликатов — модуль уже выбран
+  if (selectedModuleIds.includes(module.id)) {
+    return false;
+  }
+  
   // Проверка пола
   if (module.incompatible_genders?.includes(gender)) {
     return false;

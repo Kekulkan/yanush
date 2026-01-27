@@ -4,7 +4,7 @@ import { sendMessageToGemini, analyzeChatSession, generateGhostResponse } from '
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
-import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull } from 'lucide-react';
+import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater } from 'lucide-react';
 
 interface Props {
   session: ActiveSession;
@@ -165,7 +165,16 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       if (!window.confirm('ЗАВЕРШИТЬ СЕАНС И ПОЛУЧИТЬ ВЕРДИКТ?')) return;
       setIsAnalyzing(true);
       try {
-          const result = await analyzeChatSession(messages, session.chaosDetails.accentuation, 'Принудительное завершение');
+          const isPremium = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
+          const result = await analyzeChatSession(
+            messages, 
+            session.chaosDetails.accentuation, 
+            'Принудительное завершение',
+            { 
+              includeAdvisory: true,
+              includeAquarium: isPremium  // Аквариум только для премиум
+            }
+          );
           setAnalysis(result);
           archiveSession(messages, result, 'manual');
           setIsAnalyzing(false);
@@ -220,7 +229,16 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       
       if (response.game_over) {
           setIsAnalyzing(true);
-          const result = await analyzeChatSession(finalMessages, session.chaosDetails.accentuation, response.violation_reason || 'Психологический срыв');
+          const isPremium = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
+          const result = await analyzeChatSession(
+            finalMessages, 
+            session.chaosDetails.accentuation, 
+            response.violation_reason || 'Психологический срыв',
+            { 
+              includeAdvisory: true,
+              includeAquarium: isPremium
+            }
+          );
           setAnalysis(result);
           archiveSession(finalMessages, result, 'completed');
           setIsAnalyzing(false);
@@ -238,36 +256,211 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       return "bg-white/5 border-l-slate-500 text-slate-400";
   };
 
+  // Состояния для отображения секций анализа
+  const [showAdvisory, setShowAdvisory] = useState(false);
+  const [showAquarium, setShowAquarium] = useState(false);
+  const [aquariumIndex, setAquariumIndex] = useState(0);
+  const [aquariumPlaying, setAquariumPlaying] = useState(false);
+
+  // Автопроигрывание аквариума
+  useEffect(() => {
+    if (!aquariumPlaying || !analysis?.aquarium) return;
+    if (aquariumIndex >= analysis.aquarium.length) {
+      setAquariumPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setAquariumIndex(prev => prev + 1);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [aquariumPlaying, aquariumIndex, analysis?.aquarium]);
+
+  // Цвет оценки
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-400';
+    if (score >= 60) return 'text-blue-400';
+    if (score >= 40) return 'text-amber-400';
+    return 'text-rose-400';
+  };
+
   if (analysis) {
       return (
           <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] overflow-hidden">
-              <div className="flex-1 overflow-y-auto custom-scroll p-6 md:p-12">
-                  <div className="max-w-4xl mx-auto space-y-12 pb-32">
-                      <div className="glass p-8 md:p-12 rounded-[60px] text-center border-blue-500/20 flex flex-col md:flex-row items-center gap-10 animate-in zoom-in-95 duration-700">
-                          <div className="shrink-0">
+              <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-8">
+                  <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                      
+                      {/* === ГЛАВНЫЙ ВЕРДИКТ === */}
+                      <div className="glass p-6 md:p-10 rounded-[40px] border-blue-500/20 flex flex-col md:flex-row items-center gap-8 animate-in zoom-in-95 duration-700">
+                          <div className="shrink-0 text-center">
                             <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">РЕЙТИНГ</div>
-                            <div className="text-7xl md:text-9xl font-black text-white italic leading-none">{Math.round(analysis.overall_score)}</div>
+                            <div className={`text-6xl md:text-8xl font-black italic leading-none ${getScoreColor(analysis.overall_score)}`}>
+                              {Math.round(analysis.overall_score)}
+                            </div>
                           </div>
-                          <div className="text-left space-y-4">
-                            <h2 className="text-3xl md:text-4xl font-black text-white uppercase italic tracking-tighter">ВЕРДИКТ</h2>
-                            <p className="text-slate-400 text-lg leading-relaxed italic border-l-4 border-blue-500 pl-6">"{analysis.summary}"</p>
+                          <div className="text-left space-y-3 flex-1">
+                            <h2 className="text-2xl md:text-3xl font-black text-white uppercase italic tracking-tighter">ВЕРДИКТ КОМИССИИ</h2>
+                            <p className="text-slate-400 text-sm md:text-base leading-relaxed italic border-l-4 border-blue-500 pl-4">
+                              "{analysis.summary}"
+                            </p>
                           </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {analysis.commission.map((member, i) => (
-                              <div key={i} className="glass p-8 rounded-[40px] border-white/5 space-y-4">
-                                  <div className="flex justify-between items-start">
+
+                      {/* === ОСНОВНАЯ КОМИССИЯ (профессионалы) === */}
+                      <div className="space-y-4">
+                        <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                          <Gavel size={14} className="text-blue-500" />
+                          ОСНОВНАЯ СУПЕРВИЗОРСКАЯ КОМИССИЯ
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {analysis.commission.map((member, i) => (
+                                <div key={i} className="glass p-5 rounded-[28px] border-white/5 space-y-3 hover:border-blue-500/20 transition-all">
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-blue-400 font-bold text-sm block truncate">{member.name}</span>
+                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">{member.role}</span>
+                                        </div>
+                                        <div className={`text-2xl font-black italic shrink-0 ${getScoreColor(member.score)}`}>
+                                          {member.score}
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-300 italic leading-relaxed line-clamp-4">"{member.verdict}"</p>
+                                </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* === СОВЕЩАТЕЛЬНАЯ КОМИССИЯ (сатира) === */}
+                      {analysis.advisory && analysis.advisory.length > 0 && (
+                        <div className="space-y-4">
+                          <button 
+                            onClick={() => setShowAdvisory(!showAdvisory)}
+                            className="w-full flex items-center justify-between text-[11px] font-black text-amber-500/70 uppercase tracking-widest hover:text-amber-500 transition-colors"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Users size={14} />
+                              СОВЕЩАТЕЛЬНАЯ КОМИССИЯ ({analysis.advisory.length} голосов)
+                            </span>
+                            {showAdvisory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                          
+                          {showAdvisory && (
+                            <div className="space-y-3 animate-in slide-in-from-top-2">
+                              <p className="text-[10px] text-slate-500 italic">
+                                Мнения представителей общества. Не влияют на итоговый балл, но показывают, 
+                                с какими реакциями учителю предстоит столкнуться в реальности.
+                              </p>
+                              <div className="grid grid-cols-1 gap-3">
+                                {analysis.advisory.map((adv, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="glass p-4 rounded-[20px] border-l-4 border-amber-500/30 bg-amber-500/5 space-y-2"
+                                  >
+                                    <div className="flex justify-between items-start">
                                       <div>
-                                          <span className="text-blue-400 font-black text-sm uppercase italic">{member.name}</span>
-                                          <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest block">{member.role}</span>
+                                        <span className="text-amber-400 font-bold text-sm">{adv.member.name}</span>
+                                        <span className="text-[9px] text-slate-500 block">{adv.member.title}</span>
                                       </div>
-                                      <div className="text-3xl font-black text-white italic">{member.score}</div>
+                                      {adv.score !== undefined && (
+                                        <div className="text-lg font-black text-amber-400/60 italic">{adv.score}/10</div>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-amber-200/80 italic leading-relaxed">"{adv.verdict}"</p>
+                                    {adv.triggered_by && adv.triggered_by.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 pt-1">
+                                        {adv.triggered_by.slice(0, 3).map((trigger, ti) => (
+                                          <span key={ti} className="text-[8px] bg-amber-500/20 text-amber-400/60 px-2 py-0.5 rounded-full">
+                                            {trigger}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                  <p className="text-xs text-slate-300 italic">"{member.verdict}"</p>
+                                ))}
                               </div>
-                          ))}
-                      </div>
-                      <button onClick={onExit} className="w-full py-6 bg-white text-black rounded-[28px] font-black uppercase tracking-widest text-[10px] hover:bg-blue-500 hover:text-white transition-all shadow-xl">В меню</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* === АКВАРИУМ (премиум) === */}
+                      {analysis.aquarium && analysis.aquarium.length > 0 && (
+                        <div className="space-y-4">
+                          <button 
+                            onClick={() => {
+                              setShowAquarium(!showAquarium);
+                              if (!showAquarium) {
+                                setAquariumIndex(0);
+                                setAquariumPlaying(false);
+                              }
+                            }}
+                            className="w-full flex items-center justify-between text-[11px] font-black text-violet-500/70 uppercase tracking-widest hover:text-violet-500 transition-colors"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Theater size={14} />
+                              АКВАРИУМ — ОБСУЖДЕНИЕ КОМИССИИ
+                            </span>
+                            {showAquarium ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                          
+                          {showAquarium && (
+                            <div className="space-y-3 animate-in slide-in-from-top-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-[10px] text-slate-500 italic">
+                                  Подслушайте, как члены совещательной комиссии обсуждают вашу работу между собой.
+                                </p>
+                                <div className="flex gap-2">
+                                  <button 
+                                    onClick={() => {
+                                      setAquariumPlaying(!aquariumPlaying);
+                                      if (!aquariumPlaying && aquariumIndex >= analysis.aquarium!.length) {
+                                        setAquariumIndex(0);
+                                      }
+                                    }}
+                                    className="p-2 rounded-full bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
+                                  >
+                                    {aquariumPlaying ? <Pause size={14} /> : <Play size={14} />}
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              <div className="glass p-4 rounded-[20px] border-violet-500/20 bg-violet-500/5 space-y-3 max-h-[400px] overflow-y-auto custom-scroll">
+                                {analysis.aquarium.slice(0, aquariumIndex + 1).map((dialogue, i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`p-3 rounded-xl transition-all ${
+                                      i === aquariumIndex ? 'bg-violet-500/10 animate-in fade-in slide-in-from-bottom-2' : 'bg-white/5'
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <MessageSquare size={12} className="text-violet-400 mt-1 shrink-0" />
+                                      <div>
+                                        <span className="text-violet-400 font-bold text-xs">{dialogue.speakerName}:</span>
+                                        <p className="text-[11px] text-violet-200/80 mt-1">{dialogue.text}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                                {aquariumIndex < analysis.aquarium.length - 1 && !aquariumPlaying && (
+                                  <button 
+                                    onClick={() => setAquariumIndex(analysis.aquarium!.length)}
+                                    className="text-[10px] text-violet-400/50 hover:text-violet-400 transition-colors"
+                                  >
+                                    Показать всё ({analysis.aquarium!.length - aquariumIndex - 1} реплик)
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* === КНОПКА ВЫХОДА === */}
+                      <button 
+                        onClick={onExit} 
+                        className="w-full py-5 bg-white text-black rounded-[24px] font-black uppercase tracking-widest text-[10px] hover:bg-blue-500 hover:text-white transition-all shadow-xl"
+                      >
+                        В меню
+                      </button>
                   </div>
               </div>
           </div>
@@ -577,7 +770,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                   className="w-full bg-slate-900 border border-white/10 rounded-[28px] p-4 pr-16 text-sm text-white outline-none resize-none h-14 md:h-16 focus:border-blue-500/40 transition-all placeholder:text-slate-600" 
               />
               <button 
-                onClick={handleSend} 
+                type="button"
+                onClick={() => handleSend()} 
                 disabled={!input.trim() || isLoading} 
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-white text-black rounded-2xl disabled:opacity-20 transition-all active:scale-95 shadow-lg hover:bg-blue-500 hover:text-white"
               >
