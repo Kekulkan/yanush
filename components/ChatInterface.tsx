@@ -75,6 +75,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
+  const lastModelMsg = [...messages].reverse().find(m => m.role === MessageRole.MODEL);
+  const currentTrust = lastModelMsg?.state?.trust ?? session.chaosDetails.starting_trust;
+  const currentStress = lastModelMsg?.state?.stress ?? session.chaosDetails.starting_stress;
+
   useEffect(() => {
     if (messages.length === 0) {
         const cleanSummary = resolveGenderTokens(session.chaosDetails.contextSummary, session.student);
