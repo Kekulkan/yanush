@@ -72,51 +72,63 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [isPrompterLoading, setIsPrompterLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-
-  const lastModelMsg = [...messages].reverse().find(m => m.role === MessageRole.MODEL);
-  const currentTrust = lastModelMsg?.state?.trust ?? session.chaosDetails.starting_trust;
-  const currentStress = lastModelMsg?.state?.stress ?? session.chaosDetails.starting_stress;
 
   useEffect(() => {
     if (messages.length === 0) {
         const cleanSummary = resolveGenderTokens(session.chaosDetails.contextSummary, session.student);
-        setMessages([{
-            id: 'setup',
-            role: MessageRole.SYSTEM,
-            content: cleanSummary,
-            timestamp: Date.now()
-        }]);
+        setMessages([{ id: 'setup', role: MessageRole.SYSTEM, content: cleanSummary, timestamp: Date.now() }]);
+    }
+    
+    // Фикс микрофона для Mobile и Web
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = 'ru-RU';
+        recognitionRef.current.onresult = (event: any) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+            }
+            if (finalTranscript) setInput(prev => prev + (prev ? ' ' : '') + finalTranscript);
+        };
+        recognitionRef.current.onerror = (e: any) => {
+            console.error('Speech Error:', e);
+            setIsListening(false);
+        };
     }
   }, []);
 
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  }, [messages, isLoading, ghostAdvice, isAnalyzing]);
+  useEffect(() => { 
+    // Принудительный скролл вниз с небольшой задержкой для отрисовки
+    const timeoutId = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 150);
+    return () => clearTimeout(timeoutId);
+  }, [messages, isLoading, ghostAdvice]);
 
   const toggleListening = () => {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SpeechRecognition) return alert('Голосовой ввод не поддерживается');
-      if (!recognitionRef.current) {
-          recognitionRef.current = new SpeechRecognition();
-          recognitionRef.current.lang = 'ru-RU';
-          recognitionRef.current.onresult = (e: any) => {
-              const text = e.results[0][0].transcript;
-              setInput(prev => prev + ' ' + text);
-          };
+      if (!recognitionRef.current) return alert('Голосовой ввод не поддерживается вашим браузером.');
+      if (isListening) {
+          recognitionRef.current.stop();
+          setIsListening(false);
+      } else {
+          try {
+              recognitionRef.current.start();
+              setIsListening(true);
+          } catch (e) {
+              console.error(e);
+          }
       }
-      if (isListening) { recognitionRef.current.stop(); setIsListening(false); } 
-      else { recognitionRef.current.start(); setIsListening(true); }
   };
 
   const getAdvice = async () => {
-      if (isPrompterLoading) return;
       setIsPrompterLoading(true);
       try {
-          const advice = await generateGhostResponse(messages, session.chaosDetails.contextSummary, session.teacher);
+          const advice = await generateGhostResponse(messages, session.chaosDetails.contextSummary);
           setGhostAdvice(advice);
       } finally { setIsPrompterLoading(false); }
   };
@@ -138,15 +150,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       userEmail: user?.email
     };
 
-    // Сохраняем в личный архив пользователя
     if (user?.id) {
       saveToUserArchive(user.id, sessionLog);
     }
-    
-    // Сохраняем в глобальный архив
     saveToGlobalArchive(sessionLog);
-    
-    // Очищаем backup текущей сессии
     clearSessionBackup();
   };
 
@@ -156,7 +163,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       try {
           const result = await analyzeChatSession(messages, session.chaosDetails.accentuation, 'Принудительное завершение');
           setAnalysis(result);
-          // Сохраняем в архив
           archiveSession(messages, result, 'manual');
           setIsAnalyzing(false);
       } catch (err) {
@@ -180,23 +186,39 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
     try {
       const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text);
+      const updatedMessages = [...newMessages];
+
+      if (response.world_event) {
+        if (typeof response.world_event === 'string') {
+          updatedMessages.push({
+            id: `ev-${Date.now()}`,
+            role: MessageRole.SYSTEM,
+            content: response.world_event,
+            timestamp: Date.now()
+          });
+        }
+      }
+
       const modelMsg: Message = {
         id: (Date.now() + 2).toString(),
         role: MessageRole.MODEL,
         content: response.text,
-        state: { thought: response.thought, trust: response.trust, stress: response.stress },
+        state: { thought: response.thought ?? undefined, trust: response.trust, stress: response.stress },
         timestamp: Date.now()
       };
-      const updatedMessages = [...newMessages, modelMsg];
-      setMessages(updatedMessages);
-      saveSessionBackup(session, updatedMessages);
+
+      (modelMsg as any).non_verbal = response.non_verbal;
+      (modelMsg as any).non_verbal_valence = response.non_verbal_valence;
+
+      const finalMessages = [...updatedMessages, modelMsg];
+      setMessages(finalMessages);
+      saveSessionBackup(session, finalMessages);
       
       if (response.game_over) {
           setIsAnalyzing(true);
-          const result = await analyzeChatSession(updatedMessages, session.chaosDetails.accentuation, response.violation_reason || 'Психологический срыв');
+          const result = await analyzeChatSession(finalMessages, session.chaosDetails.accentuation, response.violation_reason || 'Психологический срыв');
           setAnalysis(result);
-          // Сохраняем в архив при game_over
-          archiveSession(updatedMessages, result, 'completed');
+          archiveSession(finalMessages, result, 'completed');
           setIsAnalyzing(false);
       }
     } catch (e) { 
@@ -204,6 +226,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     } finally { 
         setIsLoading(false); 
     }
+  };
+
+  const getNVStyle = (v: number) => {
+      if (v <= -0.3) return "bg-rose-500/10 border-l-rose-500 text-rose-300";
+      if (v >= 0.3) return "bg-emerald-500/10 border-l-emerald-500 text-emerald-300";
+      return "bg-white/5 border-l-slate-500 text-slate-400";
   };
 
   if (analysis) {
@@ -235,12 +263,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                               </div>
                           ))}
                       </div>
+                      <button onClick={onExit} className="w-full py-6 bg-white text-black rounded-[28px] font-black uppercase tracking-widest text-[10px] hover:bg-blue-500 hover:text-white transition-all shadow-xl">В меню</button>
                   </div>
               </div>
-              <footer className="shrink-0 p-8 glass flex gap-4 print:hidden bg-slate-950/90 backdrop-blur-xl border-t border-white/5">
-                <button onClick={onExit} className="flex-1 py-6 bg-white text-slate-950 rounded-[35px] font-black uppercase tracking-widest text-xs hover:bg-blue-600 hover:text-white transition-all">ЗАКРЫТЬ СЕАНС</button>
-                <button onClick={() => window.print()} className="px-10 py-6 glass text-white rounded-[35px] font-black uppercase text-[10px] flex items-center gap-3">ПЕЧАТЬ</button>
-              </footer>
           </div>
       );
   }
@@ -410,27 +435,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                   </div>
               </div>
           </div>
-
-          {isAdmin && (
-              <div className="flex gap-4 md:gap-10 items-center bg-black/40 px-4 md:px-8 py-3 rounded-2xl border border-white/5">
-                  <div className="text-center">
-                      <span className="text-[7px] md:text-[8px] text-slate-500 font-black uppercase tracking-widest block mb-1">Доверие</span>
-                      <span className={`text-xs md:text-md font-black italic ${currentTrust > 60 ? 'text-emerald-500' : (currentTrust < 30 ? 'text-rose-500' : 'text-blue-500')}`}>{Math.round(currentTrust)}%</span>
-                  </div>
-                  <div className="text-center">
-                      <span className="text-[7px] md:text-[8px] text-slate-500 font-black uppercase tracking-widest block mb-1">Стресс</span>
-                      <span className={`text-xs md:text-md font-black italic ${currentStress > 70 ? 'text-rose-500' : 'text-blue-500'}`}>{Math.round(currentStress)}%</span>
-                  </div>
-              </div>
-          )}
-
-          <div className="flex gap-2 md:gap-4">
+          <div className="flex gap-2">
               {isAdmin && (
-                  <button onClick={getAdvice} disabled={isPrompterLoading} className={`p-2.5 md:p-3 rounded-2xl transition-all ${ghostAdvice ? 'bg-amber-500 text-white' : 'bg-white/5 text-slate-500'}`}>
-                      <Zap size={18} className={isPrompterLoading ? 'animate-spin' : ''} />
-                  </button>
+                <button onClick={getAdvice} disabled={isPrompterLoading} className={`p-2.5 rounded-xl transition-all ${ghostAdvice ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
+                  <Zap size={18} className={isPrompterLoading ? 'animate-spin' : ''} />
+                </button>
               )}
-              <button onClick={toggleListening} className={`p-2.5 md:p-3 rounded-2xl transition-all ${isListening ? 'bg-red-600 text-white animate-pulse' : 'bg-white/5 text-slate-500'}`}>
+              <button onClick={toggleListening} className={`p-2.5 rounded-xl transition-all ${isListening ? 'bg-red-500 animate-pulse text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
                   {isListening ? <Mic size={18} /> : <MicOff size={18} />}
               </button>
               <button 
@@ -441,20 +452,22 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           </div>
       </header>
 
-      <main ref={scrollAreaRef} className="flex-1 min-h-0 overflow-y-auto custom-scroll px-4 md:px-6 py-10 z-10">
-          <div className="max-w-4xl mx-auto space-y-12 pb-24">
-            {messages.map((msg) => (
-                <div key={msg.id} className={`flex flex-col ${msg.role === MessageRole.USER ? 'items-end' : (msg.role === MessageRole.SYSTEM ? 'items-center' : 'items-start')} animate-in slide-in-from-bottom-2 duration-300`}>
+      {/* CHAT AREA */}
+      <main className="flex-grow overflow-y-auto custom-scroll p-4 md:p-8 space-y-6 flex flex-col">
+          <div className="max-w-3xl w-full mx-auto flex-grow space-y-8 pb-10">
+            {messages.map((msg, idx) => (
+                <div key={msg.id} className={`flex flex-col ${msg.role === MessageRole.USER ? 'items-end' : (msg.role === MessageRole.SYSTEM ? 'items-center' : 'items-start')} animate-in fade-in slide-in-from-bottom-2`}>
                     {msg.role === MessageRole.SYSTEM ? (
-                        <div className="w-full glass p-6 md:p-8 rounded-[30px] md:rounded-[40px] border-blue-500/10 mb-4 italic text-slate-400 text-sm leading-relaxed shadow-inner">
-                            <div className="flex items-center gap-3 mb-3">
-                                <ShieldAlert size={18} className="text-blue-500" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">ВВОДНАЯ СВОДКА</span>
-                            </div>
+                        <div className={`w-full glass p-6 rounded-[32px] border-l-4 ${idx === 0 ? 'border-blue-500' : 'border-amber-500 bg-amber-500/5'} text-[11px] italic text-slate-400 leading-relaxed shadow-lg`}>
                             {msg.content}
                         </div>
                     ) : (
                         <div className="flex flex-col space-y-2 max-w-[90%] md:max-w-[85%]">
+                            {msg.role === MessageRole.MODEL && (msg as any).non_verbal && (
+                                <div className={`px-4 py-3 rounded-2xl border-l-4 italic text-[10px] md:text-xs shadow-md ${getNVStyle((msg as any).non_verbal_valence || 0)}`}>
+                                   {(msg as any).non_verbal}
+                                </div>
+                            )}
                             {/* Мысли ребёнка (только для админа) */}
                             {isAdmin && msg.role === MessageRole.MODEL && msg.state?.thought && (
                                 <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-[24px] text-[10px] text-amber-500 italic mb-2 font-mono">
@@ -537,37 +550,32 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                     )}
                 </div>
             ))}
-            {isLoading && <div className="flex items-center gap-3 text-blue-500/40 text-[10px] font-black uppercase tracking-widest ml-4">
-                <Loader2 size={14} className="animate-spin" /> НЕЙРОСВЯЗЬ...
-            </div>}
-            
+            {isLoading && <div className="text-blue-500 text-[9px] font-black animate-pulse flex items-center gap-2 uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Нейросвязь...</div>}
             {ghostAdvice && (
-                <div className="p-6 bg-amber-500/10 border border-amber-500/30 rounded-[30px] animate-in slide-in-from-left-4 max-w-[85%]">
-                    <div className="flex items-center gap-3 mb-3">
-                        <Zap size={16} className="text-amber-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">СУФЛЕР</span>
-                    </div>
-                    <p className="text-sm text-amber-200 italic font-medium leading-relaxed">"{ghostAdvice}"</p>
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-3xl animate-in slide-in-from-left-4 max-w-[80%] shadow-2xl">
+                    <div className="flex items-center gap-2 mb-2 text-amber-500 text-[8px] font-black uppercase tracking-widest"><Zap size={12}/> Суфлер</div>
+                    <p className="text-xs text-amber-200 italic leading-relaxed">"{ghostAdvice}"</p>
+                    <button onClick={() => setInput(ghostAdvice)} className="mt-2 text-[7px] font-black uppercase text-amber-500/50 hover:text-amber-500">Использовать</button>
                 </div>
             )}
+            <div ref={messagesEndRef} className="h-10 shrink-0" />
           </div>
       </main>
 
-      <footer className="shrink-0 p-4 md:p-8 glass border-t border-white/5 bg-slate-950/80 backdrop-blur-xl z-[400] safe-bottom">
-          <div className="max-w-4xl mx-auto flex gap-3 md:gap-4 items-center relative">
+      {/* INPUT AREA */}
+      <footer className="shrink-0 p-4 md:p-6 glass border-t border-white/5 bg-slate-950/90 backdrop-blur-xl safe-bottom">
+          <div className="max-w-3xl mx-auto flex gap-3 items-center relative">
               <textarea 
                   value={input} 
-                  disabled={isAnalyzing}
                   onChange={e => setInput(e.target.value)} 
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-                  placeholder={isAnalyzing ? "ФОРМИРОВАНИЕ ВЕРДИКТА..." : "ВВЕДИТЕ РЕПЛИКУ ПЕДАГОГА..."} 
-                  className="w-full bg-slate-900 border border-white/10 rounded-[24px] md:rounded-[28px] p-4 md:p-6 pr-14 md:pr-16 text-white text-sm outline-none resize-none h-16 md:h-18 focus:border-blue-500/50 transition-all placeholder:text-slate-700 disabled:opacity-50" 
+                  placeholder={isListening ? 'Слушаю вас...' : "Реплика педагога..."} 
+                  className="w-full bg-slate-900 border border-white/10 rounded-[28px] p-4 pr-16 text-sm text-white outline-none resize-none h-14 md:h-16 focus:border-blue-500/40 transition-all placeholder:text-slate-600" 
               />
               <button 
-                type="button"
-                onClick={() => handleSend()} 
-                disabled={!input.trim() || isLoading || isAnalyzing} 
-                className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 p-3 md:p-4 rounded-xl md:rounded-2xl bg-white text-slate-950 hover:bg-blue-500 hover:text-white transition-all disabled:opacity-20 active:scale-95"
+                onClick={handleSend} 
+                disabled={!input.trim() || isLoading} 
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-white text-black rounded-2xl disabled:opacity-20 transition-all active:scale-95 shadow-lg hover:bg-blue-500 hover:text-white"
               >
                 <Send size={20} />
               </button>

@@ -1,216 +1,281 @@
 // services/geminiService.ts
-import { Message, MessageRole, AnalysisResult } from "../types";
-import { getPromptSync, DEFAULT_PROMPTS, substituteVariables } from "./promptsService";
+import { Message, MessageRole, GlobalSettings, AnalysisResult } from "../types";
+import { DEFAULT_SETTINGS } from "../constants";
 
 type GeminiChatResponse = {
   text: string;
-  thought: string;
+  thought: string | null;
+  non_verbal: string | null;
+  non_verbal_valence: number;
   trust: number;
   stress: number;
-  game_over?: boolean;
-  violation_reason?: string;
+  world_event: string | null;
+  game_over: boolean;
+  violation_reason?: string | null;
 };
 
-const MODEL_ACTION = "gemini-2.0-flash-lite:generateContent"; // поменяй на gemini-2.0-flash:generateContent если proxy вернёт "model not found"
+const CHAT_MODEL = "gemini-2.0-flash-lite";
+const ANALYSIS_MODEL = "gemini-2.0-flash-lite";
+const GHOST_MODEL = "gemini-2.0-flash-lite";
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
+const getSettings = (): GlobalSettings => {
+  const stored = localStorage.getItem("global_settings");
+  return stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
+};
+
+// --- Robust text extraction from Gemini REST response ---
 
 function extractGeminiText(data: any): string {
+  // v1beta format: candidates[0].content.parts[].text
   const parts = data?.candidates?.[0]?.content?.parts;
-  if (!Array.isArray(parts)) return "";
-  return parts
-    .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
-    .filter(Boolean)
-    .join("");
+  if (Array.isArray(parts)) {
+    const text = parts
+      .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+      .join("")
+      .trim();
+    if (text) return text;
+  }
+
+  // fallback variants
+  if (typeof data?.text === "string") return data.text.trim();
+  return "";
 }
 
-async function postViaProxy(body: any, timeoutMs = 60_000): Promise<any> {
+function stripCodeFences(s: string): string {
+  return s
+    .replace(/```(?:json)?/gi, "```")
+    .replace(/```/g, "")
+    .trim();
+}
+
+// Extract first balanced {...} JSON object from text
+function extractFirstJsonObject(s: string): string | null {
+  const text = stripCodeFences(s);
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    if (depth === 0) return text.slice(start, i + 1);
+  }
+  return null;
+}
+
+function coerceNum(v: any, def: number): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : def;
+  }
+  return def;
+}
+
+function normalizeChatJson(raw: any): GeminiChatResponse {
+  // поддерживаем оба нейминга: text / verbal_response
+  const text = String(raw?.text ?? raw?.verbal_response ?? "");
+  const thought = raw?.thought != null ? String(raw.thought) : null;
+
+  return {
+    text: text || "...",
+    thought,
+    non_verbal: raw?.non_verbal != null ? String(raw.non_verbal) : null,
+    non_verbal_valence: coerceNum(raw?.non_verbal_valence, 0),
+    trust: coerceNum(raw?.trust, 50),
+    stress: coerceNum(raw?.stress, 50),
+    world_event: raw?.world_event != null ? String(raw.world_event) : null,
+    game_over: Boolean(raw?.game_over ?? false),
+    violation_reason: raw?.violation_reason != null ? String(raw.violation_reason) : null,
+  };
+}
+
+// --- Proxy call (Vercel function) ---
+
+async function postViaProxy(
+  action: string, // e.g. "gemini-2.0-flash-lite:generateContent"
+  body: any,
+  timeoutMs = 60_000
+): Promise<any> {
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const r = await fetch(`/api/proxy?url=${encodeURIComponent(MODEL_ACTION)}`, {
+    const res = await fetch(`/api/proxy?url=${encodeURIComponent(action)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
 
-    const data = await r.json().catch(() => ({}));
-
-    if (!r.ok) {
-      throw new Error(data?.error || `Proxy request failed (${r.status})`);
+    const text = await res.text();
+    let payload: any;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { raw: text };
     }
 
-    return data;
+    if (!res.ok) {
+      // максимально информативно для отладки
+      const msg =
+        payload?.upstream?.error?.message ||
+        payload?.error ||
+        `Proxy request failed (${res.status})`;
+      throw new Error(msg);
+    }
+
+    return payload;
   } finally {
-    clearTimeout(t);
+    window.clearTimeout(timer);
   }
 }
 
-function buildContentsFromMessages(messages: Message[]) {
-  return messages
-    .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
-    .map((m) => ({
-      role: m.role === MessageRole.USER ? "user" : "model",
-      parts: [{ text: m.content }],
+// --- Public API ---
+
+export const sendMessageToGemini = async (
+  history: Message[],
+  systemPrompt: string,
+  lastUserMessage: string
+): Promise<GeminiChatResponse> => {
+  const settings = getSettings();
+
+  // Gemini roles: user | model. SYSTEM в contents не отправляем; кладём systemInstruction отдельно.
+  const contents = history
+    .filter((m) => m.role !== MessageRole.SYSTEM)
+    .map((msg) => ({
+      role: msg.role === MessageRole.USER ? "user" : "model",
+      parts: [
+        {
+          text:
+            msg.role === MessageRole.USER
+              ? msg.content
+              : // ответы модели в истории часто хранят state-структуру; сохраняем как JSON
+                JSON.stringify(msg.state ?? { text: msg.content }),
+        },
+      ],
     }));
-}
 
-/**
- * Чат: возвращает JSON-объект, который ожидает ChatInterface.
- */
-export async function sendMessageToGemini(
-  messages: Message[],
-  constructedPrompt: string,
-  _userText: string
-): Promise<GeminiChatResponse> {
-  // Загружаем инструкцию из файла или используем дефолтную
-  const instruction = getPromptSync('CHAT_JSON_INSTRUCTION') || DEFAULT_PROMPTS.CHAT_JSON_INSTRUCTION;
+  contents.push({
+    role: "user",
+    parts: [{ text: lastUserMessage }],
+  });
 
-  const contents = [
-    {
-      role: "user",
-      parts: [{ text: `${constructedPrompt}\n\n${instruction}` }],
+  const body = {
+    systemInstruction: {
+      role: "system",
+      parts: [{ text: systemPrompt }],
     },
-    ...buildContentsFromMessages(messages),
-  ];
-
-  const body = {
     contents,
-    generationConfig: { temperature: 0.7 },
+    generationConfig: {
+      temperature: settings.chat_temperature,
+      responseMimeType: "application/json",
+    },
   };
 
-  const data = await postViaProxy(body, 60_000);
-  const modelText = extractGeminiText(data);
-
   try {
-    const parsed = JSON.parse(modelText);
+    const data = await postViaProxy(`${CHAT_MODEL}:generateContent`, body, 60_000);
+    const modelText = extractGeminiText(data);
 
+    const jsonStr = extractFirstJsonObject(modelText);
+    if (jsonStr) {
+      const parsed = JSON.parse(jsonStr);
+      return normalizeChatJson(parsed);
+    }
+
+    // fallback: если внезапно пришёл не-JSON
     return {
-      text: String(parsed?.text ?? ""),
-      thought: String(parsed?.thought ?? ""),
-      trust: clamp(Number(parsed?.trust ?? 0), 0, 100),
-      stress: clamp(Number(parsed?.stress ?? 0), 0, 100),
-      game_over: Boolean(parsed?.game_over ?? false),
-      violation_reason: parsed?.violation_reason ? String(parsed.violation_reason) : "",
-    };
-  } catch {
-    // Фолбэк, чтобы UI не падал
-    return {
-      text: modelText || "Пустой ответ модели.",
-      thought: "",
+      text: stripCodeFences(modelText) || "Связь прервана.",
+      thought: null,
+      non_verbal: null,
+      non_verbal_valence: 0,
       trust: 0,
-      stress: 0,
+      stress: 100,
+      world_event: null,
       game_over: false,
-      violation_reason: "",
+      violation_reason: null,
+    };
+  } catch (error: any) {
+    console.error("Gemini(proxy) Error:", error);
+    return {
+      text: "Связь прервана.",
+      thought: "Ошибка API",
+      non_verbal: "*Искажение сигнала.*",
+      non_verbal_valence: 0,
+      trust: 0,
+      stress: 100,
+      world_event: null,
+      game_over: false,
+      violation_reason: error?.message ? String(error.message) : null,
     };
   }
-}
+};
 
-/**
- * Анализ: комиссия, общий балл, резюме.
- */
-export async function analyzeChatSession(
-  messages: Message[],
-  accentuation: string,
-  reason: string
-): Promise<AnalysisResult> {
-  const transcript = messages
-    .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
-    .map((m) => `${m.role === MessageRole.USER ? "ПЕДАГОГ" : "СТУДЕНТ"}: ${m.content}`)
-    .join("\n");
+export const analyzeChatSession = async (
+  history: Message[],
+  scenarioName: string,
+  endReason: string
+): Promise<AnalysisResult> => {
+  const transcript = history.map((m) => `${m.role}: ${m.content}`).join("\n");
 
-  // Загружаем промпт из файла или используем дефолтный
-  let instruction = getPromptSync('ANALYSIS_COMMISSION') || DEFAULT_PROMPTS.ANALYSIS_COMMISSION;
-  
-  // Подставляем переменные
-  instruction = substituteVariables(instruction, {
-    accentuation,
-    reason,
-    transcript
-  });
+  const prompt = `Проведи педагогический анализ. Сценарий: ${scenarioName}. Причина завершения: ${endReason}.
+Транскрипт:
+${transcript}
+
+Верни строго JSON со структурой:
+{
+  "overall_score": number,
+  "summary": string,
+  "commission": [
+    { "title": string, "severity": "low"|"medium"|"high", "description": string }
+  ]
+}`;
 
   const body = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: `${instruction}\n\nСТЕНОГРАММА:\n${transcript}` }],
-      },
-    ],
-    generationConfig: { temperature: 0.4 },
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: "application/json",
+    },
   };
 
-  const data = await postViaProxy(body, 90_000);
+  const data = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, body, 90_000);
   const modelText = extractGeminiText(data);
 
-  try {
-    const parsed = JSON.parse(modelText);
+  const jsonStr = extractFirstJsonObject(modelText) ?? stripCodeFences(modelText);
+  return JSON.parse(jsonStr);
+};
 
-    const overall_score = clamp(Number(parsed?.overall_score ?? 0), 0, 100);
-    const summary = String(parsed?.summary ?? "");
+export const generateGhostResponse = async (
+  history: Message[],
+  context: string
+): Promise<string> => {
+  const transcript = history.map((m) => `${m.role}: ${m.content}`).join("\n");
 
-    const commissionRaw = Array.isArray(parsed?.commission) ? parsed.commission : [];
-    const commission = commissionRaw.map((m: any) => ({
-      name: String(m?.name ?? "Член комиссии"),
-      role: String(m?.role ?? "Эксперт"),
-      score: clamp(Number(m?.score ?? 0), 0, 100),
-      verdict: String(m?.verdict ?? ""),
-    }));
+  const prompt = `Напиши идеальную реплику педагога (коротко, естественно, по-русски).
+Контекст: ${context}
 
-    return {
-      ...(parsed as AnalysisResult),
-      overall_score,
-      summary,
-      commission,
-    };
-  } catch {
-    return {
-      overall_score: 0,
-      summary: "Не удалось распарсить JSON-ответ анализа.",
-      commission: [{ name: "Система", role: "Ошибка", score: 0, verdict: modelText || "Пустой ответ." }],
-    } as unknown as AnalysisResult;
-  }
-}
+История:
+${transcript}
 
-/**
- * Суфлёр (Zap): короткая подсказка без JSON.
- */
-export async function generateGhostResponse(
-  messages: Message[],
-  contextSummary: string,
-  teacher: any
-): Promise<string> {
-  const lastTurns = messages
-    .filter((m) => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
-    .slice(-10)
-    .map((m) => `${m.role === MessageRole.USER ? "ПЕДАГОГ" : "СТУДЕНТ"}: ${m.content}`)
-    .join("\n");
-
-  // Загружаем промпт из файла или используем дефолтный
-  let instruction = getPromptSync('GHOST_PROMPTER') || DEFAULT_PROMPTS.GHOST_PROMPTER;
-  
-  // Подставляем переменные
-  instruction = substituteVariables(instruction, {
-    context_summary: contextSummary,
-    teacher_name: teacher?.name ? String(teacher.name) : "не указан",
-    last_turns: lastTurns
-  });
+Верни строго JSON:
+{ "advice": string }`;
 
   const body = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: `${instruction}\n\nПОСЛЕДНИЕ РЕПЛИКИ:\n${lastTurns}` }],
-      },
-    ],
-    generationConfig: { temperature: 0.8 },
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.6,
+      responseMimeType: "application/json",
+    },
   };
 
-  const data = await postViaProxy(body, 45_000);
+  const data = await postViaProxy(`${GHOST_MODEL}:generateContent`, body, 45_000);
   const modelText = extractGeminiText(data);
+  const jsonStr = extractFirstJsonObject(modelText);
 
-  return (modelText || "").trim() || "Сформулируйте короткий вопрос и уточните, что именно сейчас сложнее всего.";
-}
+  if (!jsonStr) return stripCodeFences(modelText) || "Продолжайте диалог.";
+
+  const parsed = JSON.parse(jsonStr);
+  return String(parsed?.advice ?? "Продолжайте диалог.");
+};
