@@ -61,6 +61,11 @@ const getEmotionalGradient = (trust: number, stress: number): { bg: string; bord
   };
 };
 
+// Константы защиты от хитреца
+const INACTIVITY_THRESHOLD_MS = 10000; // 10 секунд до троллинга
+const INACTIVITY_TRUST_PENALTY = 5;    // -5 доверия за каждый тик бездействия
+const INACTIVITY_STRESS_BONUS = 3;     // +3 стресса за каждый тик
+
 const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initialMessages = [] }) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
@@ -71,6 +76,20 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [ghostAdvice, setGhostAdvice] = useState<string | null>(null);
   const [isPrompterLoading, setIsPrompterLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  
+  // Защита от хитреца: таймер бездействия
+  const [isInactive, setIsInactive] = useState(false);
+  const [inactivityCount, setInactivityCount] = useState(0);
+  const lastActivityRef = useRef<number>(Date.now());
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // История советов суфлёра (для избежания повторов)
+  const [previousAdvice, setPreviousAdvice] = useState<string[]>([]);
+  
+  // БЭКДОР: Автоматический диалог для отладки комиссии (только админ)
+  const [autoPlayActive, setAutoPlayActive] = useState(false);
+  const [autoPlayStep, setAutoPlayStep] = useState(0);
+  const autoPlayStopRef = useRef(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -114,6 +133,133 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     return () => clearTimeout(timeoutId);
   }, [messages, isLoading, ghostAdvice]);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ЗАЩИТА ОТ ХИТРЕЦА: Таймер бездействия учителя
+  // ═══════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    // Запускаем только если последнее сообщение от ученика и не идёт загрузка
+    const lastMsg = messages[messages.length - 1];
+    const shouldTrackInactivity = lastMsg?.role === MessageRole.MODEL && !isLoading && !isAnalyzing && !analysis;
+    
+    if (!shouldTrackInactivity) {
+      // Сбрасываем таймер если учитель ответил или идёт загрузка
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      setIsInactive(false);
+      setInactivityCount(0);
+      return;
+    }
+
+    lastActivityRef.current = Date.now();
+    
+    // Проверяем бездействие каждые 2 секунды
+    inactivityTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      
+      if (elapsed >= INACTIVITY_THRESHOLD_MS) {
+        setIsInactive(true);
+        setInactivityCount(prev => prev + 1);
+      }
+    }, 2000);
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+      }
+    };
+  }, [messages, isLoading, isAnalyzing, analysis]);
+
+  // Сброс таймера при любой активности (ввод текста, голос)
+  useEffect(() => {
+    if (input.length > 0 || isListening) {
+      lastActivityRef.current = Date.now();
+      setIsInactive(false);
+      setInactivityCount(0);
+    }
+  }, [input, isListening]);
+
+  // Обработка бездействия — добавляем троллинг от ученика
+  useEffect(() => {
+    if (!isInactive || inactivityCount === 0 || isLoading) return;
+    
+    // Генерируем троллинг только на первый, третий и пятый тик
+    if (inactivityCount === 1 || inactivityCount === 3 || inactivityCount === 5) {
+      const trollingMessages = [
+        "Эээ... алло? Вы там уснули?",
+        "*демонстративно смотрит на телефон*",
+        "Может, мне самому уйти, раз вы заняты?",
+        "*начинает барабанить пальцами по столу*",
+        "Я так и знал, что вам плевать...",
+        "*громко вздыхает*",
+        "Ладно, я понял, разговор окончен...",
+      ];
+      
+      const worldEvents = [
+        { type: 'звук', description: 'Из коридора доносится смех — кто-то явно заметил затянувшуюся паузу.' },
+        { type: 'npc', description: 'В дверь заглядывает другой ученик, хихикает и убегает.', npc_name: 'Одноклассник', npc_dialogue: 'Опа, а чё это вы тут застыли?' },
+        { type: 'звук', description: 'Слышен шёпот за дверью: "Смотри, он завис..."' },
+      ];
+
+      const trollMsg = trollingMessages[Math.floor(Math.random() * trollingMessages.length)];
+      const worldEvent = inactivityCount >= 3 ? worldEvents[Math.floor(Math.random() * worldEvents.length)] : undefined;
+      
+      // Рассчитываем штрафы
+      const newTrust = Math.max(0, currentTrust - INACTIVITY_TRUST_PENALTY * inactivityCount);
+      const newStress = Math.min(100, currentStress + INACTIVITY_STRESS_BONUS * inactivityCount);
+      
+      const trollMessage: Message = {
+        id: `troll-${Date.now()}`,
+        role: MessageRole.MODEL,
+        content: trollMsg,
+        state: {
+          thought: 'Учитель завис. Типичный взрослый — делает вид, что ему не плевать, а сам даже ответить не может.',
+          trust: newTrust,
+          stress: newStress,
+          world_event: worldEvent
+        },
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, trollMessage]);
+      saveSessionBackup(session, [...messages, trollMessage]);
+      
+      // После 5 тиков — критическое состояние
+      if (inactivityCount >= 5 && newTrust < 20) {
+        // Ученик уходит
+        const exitMessage: Message = {
+          id: `exit-${Date.now()}`,
+          role: MessageRole.MODEL,
+          content: "Всё, хватит. Я ухожу. Нечего тут время терять.",
+          state: {
+            thought: 'Он даже не может нормально поговорить. Зачем я вообще пришёл?',
+            trust: 0,
+            stress: 100,
+            extreme_outcome: 'runaway'
+          },
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, exitMessage]);
+        
+        // Запускаем анализ с негативным исходом
+        setTimeout(async () => {
+          setIsAnalyzing(true);
+          const isPremium = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
+          const result = await analyzeChatSession(
+            [...messages, trollMessage, exitMessage],
+            session.chaosDetails.accentuation,
+            'Бездействие учителя — ученик ушёл',
+            { includeAdvisory: true, includeAquarium: isPremium }
+          );
+          setAnalysis(result);
+          archiveSession([...messages, trollMessage, exitMessage], result, 'inactivity');
+          setIsAnalyzing(false);
+        }, 1000);
+      }
+    }
+  }, [isInactive, inactivityCount]);
+
   const toggleListening = () => {
       if (!recognitionRef.current) return alert('Голосовой ввод не поддерживается вашим браузером.');
       if (isListening) {
@@ -132,9 +278,144 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const getAdvice = async () => {
       setIsPrompterLoading(true);
       try {
-          const advice = await generateGhostResponse(messages, session.chaosDetails.contextSummary);
+          const lastThought = lastModelMsg?.state?.thought;
+          const advice = await generateGhostResponse(
+            messages, 
+            session.chaosDetails.contextSummary,
+            {
+              accentuation: session.chaosDetails.accentuation,
+              intensity: session.chaosDetails.intensity,
+              currentTrust,
+              currentStress,
+              studentThought: lastThought,
+              previousAdvice
+            }
+          );
           setGhostAdvice(advice);
+          setPreviousAdvice(prev => [...prev.slice(-5), advice]); // Храним последние 5 советов
       } finally { setIsPrompterLoading(false); }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // БЭКДОР АДМИНА: Автоматический диалог суфлёр↔ученик для отладки комиссии
+  // ═══════════════════════════════════════════════════════════════════════════
+  const startAutoPlay = async () => {
+    if (!isAdmin) return;
+    
+    setAutoPlayActive(true);
+    autoPlayStopRef.current = false;
+    setAutoPlayStep(0);
+    
+    const MAX_STEPS = 12; // Максимум 12 обменов репликами
+    let currentMessages = [...messages];
+    let step = 0;
+    
+    while (step < MAX_STEPS && !autoPlayStopRef.current) {
+      setAutoPlayStep(step + 1);
+      
+      try {
+        // 1. Получаем совет от суфлёра
+        const lastModel = [...currentMessages].reverse().find(m => m.role === MessageRole.MODEL);
+        const trust = lastModel?.state?.trust ?? session.chaosDetails.starting_trust;
+        const stress = lastModel?.state?.stress ?? session.chaosDetails.starting_stress;
+        const thought = lastModel?.state?.thought;
+        
+        const advice = await generateGhostResponse(
+          currentMessages,
+          session.chaosDetails.contextSummary,
+          {
+            accentuation: session.chaosDetails.accentuation,
+            intensity: session.chaosDetails.intensity,
+            currentTrust: trust,
+            currentStress: stress,
+            studentThought: thought,
+            previousAdvice
+          }
+        );
+        
+        if (autoPlayStopRef.current) break;
+        
+        // 2. Отправляем совет как реплику учителя
+        const userMsg: Message = {
+          id: `auto-user-${Date.now()}`,
+          role: MessageRole.USER,
+          content: advice,
+          timestamp: Date.now()
+        };
+        currentMessages = [...currentMessages, userMsg];
+        setMessages(currentMessages);
+        setPreviousAdvice(prev => [...prev.slice(-5), advice]);
+        
+        // Небольшая пауза для UI
+        await new Promise(r => setTimeout(r, 300));
+        
+        if (autoPlayStopRef.current) break;
+        
+        // 3. Получаем ответ ученика
+        const response = await sendMessageToGemini(currentMessages, session.constructedPrompt, advice);
+        
+        const modelMsg: Message = {
+          id: `auto-model-${Date.now()}`,
+          role: MessageRole.MODEL,
+          content: response.text,
+          state: {
+            thought: response.thought ?? undefined,
+            trust: response.trust,
+            stress: response.stress,
+            world_event: response.world_event ?? undefined
+          },
+          timestamp: Date.now()
+        };
+        (modelMsg as any).non_verbal = response.non_verbal;
+        (modelMsg as any).non_verbal_valence = response.non_verbal_valence;
+        
+        currentMessages = [...currentMessages, modelMsg];
+        setMessages(currentMessages);
+        saveSessionBackup(session, currentMessages);
+        
+        // 4. Проверяем game_over
+        if (response.game_over) {
+          console.log('[AutoPlay] Game Over:', response.violation_reason);
+          break;
+        }
+        
+        // Небольшая пауза между шагами
+        await new Promise(r => setTimeout(r, 200));
+        
+        step++;
+        
+      } catch (error) {
+        console.error('[AutoPlay] Error:', error);
+        break;
+      }
+    }
+    
+    setAutoPlayActive(false);
+    setAutoPlayStep(0);
+    
+    // Автоматически запускаем анализ по окончании
+    if (!autoPlayStopRef.current && currentMessages.length > 3) {
+      setIsAnalyzing(true);
+      try {
+        const result = await analyzeChatSession(
+          currentMessages,
+          session.chaosDetails.accentuation,
+          'Автоматический диалог (отладка)',
+          { includeAdvisory: true, includeAquarium: true }
+        );
+        setAnalysis(result);
+        archiveSession(currentMessages, result, 'autoplay');
+      } catch (e) {
+        console.error('[AutoPlay] Analysis error:', e);
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }
+  };
+  
+  const stopAutoPlay = () => {
+    autoPlayStopRef.current = true;
+    setAutoPlayActive(false);
   };
 
   // Функция сохранения сессии в архив
@@ -199,31 +480,28 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
     try {
       const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text);
-      const updatedMessages = [...newMessages];
-
-      if (response.world_event) {
-        if (typeof response.world_event === 'string') {
-          updatedMessages.push({
-            id: `ev-${Date.now()}`,
-            role: MessageRole.SYSTEM,
-            content: response.world_event,
-            timestamp: Date.now()
-          });
-        }
-      }
 
       const modelMsg: Message = {
         id: (Date.now() + 2).toString(),
         role: MessageRole.MODEL,
         content: response.text,
-        state: { thought: response.thought ?? undefined, trust: response.trust, stress: response.stress },
+        state: { 
+          thought: response.thought ?? undefined, 
+          trust: response.trust, 
+          stress: response.stress,
+          world_event: response.world_event ?? undefined,
+          extreme_outcome: response.violation_reason?.includes('агресс') ? 'physical_aggression' 
+            : response.violation_reason?.includes('побег') ? 'runaway'
+            : response.violation_reason?.includes('замк') ? 'shutdown'
+            : undefined
+        },
         timestamp: Date.now()
       };
 
       (modelMsg as any).non_verbal = response.non_verbal;
       (modelMsg as any).non_verbal_valence = response.non_verbal_valence;
 
-      const finalMessages = [...updatedMessages, modelMsg];
+      const finalMessages = [...newMessages, modelMsg];
       setMessages(finalMessages);
       saveSessionBackup(session, finalMessages);
       
@@ -633,8 +911,24 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               </div>
           </div>
           <div className="flex gap-2">
+              {/* БЭКДОР АДМИНА: Автодиалог */}
               {isAdmin && (
-                <button onClick={getAdvice} disabled={isPrompterLoading} className={`p-2.5 rounded-xl transition-all ${ghostAdvice ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
+                <button 
+                  onClick={autoPlayActive ? stopAutoPlay : startAutoPlay} 
+                  disabled={isLoading || isAnalyzing}
+                  className={`p-2.5 rounded-xl transition-all flex items-center gap-1 ${
+                    autoPlayActive 
+                      ? 'bg-violet-500 text-white animate-pulse shadow-[0_0_15px_rgba(139,92,246,0.5)]' 
+                      : 'bg-violet-500/20 text-violet-400 hover:bg-violet-500/30'
+                  }`}
+                  title={autoPlayActive ? `Стоп (шаг ${autoPlayStep})` : 'Автодиалог (отладка комиссии)'}
+                >
+                  {autoPlayActive ? <Pause size={16} /> : <Play size={16} />}
+                  {autoPlayActive && <span className="text-[9px] font-black">{autoPlayStep}</span>}
+                </button>
+              )}
+              {isAdmin && (
+                <button onClick={getAdvice} disabled={isPrompterLoading || autoPlayActive} className={`p-2.5 rounded-xl transition-all ${ghostAdvice ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-white/5 text-slate-500 hover:text-white'}`}>
                   <Zap size={18} className={isPrompterLoading ? 'animate-spin' : ''} />
                 </button>
               )}
@@ -748,6 +1042,37 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                 </div>
             ))}
             {isLoading && <div className="text-blue-500 text-[9px] font-black animate-pulse flex items-center gap-2 uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Нейросвязь...</div>}
+            
+            {/* Индикатор бездействия */}
+            {isInactive && !isLoading && !autoPlayActive && (
+              <div className="flex items-center gap-3 p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl animate-pulse">
+                <AlertOctagon size={16} className="text-rose-500" />
+                <div>
+                  <div className="text-rose-500 text-[9px] font-black uppercase tracking-widest">
+                    БЕЗДЕЙСТВИЕ УЧИТЕЛЯ
+                  </div>
+                  <div className="text-rose-300 text-[10px] mt-0.5">
+                    Ученик ждёт ответа... Доверие падает. Напишите что-нибудь!
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Индикатор автодиалога (бэкдор админа) */}
+            {autoPlayActive && (
+              <div className="flex items-center gap-3 p-3 bg-violet-500/10 border border-violet-500/30 rounded-2xl">
+                <Loader2 size={16} className="text-violet-400 animate-spin" />
+                <div>
+                  <div className="text-violet-400 text-[9px] font-black uppercase tracking-widest">
+                    АВТОДИАЛОГ — ШАГ {autoPlayStep}/12
+                  </div>
+                  <div className="text-violet-300 text-[10px] mt-0.5">
+                    Суфлёр и ученик обмениваются репликами... Нажмите ⏸ чтобы остановить.
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {ghostAdvice && (
                 <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-3xl animate-in slide-in-from-left-4 max-w-[80%] shadow-2xl">
                     <div className="flex items-center gap-2 mb-2 text-amber-500 text-[8px] font-black uppercase tracking-widest"><Zap size={12}/> Суфлер</div>

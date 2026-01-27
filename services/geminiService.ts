@@ -16,7 +16,14 @@ type GeminiChatResponse = {
   non_verbal_valence: number;
   trust: number;
   stress: number;
-  world_event: string | null;
+  world_event: {
+    type: string;
+    description: string;
+    trust_delta: number;
+    stress_delta: number;
+    npc_name?: string;
+    npc_dialogue?: string;
+  } | null;
   game_over: boolean;
   violation_reason?: string | null;
 };
@@ -85,6 +92,22 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
   const text = String(raw?.text ?? raw?.verbal_response ?? "");
   const thought = raw?.thought != null ? String(raw.thought) : null;
 
+  // world_event может быть объектом или строкой — нормализуем в объект
+  let worldEvent: any = null;
+  if (raw?.world_event) {
+    if (typeof raw.world_event === 'object') {
+      worldEvent = raw.world_event;
+    } else if (typeof raw.world_event === 'string') {
+      // Если строка — оборачиваем в объект
+      worldEvent = {
+        type: 'событие',
+        description: raw.world_event,
+        trust_delta: 0,
+        stress_delta: 0
+      };
+    }
+  }
+
   return {
     text: text || "...",
     thought,
@@ -92,7 +115,7 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
     non_verbal_valence: coerceNum(raw?.non_verbal_valence, 0),
     trust: coerceNum(raw?.trust, 50),
     stress: coerceNum(raw?.stress, 50),
-    world_event: raw?.world_event != null ? String(raw.world_event) : null,
+    world_event: worldEvent,
     game_over: Boolean(raw?.game_over ?? false),
     violation_reason: raw?.violation_reason != null ? String(raw.violation_reason) : null,
   };
@@ -371,23 +394,94 @@ export const analyzeChatSession = async (
 
 export const generateGhostResponse = async (
   history: Message[],
-  context: string
+  context: string,
+  additionalContext?: {
+    accentuation?: string;
+    intensity?: number;
+    currentTrust?: number;
+    currentStress?: number;
+    studentThought?: string;
+    previousAdvice?: string[];
+  }
 ): Promise<string> => {
-  const transcript = history.map((m) => `${m.role}: ${m.content}`).join("\n");
+  // Форматируем историю с эмоциональным контекстом
+  const transcript = history.map((m) => {
+    if (m.role === MessageRole.MODEL) {
+      const trust = m.state?.trust ?? 50;
+      const stress = m.state?.stress ?? 50;
+      return `УЧЕНИК [доверие: ${trust}%, стресс: ${stress}%]: ${m.content}`;
+    }
+    return `УЧИТЕЛЬ: ${m.content}`;
+  }).join("\n");
 
-  const prompt = `Напиши идеальную реплику педагога (коротко, естественно, по-русски).
-Контекст: ${context}
+  // Проверяем на повторы учителя
+  const teacherMessages = history.filter(m => m.role === MessageRole.USER).map(m => m.content);
+  const lastTeacherMsg = teacherMessages[teacherMessages.length - 1] || '';
+  const hasRepetition = teacherMessages.length >= 2 && 
+    teacherMessages.slice(-3).some((msg, i, arr) => 
+      i > 0 && msg.toLowerCase().includes(arr[i-1].toLowerCase().slice(0, 20))
+    );
 
-История:
+  const prompt = `[СИСТЕМА: СУФЛЁР-ПСИХОЛОГ ДЛЯ ПЕДАГОГА]
+
+Ты — опытный психолог-консультант, помогающий учителю в кризисной ситуации с подростком.
+Твоя задача: предложить ОДНУ конкретную реплику, которая поможет наладить контакт.
+
+═══════════════════════════════════════════════════════════════════════════════
+КОНТЕКСТ СИТУАЦИИ:
+═══════════════════════════════════════════════════════════════════════════════
+${context}
+
+${additionalContext?.accentuation ? `ПСИХОТИП УЧЕНИКА: ${additionalContext.accentuation}` : ''}
+${additionalContext?.intensity ? `ВЫРАЖЕННОСТЬ АКЦЕНТУАЦИИ: ${additionalContext.intensity}/5` : ''}
+${additionalContext?.currentTrust !== undefined ? `ТЕКУЩЕЕ ДОВЕРИЕ: ${additionalContext.currentTrust}%` : ''}
+${additionalContext?.currentStress !== undefined ? `ТЕКУЩИЙ СТРЕСС: ${additionalContext.currentStress}%` : ''}
+
+${additionalContext?.studentThought ? `
+═══════════════════════════════════════════════════════════════════════════════
+ЧТО ДУМАЕТ УЧЕНИК (скрыто от учителя):
+${additionalContext.studentThought}
+═══════════════════════════════════════════════════════════════════════════════
+` : ''}
+
+═══════════════════════════════════════════════════════════════════════════════
+ИСТОРИЯ ДИАЛОГА:
+═══════════════════════════════════════════════════════════════════════════════
 ${transcript}
 
-Верни строго JSON:
-{ "advice": string }`;
+${hasRepetition ? `
+⚠️ ВНИМАНИЕ: Учитель начал ПОВТОРЯТЬСЯ! Это критическая ошибка.
+Предложи СОВЕРШЕННО ДРУГОЙ подход, новую тактику.
+` : ''}
+
+${additionalContext?.previousAdvice?.length ? `
+❌ УЖЕ ПРЕДЛАГАЛОСЬ (НЕ ПОВТОРЯТЬ):
+${additionalContext.previousAdvice.slice(-3).map(a => `- "${a}"`).join('\n')}
+` : ''}
+
+═══════════════════════════════════════════════════════════════════════════════
+ТВОЯ ЗАДАЧА:
+═══════════════════════════════════════════════════════════════════════════════
+1. Проанализируй текущее состояние ученика (доверие/стресс)
+2. Учти его психотип и что он РЕАЛЬНО думает
+3. Предложи реплику, которая:
+   - Соответствует моменту (не общие фразы!)
+   - Учитывает КОНКРЕТНУЮ последнюю реплику ученика
+   - Использует технику, подходящую для этого психотипа
+   - НЕ повторяет предыдущие советы
+   - Звучит естественно для учителя
+
+ФОРМАТ ОТВЕТА (JSON):
+{
+  "analysis": "Краткий анализ ситуации (1 предложение)",
+  "technique": "Название техники (напр. 'Отражение чувств', 'Я-сообщение', 'Нормализация')",
+  "advice": "Конкретная реплика для учителя"
+}`;
 
   const body = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
-      temperature: 0.6,
+      temperature: 0.7,
       responseMimeType: "application/json",
     },
   };
