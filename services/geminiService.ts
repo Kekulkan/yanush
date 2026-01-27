@@ -1,5 +1,6 @@
 // services/geminiService.ts
 import { Message, MessageRole, AnalysisResult } from "../types";
+import { getPromptSync, DEFAULT_PROMPTS, substituteVariables } from "./promptsService";
 
 type GeminiChatResponse = {
   text: string;
@@ -66,19 +67,8 @@ export async function sendMessageToGemini(
   constructedPrompt: string,
   _userText: string
 ): Promise<GeminiChatResponse> {
-  const instruction = `
-Отвечай ТОЛЬКО СТРОГИМ JSON (без \`\`\`).
-Схема:
-{
-  "text": "реплика студента",
-  "thought": "внутренний ход мысли (для админа)",
-  "trust": число 0..100,
-  "stress": число 0..100,
-  "game_over": true/false,
-  "violation_reason": "если game_over=true — кратко почему"
-}
-Никакого текста вне JSON.
-`;
+  // Загружаем инструкцию из файла или используем дефолтную
+  const instruction = getPromptSync('CHAT_JSON_INSTRUCTION') || DEFAULT_PROMPTS.CHAT_JSON_INSTRUCTION;
 
   const contents = [
     {
@@ -133,21 +123,15 @@ export async function analyzeChatSession(
     .map((m) => `${m.role === MessageRole.USER ? "ПЕДАГОГ" : "СТУДЕНТ"}: ${m.content}`)
     .join("\n");
 
-  const instruction = `
-Ты — комиссия по оценке педагогического диалога.
-Акцентуация/профиль: ${accentuation}
-Причина завершения: ${reason}
-
-Ответь ТОЛЬКО СТРОГИМ JSON (без \`\`\`):
-{
-  "overall_score": число 0..100,
-  "summary": "1-2 предложения итог",
-  "commission": [
-    { "name": "…", "role": "…", "score": число 0..100, "verdict": "кратко" }
-  ]
-}
-Никакого текста вне JSON.
-`;
+  // Загружаем промпт из файла или используем дефолтный
+  let instruction = getPromptSync('ANALYSIS_COMMISSION') || DEFAULT_PROMPTS.ANALYSIS_COMMISSION;
+  
+  // Подставляем переменные
+  instruction = substituteVariables(instruction, {
+    accentuation,
+    reason,
+    transcript
+  });
 
   const body = {
     contents: [
@@ -205,14 +189,15 @@ export async function generateGhostResponse(
     .map((m) => `${m.role === MessageRole.USER ? "ПЕДАГОГ" : "СТУДЕНТ"}: ${m.content}`)
     .join("\n");
 
-  const instruction = `
-Ты — суфлёр педагога. Дай ОДНУ короткую реплику/подсказку (1–2 предложения),
-которая улучшит контакт, снизит стресс студента и повысит доверие.
-Не упоминай, что ты ИИ. Без JSON. Только текст.
-
-Контекст (кратко): ${contextSummary}
-Педагог: ${teacher?.name ? String(teacher.name) : "не указан"}
-`;
+  // Загружаем промпт из файла или используем дефолтный
+  let instruction = getPromptSync('GHOST_PROMPTER') || DEFAULT_PROMPTS.GHOST_PROMPTER;
+  
+  // Подставляем переменные
+  instruction = substituteVariables(instruction, {
+    context_summary: contextSummary,
+    teacher_name: teacher?.name ? String(teacher.name) : "не указан",
+    last_turns: lastTurns
+  });
 
   const body = {
     contents: [

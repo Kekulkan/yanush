@@ -66,7 +66,7 @@ const MuseumView: React.FC<Props> = ({ onBack }) => {
     const [selected, setSelected] = useState<Exhibit | null>(null);
 
     return (
-        <div className="h-full bg-slate-950 flex flex-col font-sans text-slate-300 relative overflow-hidden">
+        <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-sans text-slate-300 relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.05),transparent)] pointer-events-none"></div>
             
             {/* Цитата Г.К. */}

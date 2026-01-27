@@ -1,14 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, RotateCcw, Network, Activity } from 'lucide-react';
+import { Play, RotateCcw, Network, Activity, Terminal } from 'lucide-react';
 import { getSessionBackup } from '../services/storageService';
 
 interface Props {
   onStart: () => void;
   onResume?: () => void;
+  onOpenCommandCenter?: () => void;
 }
 
-const ScenarioSelector: React.FC<Props> = ({ onStart, onResume }) => {
+const ScenarioSelector: React.FC<Props> = ({ onStart, onResume, onOpenCommandCenter }) => {
   const [hasBackup, setHasBackup] = useState(false);
   
   const env: any = (import.meta as any).env || {};
@@ -23,7 +24,7 @@ const ScenarioSelector: React.FC<Props> = ({ onStart, onResume }) => {
   }, []);
 
   return (
-    <div className="h-full bg-slate-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="h-[100dvh] bg-[#0A0B1A] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
       
       {/* Динамический фон */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -72,6 +73,15 @@ const ScenarioSelector: React.FC<Props> = ({ onStart, onResume }) => {
                {hasBackup ? 'НОВЫЙ СЕАНС' : 'НАЧАТЬ ТРЕНИНГ'} <Play fill="currentColor" size={18} />
             </span>
           </button>
+
+          {onOpenCommandCenter && (
+            <button 
+              onClick={onOpenCommandCenter}
+              className="w-full sm:w-72 px-6 py-4 glass hover:bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
+            >
+              <Terminal size={16} /> КОМАНДНЫЙ ЦЕНТР
+            </button>
+          )}
         </div>
       </div>
 

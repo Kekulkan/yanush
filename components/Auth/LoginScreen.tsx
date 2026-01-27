@@ -55,7 +55,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
   };
 
   return (
-    <div className="h-full bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col items-center justify-center p-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
         
         <div className="w-full max-w-lg relative z-10 flex flex-col items-center space-y-12">

@@ -45,7 +45,7 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
   };
 
   return (
-    <div className="h-full bg-slate-950 flex flex-col items-center p-6 overflow-y-auto no-scrollbar relative">
+    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col items-center p-6 overflow-y-auto custom-scroll relative">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(37,99,235,0.1),transparent)] pointer-events-none"></div>
       
       <div className="w-full max-w-lg mt-4 mb-12 flex flex-col space-y-10 relative z-10">

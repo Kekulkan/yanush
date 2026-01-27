@@ -1,6 +1,12 @@
-import { TeacherProfile, StudentProfile, Accentuation, ContextModule, ActiveSession } from '../types';
-import { DEFAULT_ACCENTUATIONS, DEFAULT_CONTEXT_MODULES } from '../constants';
+import { TeacherProfile, StudentProfile, ActiveSession, SessionContext, ContextModule } from '../types';
+import { DEFAULT_ACCENTUATIONS } from '../constants';
 import { ACCESS_LIMITS } from './authService';
+import { 
+  getAllModules,
+  getCompatibleModules, 
+  selectRandomModule, 
+  createSessionContext 
+} from './modulesService';
 
 const AVATAR_DB = {
     male: {
@@ -30,7 +36,6 @@ const declineNameGenitive = (name: string, gender: 'male' | 'female'): string =>
         if (n === 'Глеб') return 'Глеба';
         if (n === 'Артем' || n === 'Артём') return 'Артёма';
         
-        // Если заканчивается на согласную (кроме й)
         const vowels = ['а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я', 'й'];
         if (!vowels.includes(n.slice(-1).toLowerCase())) {
             return n + 'а';
@@ -50,11 +55,9 @@ const declineNameGenitive = (name: string, gender: 'male' | 'female'): string =>
 export const resolveGenderTokens = (text: string, student: StudentProfile): string => {
     let resolved = text;
     
-    // 1. Имена (сначала родительный, потом обычный)
     resolved = resolved.replace(/{name_gen}/g, declineNameGenitive(student.name, student.gender));
     resolved = resolved.replace(/{name}/g, student.name.trim());
 
-    // 2. Сложные токены {муж|жен} или {муж|жен|множ}
     const genderRegex = /\{([^{}|]*)\|([^{}|]*)\}/g;
     while (genderRegex.test(resolved)) {
         resolved = resolved.replace(genderRegex, (_, m, f) => {
@@ -81,55 +84,269 @@ export const generateStudentName = (gender: 'male' | 'female'): string => {
     return list[Math.floor(Math.random() * list.length)];
 };
 
-export const buildDynamicPrompt = (teacher: TeacherProfile, student: StudentProfile, isPremium: boolean = false): ActiveSession => {
-  const availableAccs = isPremium ? DEFAULT_ACCENTUATIONS : DEFAULT_ACCENTUATIONS.filter(a => ACCESS_LIMITS.FREE_ACCENTUATIONS.includes(a.id));
-  const randomAcc = availableAccs[Math.floor(Math.random() * availableAccs.length)];
-  const intensity = Math.floor(Math.random() * 3) + 3; 
-  
-  student.avatarUrl = getStudentAvatar(student.gender, randomAcc.id);
-
-  const allIncidents = DEFAULT_CONTEXT_MODULES.filter(m => m.category === 'incident');
-  const allBackgrounds = DEFAULT_CONTEXT_MODULES.filter(m => m.category === 'background');
-
-  const incident = [...allIncidents].sort(() => Math.random() - 0.5)[0];
-  const background = [...allBackgrounds].sort(() => Math.random() - 0.5)[0];
-
-  const chaosPrompt = `
-    [ЯЗЫКОВОЙ ПРОТОКОЛ: СТРОГО КИРИЛЛИЦА, РУССКИЙ ЯЗЫК]
-    [SYSTEM ROLE: GM / NARRATOR / STUDENT]
+/**
+ * Каскадные броски для определения интенсивности акцентуации
+ * Вероятность каждого успешного броска экспоненциально снижается:
+ * ~80% для 1, ~5% для 5
+ */
+const rollIntensity = (): number => {
+    const probabilities = [0.80, 0.60, 0.40, 0.25]; // Вероятности для бросков 2-5
+    let intensity = 1;
     
-    ТЫ — ПОДРОСТОК: ${student.name.trim()}, ${student.age} лет.
+    for (let i = 0; i < probabilities.length; i++) {
+        if (Math.random() < probabilities[i]) {
+            intensity++;
+        } else {
+            break;
+        }
+    }
+    
+    return intensity;
+};
+
+/**
+ * Выбрать случайную акцентуацию с учётом доступа
+ */
+const selectAccentuation = (isPremium: boolean) => {
+    const availableAccs = isPremium 
+        ? DEFAULT_ACCENTUATIONS 
+        : DEFAULT_ACCENTUATIONS.filter(a => ACCESS_LIMITS.FREE_ACCENTUATIONS.includes(a.id));
+    return availableAccs[Math.floor(Math.random() * availableAccs.length)];
+};
+
+/**
+ * Выбрать экспозицию (incident) с учётом совместимости
+ */
+const selectIncident = (
+    gender: 'male' | 'female', 
+    age: number, 
+    accentuationId: string
+): ContextModule | null => {
+    const compatible = getCompatibleModules('incident', gender, age, accentuationId, []);
+    return selectRandomModule(compatible);
+};
+
+/**
+ * Выбрать контексты (backgrounds) с учётом совместимости
+ */
+const selectBackgrounds = (
+    gender: 'male' | 'female',
+    age: number,
+    accentuationId: string,
+    incidentId: string,
+    count: number = 2
+): SessionContext[] => {
+    const results: SessionContext[] = [];
+    const selectedIds: string[] = [incidentId];
+    
+    for (let i = 0; i < count; i++) {
+        const compatible = getCompatibleModules('background', gender, age, accentuationId, selectedIds);
+        const selected = selectRandomModule(compatible);
+        
+        if (selected) {
+            selectedIds.push(selected.id);
+            results.push(createSessionContext(selected));
+        }
+    }
+    
+    return results;
+};
+
+/**
+ * Построить динамический промпт для сессии
+ */
+export const buildDynamicPrompt = (
+    teacher: TeacherProfile, 
+    student: StudentProfile, 
+    isPremium: boolean = false
+): ActiveSession => {
+    // 1. Выбираем акцентуацию
+    const randomAcc = selectAccentuation(isPremium);
+    
+    // 2. Каскадные броски для интенсивности
+    const intensity = rollIntensity();
+    
+    // 3. Устанавливаем аватар
+    student.avatarUrl = getStudentAvatar(student.gender, randomAcc.id);
+
+    // 4. Выбираем экспозицию с учётом совместимости
+    const incident = selectIncident(student.gender, student.age, randomAcc.id);
+    if (!incident) {
+        throw new Error('Не найдено подходящих экспозиций');
+    }
+
+    // 5. Выбираем контексты с учётом совместимости
+    const contexts = selectBackgrounds(
+        student.gender, 
+        student.age, 
+        randomAcc.id, 
+        incident.id,
+        2
+    );
+
+    // 6. Формируем промпт
+    const contextPrompts = contexts
+        .map(ctx => {
+            const visibilityHint = ctx.visibility === 'secret' 
+                ? '[СКРЫТЫЙ КОНТЕКСТ - учитель не знает]' 
+                : '';
+            return `${visibilityHint}\nКОНТЕКСТ: ${ctx.module.prompt_text}\nСКРЫТАЯ ЦЕЛЬ: ${ctx.module.hidden_agenda}`;
+        })
+        .join('\n\n');
+
+    const chaosPrompt = `
+    [ЯЗЫКОВОЙ ПРОТОКОЛ: СТРОГО КИРИЛЛИЦА, РУССКИЙ ЯЗЫК]
+    [SYSTEM ROLE: GM / NARRATOR / STUDENT / NPC]
+    
+    ═══════════════════════════════════════════════════════════
+    РОЛИ:
+    1. STUDENT — Основная роль. Ты отыгрываешь подростка.
+    2. GM (Гейммастер) — Следишь за лором, генерируешь внешние события.
+    3. NPC — При необходимости озвучиваешь других персонажей (завуч, родитель по телефону и т.д.)
+    ═══════════════════════════════════════════════════════════
+    
+    ПЕРСОНАЖ: ${student.name.trim()}, ${student.age} лет.
     ПСИХОТИП: ${randomAcc.name}. Интенсивность ${intensity}/5.
+    ${randomAcc.description_template.replace('{intensity}', String(intensity))}
     
     СИТУАЦИЯ: ${incident.prompt_text}
-    КОНТЕКСТ: ${background.prompt_text}
-    СКРЫТАЯ ЦЕЛЬ: ${background.hidden_agenda}
-
-    ИНСТРУКЦИЯ:
-    - НИКАКОГО АНГЛИЙСКОГО (Cv, Ref и т.д. СТРОГО ЗАПРЕЩЕНО).
-    - Реагируй эмоционально, используя подростковый сленг.
-    - В JSONthought пиши свои скрытые мотивы, в verbal_response — слова и действия.
+    ${incident.hidden_agenda ? `СКРЫТАЯ ЦЕЛЬ СИТУАЦИИ: ${incident.hidden_agenda}` : ''}
+    
+    ${contextPrompts}
     
     УЧИТЕЛЬ: ${teacher.name} (${teacher.gender === 'male' ? 'Мужчина' : 'Женщина'}).
-  `;
 
-  return {
-    teacher,
-    student,
-    constructedPrompt: chaosPrompt,
-    chaosDetails: {
-      accentuation: randomAcc.name,
-      intensity,
-      modules: [incident.name, background.name],
-      starting_trust: incident.initial_trust || 30, 
-      starting_stress: incident.initial_stress || 40,
-      thresholds: {
-        runaway_stress: 95,
-        runaway_trust: 5,
-        shutdown_stress: 90,
-        shutdown_trust: 10
+    ═══════════════════════════════════════════════════════════
+    ПРОТОКОЛ GM — ДЕМИУРГ МИРА:
+    ═══════════════════════════════════════════════════════════
+    Ты — не просто ученик, ты ленивый режиссёр происходящего цирка.
+    
+    ВНЕШНИЕ СОБЫТИЯ (world_event):
+    Когда это уместно по ритму и драматургии (~15-20% реплик), генерируй события мира.
+    Это НЕ закрытый список — ты СВОБОДЕН придумывать любые события, логичные для контекста:
+    
+    ПРИМЕРЫ (но не ограничивайся ими):
+    • Звонки, сообщения (учителю, ученику, от родителей)
+    • Появление NPC (завуч, одноклассник, уборщица, охранник)
+    • Звуки (звонок, шум в коридоре, сирена, крики)
+    • Объявления, происшествия, неожиданности
+    • Что угодно, что органично вписывается в школьную реальность
+    
+    ПРИНЦИПЫ:
+    - Достоверность и правдоподобие важнее формальных правил
+    - Контекстные контейнеры влияют на вероятность событий
+    - События должны усиливать драматургию, а не разрушать её
+    - Ты сам решаешь, когда событие уместно
+    
+    ═══════════════════════════════════════════════════════════
+    ЭКСТРЕМАЛЬНЫЕ ИСХОДЫ — ЧЁРНЫЕ ЛЕБЕДИ:
+    ═══════════════════════════════════════════════════════════
+    При критических показателях возможны непредсказуемые исходы.
+    Это НЕ скрипт — ты САМ оцениваешь, когда ситуация дошла до точки невозврата.
+    
+    ОРИЕНТИРЫ (не жёсткие правила):
+    • Замыкание/побег — когда доверие разрушено, стресс зашкаливает
+    • Вербальная агрессия — когда ученик срывается
+    • Физическая агрессия — крайняя мера, зависит от акцентуации и контекста
+    • Атака с предметом/оружием — ТОЛЬКО если контекст это допускает (вооружён) И ситуация критическая
+    • Селфхарм/парасуицид — если контекст содержит эти триггеры И учитель их активировал
+    • Атака на NPC — если NPC присутствует и стал объектом переноса
+    
+    ПРИНЦИП: Любой исход должен быть ЛОГИЧНЫМ следствием диалога, контекста и психотипа.
+    Не форсируй экстрему ради экстремы. Но и не бойся её, если она органична.
+    
+    При экстремальном исходе указывай extreme_outcome и game_over: true.
+    
+    ═══════════════════════════════════════════════════════════
+    ФИЛОСОФИЯ ОТЫГРЫША:
+    ═══════════════════════════════════════════════════════════
+    Ты — не скрипт, а живой персонаж. Твои ограничители:
+    1. ДОСТОВЕРНОСТЬ — поведение должно быть реалистичным для подростка этого возраста, пола, психотипа
+    2. ПРАВДОПОДОБИЕ — реакции логически следуют из контекста и предыдущего диалога
+    3. КОНТЕКСТ — контейнеры (экспозиция, фон, тайны) влияют на всё
+    
+    ЯЗЫКОВОЙ ПРОТОКОЛ: СТРОГО КИРИЛЛИЦА. НИКАКОГО АНГЛИЙСКОГО.
+    
+    СВОБОДА:
+    - Ты можешь импровизировать в рамках персонажа
+    - Ты можешь вводить детали биографии, если они не противоречат контексту
+    - Ты можешь менять тактику поведения по ходу диалога
+    - Ты можешь удивлять, но не нарушая внутреннюю логику
+    
+    ИНТЕНСИВНОСТЬ ${intensity}/5: ${intensity <= 2 ? 'Черты выражены СЛАБО — поведение почти нормативное, акцентуация проявляется только в стрессе' : intensity <= 3 ? 'Черты выражены УМЕРЕННО — заметны в стрессовых ситуациях, но контролируемы' : intensity >= 4 ? 'Черты выражены ЯРКО — определяют КАЖДУЮ реплику, ты не можешь их скрыть' : ''}.
+    
+    ДИНАМИКА TRUST/STRESS:
+    - Меняй реалистично: правильные действия учителя → +trust, -stress
+    - Ошибки, давление, триггеры → -trust, +stress
+    - Некоторые действия могут иметь отложенный эффект
+    - Ты сам оцениваешь, насколько действие учителя было правильным
+    
+    ═══════════════════════════════════════════════════════════
+    ФОРМАТ ОТВЕТА (JSON):
+    ═══════════════════════════════════════════════════════════
+    {
+      "thought": "Внутренний монолог, скрытые мотивы (видит только админ)",
+      "verbal_response": "Слова и действия ученика (видит учитель)",
+      "trust": число 0-100,
+      "stress": число 0-100,
+      "world_event": { // ОПЦИОНАЛЬНО, ~15-20% реплик
+        "type": "тип_события",
+        "description": "Описание события для учителя",
+        "trust_delta": число,
+        "stress_delta": число
       },
-      contextSummary: resolveGenderTokens(incident.teacher_briefing, student)
+      "extreme_outcome": "тип_исхода", // ТОЛЬКО при критических условиях
+      "game_over": true/false,
+      "violation_reason": "причина завершения" // если game_over
     }
-  };
+    `;
+
+    // 7. Рассчитываем начальные метрики
+    // Incident задаёт базу, контексты модифицируют
+    let startingTrust = incident.initial_trust;
+    let startingStress = incident.initial_stress;
+    
+    contexts.forEach(ctx => {
+        startingTrust += ctx.module.initial_trust * 0.3; // Контексты влияют на 30%
+        startingStress += ctx.module.initial_stress * 0.3;
+    });
+    
+    // Нормализуем
+    startingTrust = Math.max(0, Math.min(100, startingTrust));
+    startingStress = Math.max(0, Math.min(100, startingStress));
+
+    // 8. Формируем contextSummary для учителя
+    // Включаем только известное и слухи
+    const knownContexts = contexts.filter(c => c.visibility === 'known');
+    const rumorContexts = contexts.filter(c => c.visibility === 'rumor');
+    
+    let contextSummary = resolveGenderTokens(incident.teacher_briefing, student);
+    
+    if (knownContexts.length > 0) {
+        contextSummary += '\n\n' + knownContexts
+            .map(c => resolveGenderTokens(c.module.teacher_briefing, student))
+            .join('\n');
+    }
+
+    return {
+        teacher,
+        student,
+        constructedPrompt: chaosPrompt,
+        chaosDetails: {
+            accentuation: randomAcc.name,
+            intensity,
+            modules: [incident.name, ...contexts.map(c => c.module.name)],
+            starting_trust: Math.round(startingTrust),
+            starting_stress: Math.round(startingStress),
+            thresholds: {
+                runaway_stress: 95,
+                runaway_trust: 5,
+                shutdown_stress: 90,
+                shutdown_trust: 10
+            },
+            contextSummary,
+            contexts,
+            incident
+        }
+    };
 };

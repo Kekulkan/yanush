@@ -1,18 +1,67 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Message, MessageRole, ActiveSession, AnalysisResult } from '../types';
+import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog } from '../types';
 import { sendMessageToGemini, analyzeChatSession, generateGhostResponse } from '../services/geminiService';
-import { saveSessionBackup } from '../services/storageService';
+import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
+import { saveToUserArchive, saveToGlobalArchive } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
-import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel } from 'lucide-react';
+import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull } from 'lucide-react';
 
 interface Props {
   session: ActiveSession;
   isAdmin: boolean;
+  user?: UserAccount | null;
   onExit: () => void;
   initialMessages?: Message[];
 }
 
-const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessages = [] }) => {
+// Функция определения цвета реплики на основе trust/stress
+const getEmotionalGradient = (trust: number, stress: number): { bg: string; border: string; text: string; glow: string } => {
+  // Критический стресс (>70) + низкое доверие = кроваво-красный (агрессия)
+  if (stress > 70 && trust < 40) {
+    return {
+      bg: 'bg-gradient-to-br from-red-900/90 to-red-950/90',
+      border: 'border-red-500/50',
+      text: 'text-red-100',
+      glow: 'shadow-[0_0_30px_rgba(239,68,68,0.3)]'
+    };
+  }
+  // Высокий стресс (>50) = оранжевый/красноватый (напряжение)
+  if (stress > 50) {
+    return {
+      bg: 'bg-gradient-to-br from-orange-900/80 to-red-900/60',
+      border: 'border-orange-500/40',
+      text: 'text-orange-100',
+      glow: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]'
+    };
+  }
+  // Высокое доверие (>70) + низкий стресс = изумрудно-зелёный (контакт)
+  if (trust > 70 && stress < 40) {
+    return {
+      bg: 'bg-gradient-to-br from-emerald-900/90 to-teal-900/80',
+      border: 'border-emerald-500/50',
+      text: 'text-emerald-100',
+      glow: 'shadow-[0_0_25px_rgba(16,185,129,0.3)]'
+    };
+  }
+  // Хорошее доверие (>50) = зеленоватый
+  if (trust > 50) {
+    return {
+      bg: 'bg-gradient-to-br from-teal-900/70 to-slate-800/80',
+      border: 'border-teal-500/30',
+      text: 'text-teal-100',
+      glow: 'shadow-lg'
+    };
+  }
+  // Нейтральное/серое состояние
+  return {
+    bg: 'bg-gradient-to-br from-slate-800/90 to-slate-900/90',
+    border: 'border-slate-600/30',
+    text: 'text-slate-200',
+    glow: 'shadow-lg'
+  };
+};
+
+const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initialMessages = [] }) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -72,18 +121,48 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
       } finally { setIsPrompterLoading(false); }
   };
 
-  const handleStop = async (e: React.PointerEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!confirm('ЗАВЕРШИТЬ СЕАНС И ПОЛУЧИТЬ ВЕРДИКТ?')) return;
+  // Функция сохранения сессии в архив
+  const archiveSession = (finalMessages: Message[], analysisResult: AnalysisResult, status: string) => {
+    const sessionLog: SessionLog = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
+      teacher: session.teacher,
+      student_name: session.student.name,
+      scenario_description: session.chaosDetails.contextSummary,
+      status,
+      messages: finalMessages,
+      result: analysisResult,
+      sessionSnapshot: session,
+      userId: user?.id,
+      userEmail: user?.email
+    };
+
+    // Сохраняем в личный архив пользователя
+    if (user?.id) {
+      saveToUserArchive(user.id, sessionLog);
+    }
+    
+    // Сохраняем в глобальный архив
+    saveToGlobalArchive(sessionLog);
+    
+    // Очищаем backup текущей сессии
+    clearSessionBackup();
+  };
+
+  const handleStop = async () => {
+      if (!window.confirm('ЗАВЕРШИТЬ СЕАНС И ПОЛУЧИТЬ ВЕРДИКТ?')) return;
       setIsAnalyzing(true);
       try {
           const result = await analyzeChatSession(messages, session.chaosDetails.accentuation, 'Принудительное завершение');
           setAnalysis(result);
-      } catch (e) {
-          console.error(e);
-          alert('Сбой генерации анализа. Попробуйте еще раз.');
+          // Сохраняем в архив
+          archiveSession(messages, result, 'manual');
           setIsAnalyzing(false);
+      } catch (err) {
+          console.error(err);
+          setIsAnalyzing(false);
+          window.alert('Сбой генерации анализа. Попробуйте еще раз.');
       }
   };
 
@@ -116,6 +195,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
           setIsAnalyzing(true);
           const result = await analyzeChatSession(updatedMessages, session.chaosDetails.accentuation, response.violation_reason || 'Психологический срыв');
           setAnalysis(result);
+          // Сохраняем в архив при game_over
+          archiveSession(updatedMessages, result, 'completed');
           setIsAnalyzing(false);
       }
     } catch (e) { 
@@ -127,7 +208,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
 
   if (analysis) {
       return (
-          <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
+          <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] overflow-hidden">
               <div className="flex-1 overflow-y-auto custom-scroll p-6 md:p-12">
                   <div className="max-w-4xl mx-auto space-y-12 pb-32">
                       <div className="glass p-8 md:p-12 rounded-[60px] text-center border-blue-500/20 flex flex-col md:flex-row items-center gap-10 animate-in zoom-in-95 duration-700">
@@ -165,7 +246,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 font-sans relative text-slate-200 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200 overflow-hidden">
       {isAnalyzing && (
           <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-3xl px-8 text-center animate-in fade-in duration-500">
               <div className="relative mb-12">
@@ -178,6 +259,142 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
                   <div className="h-full bg-blue-500 animate-[loading_3s_infinite_ease-in-out]"></div>
               </div>
           </div>
+      )}
+
+      {/* DOSSIER MODAL */}
+      {showDossier && (
+        <div 
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl"
+          onClick={() => setShowDossier(false)}
+        >
+          <div 
+            className="w-full max-w-md glass p-8 rounded-[40px] space-y-6 shadow-2xl border border-white/10 animate-in zoom-in-95 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header with avatar */}
+            <div className="flex items-center gap-6">
+              <img 
+                src={session.student.avatarUrl} 
+                className="w-20 h-20 rounded-2xl border-2 border-blue-500/30 shadow-xl" 
+              />
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">{session.student.name}</h2>
+                <p className="text-blue-500 text-xs font-black uppercase tracking-widest mt-1">{session.student.age} лет</p>
+              </div>
+            </div>
+
+            {/* Psychotype (Admin only) */}
+            {isAdmin && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">ПСИХОТИП</div>
+                <div className="text-white font-bold">{session.chaosDetails.accentuation}</div>
+              </div>
+            )}
+
+            {/* Context Summary (Incident) */}
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye size={12} className="text-blue-500" />
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">СИТУАЦИЯ</span>
+              </div>
+              <p className="text-slate-300 text-sm leading-relaxed italic">
+                {resolveGenderTokens(session.chaosDetails.contextSummary, session.student)}
+              </p>
+            </div>
+
+            {/* Context Modules with Visibility */}
+            {session.chaosDetails.contexts && session.chaosDetails.contexts.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">КОНТЕКСТНЫЕ ОБСТОЯТЕЛЬСТВА</div>
+                {session.chaosDetails.contexts.map((ctx, idx) => {
+                  // Определяем стили в зависимости от visibility
+                  const visibilityStyles: Record<ContextVisibility, { 
+                    bg: string; 
+                    border: string; 
+                    text: string; 
+                    icon: React.ReactNode;
+                    label: string;
+                    opacity: string;
+                  }> = {
+                    known: {
+                      bg: 'bg-emerald-500/10',
+                      border: 'border-emerald-500/20',
+                      text: 'text-emerald-500',
+                      icon: <Eye size={12} />,
+                      label: 'ИЗВЕСТНО',
+                      opacity: 'opacity-100'
+                    },
+                    rumor: {
+                      bg: 'bg-amber-500/5',
+                      border: 'border-amber-500/20',
+                      text: 'text-amber-500',
+                      icon: <HelpCircle size={12} />,
+                      label: 'СЛУХИ',
+                      opacity: 'opacity-70'
+                    },
+                    secret: {
+                      bg: 'bg-slate-500/5',
+                      border: 'border-slate-500/10',
+                      text: 'text-slate-600',
+                      icon: <EyeOff size={12} />,
+                      label: 'ТАЙНА',
+                      opacity: 'opacity-40'
+                    }
+                  };
+                  
+                  const style = visibilityStyles[ctx.visibility];
+                  
+                  // Для тайн показываем только админу
+                  if (ctx.visibility === 'secret' && !isAdmin) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`p-4 ${style.bg} border ${style.border} rounded-2xl ${style.opacity} transition-all`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={style.text}>{style.icon}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${style.text}`}>
+                          {ctx.module.name} • {style.label}
+                        </span>
+                      </div>
+                      <p className={`text-sm leading-relaxed italic ${ctx.visibility === 'secret' ? 'text-slate-500' : 'text-slate-300'}`}>
+                        {ctx.visibility === 'secret' && !isAdmin 
+                          ? '???' 
+                          : resolveGenderTokens(ctx.module.teacher_briefing, session.student)
+                        }
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Metrics (Admin only) */}
+            {isAdmin && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
+                  <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">ДОВЕРИЕ</div>
+                  <div className="text-2xl font-black text-white">{Math.round(currentTrust)}%</div>
+                </div>
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
+                  <div className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">СТРЕСС</div>
+                  <div className="text-2xl font-black text-white">{Math.round(currentStress)}%</div>
+                </div>
+              </div>
+            )}
+
+            {/* Close button */}
+            <button 
+              onClick={() => setShowDossier(false)}
+              className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all"
+            >
+              ЗАКРЫТЬ
+            </button>
+          </div>
+        </div>
       )}
 
       <header className="shrink-0 h-24 glass border-b border-white/5 flex items-center justify-between px-6 md:px-8 z-[500] bg-slate-950/80 backdrop-blur-xl">
@@ -218,7 +435,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
               </button>
               <button 
                 type="button"
-                onPointerDown={handleStop}
+                onClick={handleStop}
                 className="px-4 md:px-6 py-2.5 md:py-3 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white text-[9px] md:text-[10px] font-black uppercase rounded-2xl border border-rose-500/20 transition-all z-[600]"
               >СТОП</button>
           </div>
@@ -238,15 +455,84 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, onExit, initialMessa
                         </div>
                     ) : (
                         <div className="flex flex-col space-y-2 max-w-[90%] md:max-w-[85%]">
+                            {/* Мысли ребёнка (только для админа) */}
                             {isAdmin && msg.role === MessageRole.MODEL && msg.state?.thought && (
                                 <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-[24px] text-[10px] text-amber-500 italic mb-2 font-mono">
                                     <span className="font-black uppercase text-[8px] block mb-1 opacity-60">Ментальный процесс:</span>
                                     {msg.state.thought}
                                 </div>
                             )}
-                            <div className={`p-4 md:p-6 rounded-[24px] md:rounded-[32px] text-sm shadow-2xl ${msg.role === MessageRole.USER ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-900 rounded-tl-none font-medium'}`}>
+                            
+                            {/* Реплика учителя */}
+                            {msg.role === MessageRole.USER && (
+                              <div className="p-4 md:p-6 rounded-[24px] md:rounded-[32px] rounded-tr-none text-sm shadow-2xl bg-blue-600 text-white">
                                 {msg.content}
-                            </div>
+                              </div>
+                            )}
+                            
+                            {/* Реплика ребёнка с эмоциональным градиентом */}
+                            {msg.role === MessageRole.MODEL && (() => {
+                              const trust = msg.state?.trust ?? 50;
+                              const stress = msg.state?.stress ?? 50;
+                              const gradient = getEmotionalGradient(trust, stress);
+                              const worldEvent = msg.state?.world_event;
+                              const extremeOutcome = msg.state?.extreme_outcome;
+                              
+                              return (
+                                <>
+                                  {/* World Event - если есть */}
+                                  {worldEvent && (
+                                    <div className="w-full mb-4 p-4 rounded-2xl bg-violet-500/10 border border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <Radio size={16} className="text-violet-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
+                                          {worldEvent.type?.toUpperCase().replace(/_/g, ' ') || 'СОБЫТИЕ'}
+                                        </span>
+                                      </div>
+                                      <p className="text-violet-200 text-sm italic">{worldEvent.description}</p>
+                                      
+                                      {/* NPC диалог если есть */}
+                                      {worldEvent.npc_name && worldEvent.npc_dialogue && (
+                                        <div className="mt-3 p-3 bg-violet-900/30 rounded-xl border border-violet-500/20">
+                                          <div className="text-[9px] font-black text-violet-400 uppercase mb-1">{worldEvent.npc_name}:</div>
+                                          <p className="text-violet-100 text-sm">"{worldEvent.npc_dialogue}"</p>
+                                        </div>
+                                      )}
+                                      
+                                      {isAdmin && (
+                                        <div className="flex gap-4 mt-3 text-[9px] font-black uppercase tracking-wider text-violet-400/60">
+                                          <span>Δ Доверие: {worldEvent.trust_delta > 0 ? '+' : ''}{worldEvent.trust_delta}</span>
+                                          <span>Δ Стресс: {worldEvent.stress_delta > 0 ? '+' : ''}{worldEvent.stress_delta}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Extreme Outcome Warning */}
+                                  {extremeOutcome && (
+                                    <div className="w-full mb-4 p-4 rounded-2xl bg-red-900/50 border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.5)] animate-pulse">
+                                      <div className="flex items-center gap-3">
+                                        <AlertOctagon size={20} className="text-red-500" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                                          КРИТИЧЕСКИЙ ИСХОД: {extremeOutcome.toUpperCase().replace('_', ' ')}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  <div className={`p-4 md:p-6 rounded-[24px] md:rounded-[32px] rounded-tl-none text-sm font-medium border ${gradient.bg} ${gradient.border} ${gradient.text} ${gradient.glow} transition-all duration-500`}>
+                                    {msg.content}
+                                    {/* Индикатор состояния */}
+                                    {isAdmin && (
+                                      <div className="flex gap-4 mt-3 pt-3 border-t border-white/10 text-[9px] font-black uppercase tracking-wider opacity-60">
+                                        <span>Доверие: {Math.round(trust)}%</span>
+                                        <span>Стресс: {Math.round(stress)}%</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()}
                         </div>
                     )}
                 </div>

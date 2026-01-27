@@ -15,10 +15,37 @@ export interface UserAccount {
   subscriptionActiveUntil?: number;
 }
 
+// Типы экстремальных исходов
+export type ExtremeOutcome = 
+  | 'shutdown'           // Замыкание в себе
+  | 'runaway'            // Побег
+  | 'verbal_aggression'  // Вербальная агрессия
+  | 'physical_aggression'// Физическая агрессия (удар)
+  | 'weapon_attack'      // Атака с предметом/оружием
+  | 'self_harm'          // Селфхарм
+  | 'parasuicide'        // Парасуицидальное поведение
+  | 'attack_npc';        // Атака на NPC
+
+// Событие мира (GM) — тип открытый, LLM может генерировать любые события
+export interface WorldEvent {
+  type: string;           // Любой тип события (LLM свободна в выборе)
+  description: string;    // Описание для учителя
+  trust_delta: number;    // Влияние на доверие
+  stress_delta: number;   // Влияние на стресс
+  npc_name?: string;      // Имя NPC, если появился
+  npc_dialogue?: string;  // Реплика NPC, если есть
+}
+
 export interface SimulationState {
   trust: number;
   stress: number;
   thought: string;
+  // GM события
+  world_event?: WorldEvent;
+  // Флаг экстремального исхода
+  extreme_outcome?: ExtremeOutcome;
+  game_over?: boolean;
+  violation_reason?: string;
 }
 
 export interface Message {
@@ -49,6 +76,15 @@ export interface Accentuation {
   isPremium?: boolean;
 }
 
+// Статус видимости контекста для учителя
+export type ContextVisibility = 'known' | 'rumor' | 'secret';
+
+export interface VisibilityWeights {
+  known: number;
+  rumor: number;
+  secret: number;
+}
+
 export interface ContextModule {
   id: string;
   category: 'incident' | 'background';
@@ -58,10 +94,25 @@ export interface ContextModule {
   hidden_agenda: string; 
   initial_trust: number; 
   initial_stress: number; 
-  conflicts: string[]; 
-  incompatible_accentuations?: string[]; 
   weight: number; 
   isPremium?: boolean;
+  isCustom?: boolean; // Флаг для пользовательских контейнеров
+  
+  // Несовместимости
+  conflicts: string[];                      // ID несовместимых контейнеров
+  incompatible_accentuations?: string[];    // ID несовместимых акцентуаций
+  incompatible_genders?: ('male' | 'female')[]; // Несовместимые полы
+  min_age?: number;                         // Минимальный возраст
+  max_age?: number;                         // Максимальный возраст
+  
+  // Только для background - веса вероятности статуса видимости
+  visibility_weights?: VisibilityWeights;
+}
+
+// Контекст с определённым статусом видимости (для сессии)
+export interface SessionContext {
+  module: ContextModule;
+  visibility: ContextVisibility;
 }
 
 export interface GlobalSettings {
@@ -102,6 +153,9 @@ export interface ActiveSession {
     starting_stress: number;
     thresholds: TerminationThresholds;
     contextSummary: string;
+    // Новые поля для контекстов с visibility
+    contexts?: SessionContext[];
+    incident?: ContextModule;
   };
 }
 
@@ -115,7 +169,10 @@ export interface SessionLog {
   status: string;
   messages: Message[];
   result?: AnalysisResult; 
-  sessionSnapshot?: ActiveSession; 
+  sessionSnapshot?: ActiveSession;
+  // Для архивирования
+  userId?: string;
+  userEmail?: string;
 }
 
 export interface Scenario {

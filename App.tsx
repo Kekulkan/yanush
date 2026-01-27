@@ -6,14 +6,16 @@ import ChatInterface from './components/ChatInterface';
 import AdminPanel from './components/AdminPanel';
 import LoginScreen from './components/Auth/LoginScreen';
 import MuseumView from './components/MuseumView';
+import CommandCenter from './components/CommandCenter';
 import SecurityShield from './components/SecurityShield';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ActiveSession, TeacherProfile, StudentProfile, Message, SessionLog, UserAccount } from './types';
 import { buildDynamicPrompt } from './services/chaosEngine';
 import { getSessionBackup } from './services/storageService';
 import { authService } from './services/authService';
+import { preloadPrompts } from './services/promptsService';
 
-type ViewState = 'landing' | 'setup' | 'chat' | 'admin' | 'auth' | 'museum';
+type ViewState = 'landing' | 'setup' | 'chat' | 'admin' | 'auth' | 'museum' | 'command_center';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserAccount | null>(authService.getCurrentUser());
@@ -24,6 +26,11 @@ const App: React.FC = () => {
   useEffect(() => {
     if (user) Object.freeze(user);
   }, [user]);
+
+  // Предзагрузка промптов при старте приложения
+  useEffect(() => {
+    preloadPrompts().catch(console.warn);
+  }, []);
 
   // Fix: The login process is handled inside the LoginScreen component, which updates localStorage.
   // This handler simply updates the root application state to reflect the authenticated session.
@@ -67,7 +74,8 @@ const App: React.FC = () => {
         {view === 'landing' && (
           <ScenarioSelector 
               onStart={() => setView('setup')} 
-              onResume={resumeSession} 
+              onResume={resumeSession}
+              onOpenCommandCenter={() => setView('command_center')}
           />
         )}
 
@@ -83,6 +91,7 @@ const App: React.FC = () => {
           <ChatInterface 
             session={activeSession} 
             isAdmin={user?.role === 'ADMIN'}
+            user={user}
             onExit={() => setView('landing')} 
             initialMessages={restoredMessages}
           />
@@ -92,6 +101,13 @@ const App: React.FC = () => {
           <AdminPanel 
             onBack={() => setView('setup')}
             onRestoreSession={handleRestoreSession}
+          />
+        )}
+
+        {view === 'command_center' && user && (
+          <CommandCenter
+            user={user}
+            onBack={() => setView('landing')}
           />
         )}
       </ErrorBoundary>
