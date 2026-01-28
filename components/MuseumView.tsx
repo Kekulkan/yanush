@@ -1,9 +1,12 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Target, Zap, ShieldAlert, User, Info, Sparkles, Activity, Play, Eye } from 'lucide-react';
+import { ArrowLeft, Target, Zap, ShieldAlert, User, Info, Sparkles, Activity, Play, Eye, Lock } from 'lucide-react';
 import DemoSession from './DemoSession';
 import { getDemoScenario } from '../data/demoScenarios';
 import { DemoScenario } from '../types';
+import { getSubscriptionInfo } from '../services/billingService';
+
+const FREE_ACCENTUATIONS = ['hyperthymic', 'sensitive', 'schizoid'];
 
 interface Exhibit {
     id: string;
@@ -203,14 +206,24 @@ const EXHIBITS: Exhibit[] = [
 
 interface Props {
     onBack: () => void;
+    onOpenSubscription?: () => void;
 }
 
-const MuseumView: React.FC<Props> = ({ onBack }) => {
+const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
     const [selected, setSelected] = useState<Exhibit | null>(null);
     const [activeDemo, setActiveDemo] = useState<DemoScenario | null>(null);
+    const subInfo = getSubscriptionInfo();
+    const isPremium = subInfo.tier === 'premium';
 
     // Запуск демо-режима
     const startDemo = (exhibit: Exhibit) => {
+        const isLocked = !FREE_ACCENTUATIONS.includes(exhibit.accentuationId) && !isPremium;
+        
+        if (isLocked) {
+            onOpenSubscription?.();
+            return;
+        }
+
         const scenario = getDemoScenario(exhibit.accentuationId);
         if (scenario) {
             setActiveDemo(scenario);
@@ -267,31 +280,43 @@ const MuseumView: React.FC<Props> = ({ onBack }) => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-12">
-                    {EXHIBITS.map((ex) => (
-                        <div 
-                            key={ex.id} 
-                            onClick={() => setSelected(ex)}
-                            className="group glass rounded-[32px] overflow-hidden border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer bg-slate-900/40"
-                        >
-                            {/* Полная картинка сцены */}
-                            <div className="relative w-full aspect-[4/3] overflow-hidden bg-slate-900">
-                                <img 
-                                    src={ex.sceneImage} 
-                                    alt={ex.title} 
-                                    className="w-full h-full object-contain bg-slate-950 grayscale opacity-60 group-hover:opacity-100 group-hover:grayscale-0 transition-all duration-500" 
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent pointer-events-none"></div>
-                                
-                                {/* Бейдж статуса */}
-                                <div className="absolute top-4 right-4">
-                                    <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                        ex.profile.status === 'Активен' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                        ex.profile.status === 'Разбор' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                                        'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-                                    }`}>
-                                        {ex.profile.status}
-                                    </span>
-                                </div>
+                    {EXHIBITS.map((ex) => {
+                        const isLocked = !FREE_ACCENTUATIONS.includes(ex.accentuationId) && !isPremium;
+                        
+                        return (
+                            <div 
+                                key={ex.id} 
+                                onClick={() => setSelected(ex)}
+                                className={`group glass rounded-[32px] overflow-hidden border transition-all cursor-pointer bg-slate-900/40 ${
+                                    isLocked ? 'border-amber-500/20 grayscale' : 'border-white/5 hover:border-blue-500/30'
+                                }`}
+                            >
+                                {/* Полная картинка сцены */}
+                                <div className="relative w-full aspect-[4/3] overflow-hidden bg-slate-900">
+                                    <img 
+                                        src={ex.sceneImage} 
+                                        alt={ex.title} 
+                                        className={`w-full h-full object-contain bg-slate-950 transition-all duration-500 ${
+                                            isLocked ? 'grayscale opacity-30' : 'grayscale opacity-60 group-hover:opacity-100 group-hover:grayscale-0'
+                                        }`} 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent pointer-events-none"></div>
+                                    
+                                    {/* Бейдж статуса или замок */}
+                                    <div className="absolute top-4 right-4 flex gap-2">
+                                        {isLocked && (
+                                            <div className="bg-amber-500 text-black p-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-pulse">
+                                                <Lock size={12} fill="currentColor" />
+                                            </div>
+                                        )}
+                                        <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                            ex.profile.status === 'Активен' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                            ex.profile.status === 'Разбор' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                                            'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                                        }`}>
+                                            {ex.profile.status}
+                                        </span>
+                                    </div>
                                 
                                 {/* Заголовок поверх изображения */}
                                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-950 to-transparent">
@@ -439,24 +464,44 @@ const MuseumView: React.FC<Props> = ({ onBack }) => {
 
                                 {/* Кнопки */}
                                 <div className="space-y-3">
-                                    {getDemoScenario(selected.accentuationId) ? (
-                                        <button 
-                                            onClick={() => startDemo(selected)}
-                                            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Eye size={14} /> Демо-режим
-                                        </button>
-                                    ) : (
-                                        <button 
-                                            disabled
-                                            className="w-full py-4 bg-slate-700 text-slate-500 rounded-xl font-black uppercase text-xs tracking-widest cursor-not-allowed flex items-center justify-center gap-2"
-                                        >
-                                            <Play size={14} /> Демо в разработке
-                                        </button>
-                                    )}
-                                    <button className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2">
-                                        <Sparkles size={12} /> Полноценный сеанс
-                                    </button>
+                                    {(() => {
+                                        const isLocked = !FREE_ACCENTUATIONS.includes(selected.accentuationId) && !isPremium;
+                                        
+                                        return (
+                                            <>
+                                                {getDemoScenario(selected.accentuationId) ? (
+                                                    <button 
+                                                        onClick={() => startDemo(selected)}
+                                                        className={`w-full py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2 ${
+                                                            isLocked 
+                                                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30' 
+                                                                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                                        }`}
+                                                    >
+                                                        {isLocked ? <Lock size={14} /> : <Eye size={14} />}
+                                                        {isLocked ? 'Разблокировать Demo (Premium)' : 'Демо-режим'}
+                                                    </button>
+                                                ) : (
+                                                    <button 
+                                                        disabled
+                                                        className="w-full py-4 bg-slate-700 text-slate-500 rounded-xl font-black uppercase text-xs tracking-widest cursor-not-allowed flex items-center justify-center gap-2"
+                                                    >
+                                                        <Play size={14} /> Демо в разработке
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => isLocked ? onOpenSubscription?.() : null}
+                                                    className={`w-full py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 ${
+                                                        isLocked 
+                                                            ? 'bg-slate-800 text-slate-500 cursor-pointer hover:bg-slate-700' 
+                                                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                                    }`}
+                                                >
+                                                    <Sparkles size={12} /> Полноценный сеанс {isLocked && '(Premium)'}
+                                                </button>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>

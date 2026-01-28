@@ -8,12 +8,14 @@ import LoginScreen from './components/Auth/LoginScreen';
 import MuseumView from './components/MuseumView';
 import CommandCenter from './components/CommandCenter';
 import SecurityShield from './components/SecurityShield';
+import SubscriptionModal from './components/SubscriptionModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ActiveSession, TeacherProfile, StudentProfile, Message, SessionLog, UserAccount } from './types';
 import { buildDynamicPrompt } from './services/chaosEngine';
 import { getSessionBackup } from './services/storageService';
 import { authService } from './services/authService';
 import { preloadPrompts } from './services/promptsService';
+import { getSubscriptionInfo, SubscriptionInfo } from './services/billingService';
 
 type ViewState = 'landing' | 'setup' | 'chat' | 'admin' | 'auth' | 'museum' | 'command_center';
 
@@ -22,6 +24,12 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(user ? 'landing' : 'auth');
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [restoredMessages, setRestoredMessages] = useState<Message[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionInfo>(getSubscriptionInfo());
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+
+  const refreshSubscription = () => {
+    setSubscription(getSubscriptionInfo());
+  };
 
   useEffect(() => {
     if (user) Object.freeze(user);
@@ -30,6 +38,7 @@ const App: React.FC = () => {
   // Предзагрузка промптов при старте приложения
   useEffect(() => {
     preloadPrompts().catch(console.warn);
+    refreshSubscription();
   }, []);
 
   // Fix: The login process is handled inside the LoginScreen component, which updates localStorage.
@@ -41,7 +50,7 @@ const App: React.FC = () => {
   };
 
   const startSession = (teacher: TeacherProfile, student: StudentProfile) => {
-    const isPremium = user?.role === 'ADMIN' || user?.role === 'PREMIUM';
+    const isPremium = user?.role === 'ADMIN' || subscription.tier === 'premium';
     const sessionData = buildDynamicPrompt(teacher, student, isPremium);
     setActiveSession(sessionData);
     setRestoredMessages([]); 
@@ -67,7 +76,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (view === 'auth') return <LoginScreen onLogin={handleLogin} onEnterMuseum={() => setView('museum')} />;
-    if (view === 'museum') return <MuseumView onBack={() => setView('auth')} />;
+    if (view === 'museum') return <MuseumView onBack={() => setView('auth')} onOpenSubscription={() => setIsSubModalOpen(true)} />;
     
     return (
       <ErrorBoundary>
@@ -76,6 +85,8 @@ const App: React.FC = () => {
               onStart={() => setView('setup')} 
               onResume={resumeSession}
               onOpenCommandCenter={() => setView('command_center')}
+              onOpenSubscription={() => setIsSubModalOpen(true)}
+              subscription={subscription}
           />
         )}
 
@@ -117,6 +128,11 @@ const App: React.FC = () => {
   return (
     <SecurityShield>
       {renderContent()}
+      <SubscriptionModal 
+        isOpen={isSubModalOpen} 
+        onClose={() => setIsSubModalOpen(false)}
+        onSuccess={refreshSubscription}
+      />
     </SecurityShield>
   );
 };

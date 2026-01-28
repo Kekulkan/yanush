@@ -1,20 +1,31 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, RotateCcw, Network, Activity, Terminal } from 'lucide-react';
+import { Play, RotateCcw, Network, Activity, Terminal, Crown, Star } from 'lucide-react';
 import { getSessionBackup } from '../services/storageService';
+import { SubscriptionInfo } from '../services/billingService';
 
 interface Props {
   onStart: () => void;
   onResume?: () => void;
   onOpenCommandCenter?: () => void;
+  onOpenSubscription?: () => void;
+  subscription?: SubscriptionInfo;
 }
 
-const ScenarioSelector: React.FC<Props> = ({ onStart, onResume, onOpenCommandCenter }) => {
+const ScenarioSelector: React.FC<Props> = ({ 
+  onStart, 
+  onResume, 
+  onOpenCommandCenter, 
+  onOpenSubscription,
+  subscription 
+}) => {
   const [hasBackup, setHasBackup] = useState(false);
   
   const env: any = (import.meta as any).env || {};
   const proxyUrl = env.VITE_REMOTE_PROXY_URL;
   const networkMode = proxyUrl ? 'Защищенный узел' : 'Прямое подключение';
+
+  const isPremium = subscription?.tier === 'premium';
 
   useEffect(() => {
     const backup = getSessionBackup();
@@ -74,15 +85,36 @@ const ScenarioSelector: React.FC<Props> = ({ onStart, onResume, onOpenCommandCen
             </span>
           </button>
 
-          {onOpenCommandCenter && (
-            <button 
-              onClick={onOpenCommandCenter}
-              className="w-full sm:w-72 px-6 py-4 glass hover:bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
-            >
-              <Terminal size={16} /> УЧИТЕЛЬСКАЯ
-            </button>
+      {onOpenCommandCenter && (
+        <button 
+          onClick={onOpenCommandCenter}
+          className="w-full sm:w-72 px-6 py-4 glass hover:bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
+        >
+          <Terminal size={16} /> УЧИТЕЛЬСКАЯ
+        </button>
+      )}
+
+      {onOpenSubscription && (
+        <button 
+          onClick={onOpenSubscription}
+          className={`w-full sm:w-72 px-6 py-4 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3 ${
+            isPremium 
+              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-[0_0_20px_rgba(251,191,36,0.1)]' 
+              : 'bg-violet-600/20 text-violet-400 border border-violet-500/30 hover:bg-violet-600/30'
+          }`}
+        >
+          {isPremium ? (
+            <>
+              <Star size={16} fill="currentColor" /> PREMIUM АКТИВЕН
+            </>
+          ) : (
+            <>
+              <Crown size={16} /> КУПИТЬ PREMIUM
+            </>
           )}
-        </div>
+        </button>
+      )}
+    </div>
       </div>
 
       {/* Цитата Г.К. */}

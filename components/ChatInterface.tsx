@@ -4,7 +4,9 @@ import { sendMessageToGemini, analyzeChatSession, generateGhostResponse } from '
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
-import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater } from 'lucide-react';
+import { getSubscriptionInfo } from '../services/billingService';
+import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
+import SubscriptionModal from './SubscriptionModal';
 
 interface Props {
   session: ActiveSession;
@@ -76,6 +78,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [ghostAdvice, setGhostAdvice] = useState<string | null>(null);
   const [isPrompterLoading, setIsPrompterLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const isPremium = getSubscriptionInfo().tier === 'premium' || isAdmin;
   
   // Защита от хитреца: таймер бездействия
   const [isInactive, setIsInactive] = useState(false);
@@ -565,8 +569,37 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       return (
           <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] overflow-hidden">
               <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-8">
-                  <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                  <div className="max-w-5xl mx-auto space-y-8 pb-32 relative">
                       
+                      {/* Premium Lock for Non-Premium */}
+                      {!isPremium && (
+                        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
+                          <div className="max-w-md bg-[#0A0B1A] border border-amber-500/30 rounded-[40px] p-10 shadow-[0_0_100px_rgba(245,158,11,0.2)]">
+                            <div className="p-5 bg-amber-500/20 rounded-3xl w-fit mx-auto mb-8">
+                              <Crown size={64} className="text-amber-400" />
+                            </div>
+                            <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4">АНАЛИЗ ЗАБЛОКИРОВАН</h3>
+                            <p className="text-slate-400 text-sm mb-10 leading-relaxed">
+                              Развёрнутый вердикт главной комиссии и комментарии совещательной комиссии доступны только в PREMIUM-версии ЯНУША.
+                            </p>
+                            <div className="space-y-4">
+                              <button 
+                                onClick={() => setIsSubModalOpen(true)}
+                                className="w-full py-5 bg-amber-500 text-black rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-amber-400 transition-all shadow-xl"
+                              >
+                                КУПИТЬ PREMIUM
+                              </button>
+                              <button 
+                                onClick={onExit}
+                                className="w-full py-4 text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest transition-all"
+                              >
+                                ВЕРНУТЬСЯ НА ГЛАВНУЮ
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* === ГЛАВНЫЙ ВЕРДИКТ === */}
                       <div className="glass p-6 md:p-10 rounded-[40px] border-blue-500/20 flex flex-col md:flex-row items-center gap-8 animate-in zoom-in-95 duration-700">
                           <div className="shrink-0 text-center">
