@@ -235,3 +235,66 @@ export interface Scenario {
 }
 
 export type SessionStatus = 'active' | 'completed' | 'manual' | 'interrupted';
+
+// ============================================
+// ДЕМО-РЕЖИМ (Музейная экспозиция)
+// ============================================
+
+export type DemoPhase = 'intro' | 'observation' | 'choice' | 'result' | 'summary';
+
+// Реплика в демо-диалоге
+export interface DemoDialogueLine {
+  speaker: 'teacher' | 'student' | 'curator' | 'system';
+  text: string;
+  emotion?: string;           // Эмоциональное состояние (для студента)
+  commentary?: string;        // Комментарий куратора (всплывает после реплики)
+  isError?: boolean;          // Ошибка учителя (подсветить)
+  trustDelta?: number;        // Изменение доверия
+  stressDelta?: number;       // Изменение стресса
+  delay?: number;             // Задержка перед показом (мс)
+}
+
+// Вариант выбора в интерактивной точке
+export interface DemoChoice {
+  id: string;
+  text: string;               // Текст реплики учителя
+  quality: 'good' | 'neutral' | 'bad';
+  studentReaction: string;    // Реакция подростка
+  explanation: string;        // Объяснение куратора, почему так
+  trustDelta: number;
+  stressDelta: number;
+}
+
+// Интерактивная развилка
+export interface DemoChoicePoint {
+  situation: string;          // Описание момента
+  curatorHint?: string;       // Подсказка куратора перед выбором
+  choices: DemoChoice[];
+}
+
+// Полный демо-сценарий для акцентуации
+export interface DemoScenario {
+  accentuationId: string;
+  accentuationName: string;
+  
+  // Вступление
+  intro: {
+    curatorText: string;      // Вступительное слово куратора
+    keyMarkers: string[];     // Ключевые маркеры акцентуации
+    triggers: string[];       // Типичные триггеры
+    avoid: string[];          // Чего избегать
+  };
+  
+  // Автоматический диалог для наблюдения
+  observationDialogue: DemoDialogueLine[];
+  
+  // Интерактивная точка "А как бы вы?"
+  choicePoint: DemoChoicePoint;
+  
+  // Итоговые рекомендации
+  summary: {
+    whatWorks: string[];      // Что работает с этим типом
+    whatToAvoid: string[];    // Чего избегать
+    keyInsight: string;       // Главный инсайт
+  };
+}
