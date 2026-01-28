@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
 import { TeacherProfile, StudentProfile } from '../types';
-import { ChevronRight, User, Settings, LogOut, ArrowLeft, CheckCircle2, Activity, Target, CreditCard, Sparkles, X, Loader2, ShieldCheck, MessageSquare } from 'lucide-react';
+import { 
+  ChevronRight, 
+  User, 
+  Settings, 
+  LogOut, 
+  ArrowLeft, 
+  CheckCircle2, 
+  Activity, 
+  Target, 
+  CreditCard, 
+  Sparkles, 
+  X, 
+  Loader2,
+  ShieldCheck,
+  MessageSquare
+} from 'lucide-react';
 import { generateStudentName } from '../services/chaosEngine';
 import { authService } from '../services/authService';
 import { COMMERCIAL_CONFIG } from '../constants';

@@ -94,27 +94,27 @@ const ScenarioSelector: React.FC<Props> = ({
         </button>
       )}
 
-      {onOpenSubscription && (
-        <button 
-          onClick={onOpenSubscription}
-          className={`w-full sm:w-72 px-6 py-4 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3 ${
-            isPremium 
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-[0_0_20px_rgba(251,191,36,0.1)]' 
-              : 'bg-violet-600/20 text-violet-400 border border-violet-500/30 hover:bg-violet-600/30'
-          }`}
-        >
-          {isPremium ? (
-            <>
-              <Star size={16} fill="currentColor" /> PREMIUM АКТИВЕН
-            </>
-          ) : (
-            <>
-              <Crown size={16} /> КУПИТЬ PREMIUM
-            </>
+          {onOpenSubscription && (
+            <button 
+              onClick={onOpenSubscription}
+              className={`w-full sm:w-72 px-6 py-4 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3 ${
+                isPremium 
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-[0_0_20px_rgba(251,191,36,0.1)]' 
+                  : 'bg-violet-600/20 text-violet-400 border border-violet-500/30 hover:bg-violet-600/30'
+              }`}
+            >
+              {isPremium ? (
+                <>
+                  <Star size={16} fill="currentColor" /> PREMIUM АКТИВЕН
+                </>
+              ) : (
+                <>
+                  <Crown size={16} /> КУПИТЬ PREMIUM
+                </>
+              )}
+            </button>
           )}
-        </button>
-      )}
-    </div>
+        </div>
       </div>
 
       {/* Цитата Г.К. */}

@@ -21,6 +21,7 @@ const PROMO_CODES: Record<string, { days: number }> = {
 };
 
 export const getSubscriptionInfo = (): SubscriptionInfo => {
+  if (typeof window === 'undefined') return { tier: 'free', expiresAt: null };
   const data = localStorage.getItem(SUB_STORAGE_KEY);
   if (!data) return { tier: 'free', expiresAt: null };
   

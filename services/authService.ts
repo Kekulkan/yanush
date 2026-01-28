@@ -1,5 +1,6 @@
 
 import { UserAccount, UserRole } from '../types';
+import { getSubscriptionInfo } from './billingService';
 
 const AUTH_KEY = 'janus_session_v1';
 const USER_DB_KEY = 'janus_secure_vault';
@@ -116,7 +117,10 @@ export const authService = {
         const user = authService.getCurrentUser();
         if (!user) return false;
         if (user.role === 'ADMIN') return true;
-        return user.role === 'PREMIUM' && (user.subscriptionActiveUntil ? user.subscriptionActiveUntil > Date.now() : false);
+        
+        // Проверяем и роль в профиле, и активную подписку в биллинге
+        const subInfo = getSubscriptionInfo();
+        return user.role === 'PREMIUM' || subInfo.tier === 'premium';
     },
 
     isAdmin: (): boolean => authService.getCurrentUser()?.role === 'ADMIN'

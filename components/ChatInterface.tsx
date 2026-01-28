@@ -7,6 +7,7 @@ import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
 import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
+import SecurityShield from './SecurityShield';
 
 interface Props {
   session: ActiveSession;
@@ -1108,6 +1109,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               </button>
           </div>
       </footer>
+      <SubscriptionModal 
+        isOpen={isSubModalOpen} 
+        onClose={() => setIsSubModalOpen(false)}
+        onSuccess={() => window.location.reload()}
+      />
     </div>
   );
 };
