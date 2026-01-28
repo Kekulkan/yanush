@@ -1164,7 +1164,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                   value={input} 
                   onChange={e => setInput(e.target.value)} 
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-                  placeholder={isListening ? 'Слушаю вас...' : "Реплика педагога..."} 
+                  placeholder={isListening ? 'Слушаю вас...' : "Реплика или *действие* педагога..."} 
                   className="w-full bg-slate-900 border border-white/10 rounded-[28px] p-4 pr-16 text-sm text-white outline-none resize-none h-14 md:h-16 focus:border-blue-500/40 transition-all placeholder:text-slate-600" 
               />
               <button 
