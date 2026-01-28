@@ -1114,7 +1114,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                     )}
                 </div>
             ))}
-            {isLoading && <div className="text-blue-500 text-[9px] font-black animate-pulse flex items-center gap-2 uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Нейросвязь...</div>}
+            {isLoading && <div className="text-blue-500 text-[9px] font-black animate-pulse flex items-center gap-2 uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Обработка...</div>}
             
             {/* Индикатор бездействия */}
             {isInactive && !isLoading && !autoPlayActive && (

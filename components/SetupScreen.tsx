@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TeacherProfile, StudentProfile } from '../types';
 import { 
   ChevronRight, 
@@ -27,8 +27,24 @@ interface Props {
 }
 
 const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
-  const [teacherName, setTeacherName] = useState('Алексей Петрович');
-  const [teacherGender, setTeacherGender] = useState<'male' | 'female'>('male');
+  // Загружаем сохранённые настройки учителя из localStorage
+  const getSavedTeacherSettings = () => {
+    try {
+      const saved = localStorage.getItem('teacher_defaults');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          name: parsed.name || 'Алексей Петрович',
+          gender: parsed.gender || 'male'
+        };
+      }
+    } catch (e) {}
+    return { name: 'Алексей Петрович', gender: 'male' as const };
+  };
+
+  const savedDefaults = getSavedTeacherSettings();
+  const [teacherName, setTeacherName] = useState(savedDefaults.name);
+  const [teacherGender, setTeacherGender] = useState<'male' | 'female'>(savedDefaults.gender as 'male' | 'female');
   const [studentAge, setStudentAge] = useState(14);
   const [studentGender, setStudentGender] = useState<'male' | 'female'>('male');
   const [advisoryCommission, setAdvisoryCommission] = useState(true);
@@ -37,6 +53,16 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
 
   const isPremium = authService.isPremium();
   const isAdmin = authService.isAdmin();
+
+  // Сохраняем настройки учителя при изменении
+  useEffect(() => {
+    try {
+      localStorage.setItem('teacher_defaults', JSON.stringify({
+        name: teacherName,
+        gender: teacherGender
+      }));
+    } catch (e) {}
+  }, [teacherName, teacherGender]);
 
   const handleStart = () => {
     const randomName = generateStudentName(studentGender);
