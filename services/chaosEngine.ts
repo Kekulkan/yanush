@@ -8,18 +8,16 @@ import {
   createSessionContext 
 } from './modulesService';
 
-const AVATAR_DB = {
+const AVATAR_COUNT = {
     male: {
-        neutral: ["1503443207934-14cc8059e28b", "1485230405346-71acb9518d9c", "1542596594-649edbc13630"],
-        dark: ["1519766304828-9a5d0a90af17", "1602341612423-3b691d575225", "1508341591423-4347099e1f19"],
-        bright: ["1519345182560-3f2917c472ef", "1480455624313-e29b44bbfde1", "1513956589380-bad6acb9b9d4"],
-        tough: ["1528815197793-2412803c7344", "1513258509042-88748d3db392", "1463453091185-61582044d556"]
+        kids: 20,
+        teens: 20,
+        seniors: 24
     },
     female: {
-        neutral: ["1517841905240-472988babdf9", "1529626455594-4ff0802cfb7e", "1438761681033-6461ffad8d80"],
-        dark: ["1555437877-66a7b686377e", "1534528741775-53994a69daeb", "1506794778202-cad84cf45f1d"],
-        bright: ["1524504388940-b1c1722653e1", "1516575334481-f85287c2c81d", "1494790108377-be9c29b29330"],
-        tough: ["1541260894-3b2e53a554a9", "1515159550328-86ee283eb971", "1520184422263-d7a8d052a23e"]
+        kids: 20,
+        teens: 25,
+        seniors: 25
     }
 };
 
@@ -68,13 +66,16 @@ export const resolveGenderTokens = (text: string, student: StudentProfile): stri
     return resolved;
 };
 
-const getStudentAvatar = (gender: 'male' | 'female', accentId: string): string => {
-    let vibe: 'neutral' | 'dark' | 'bright' | 'tough' = 'neutral';
-    if (['acc_hyperthymic', 'acc_hysteroid'].includes(accentId)) vibe = 'bright';
-    else if (['acc_schizoid', 'acc_cycloid', 'acc_sensitive'].includes(accentId)) vibe = 'dark';
-    else if (['acc_epileptoid', 'acc_unstable'].includes(accentId)) vibe = 'tough';
-    const collection = AVATAR_DB[gender][vibe];
-    return `https://images.unsplash.com/photo-${collection[Math.floor(Math.random() * collection.length)]}?w=400&h=400&fit=crop&crop=faces&q=80`;
+const getStudentAvatar = (gender: 'male' | 'female', age: number): string => {
+    let ageGroup: 'kids' | 'teens' | 'seniors' = 'teens';
+    if (age <= 13) ageGroup = 'kids';
+    else if (age >= 16) ageGroup = 'seniors';
+
+    const max = AVATAR_COUNT[gender][ageGroup];
+    const randomId = Math.floor(Math.random() * max) + 1;
+    
+    // Путь: /avatars/male/kids/1.jpg и т.д.
+    return `/avatars/${gender}/${ageGroup}/${randomId}.jpg`;
 };
 
 export const generateStudentName = (gender: 'male' | 'female'): string => {
@@ -166,8 +167,8 @@ export const buildDynamicPrompt = (
     // 2. Каскадные броски для интенсивности
     const intensity = rollIntensity();
     
-    // 3. Устанавливаем аватар
-    student.avatarUrl = getStudentAvatar(student.gender, randomAcc.id);
+    // 3. Устанавливаем аватар с учетом пола и возраста
+    student.avatarUrl = getStudentAvatar(student.gender, student.age);
 
     // 4. Выбираем экспозицию с учётом совместимости
     const incident = selectIncident(student.gender, student.age, randomAcc.id);
