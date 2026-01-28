@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, FileText, Shield, Mail } from 'lucide-react';
+import { X, BookOpen, FileText, Shield, Mail, HelpCircle, Zap, MessageSquare, Target, Award, AlertTriangle } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -15,6 +15,151 @@ interface DocumentsModalProps {
 }
 
 const DOCUMENTS: Document[] = [
+  {
+    id: 'guide',
+    title: 'Руководство пользователя',
+    icon: <HelpCircle size={18} />,
+    content: (
+      <div className="space-y-8 text-slate-300 leading-relaxed pb-20">
+        <header className="border-b border-slate-700 pb-6">
+          <h2 className="text-2xl font-black text-white uppercase italic">
+            Руководство по использованию тренажёра «Януш»
+          </h2>
+          <p className="text-slate-500 mt-2">Всё, что нужно знать для эффективной тренировки</p>
+        </header>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
+            <Target size={20} /> Что это такое?
+          </h3>
+          <p>
+            <strong>«Януш»</strong> — это интерактивный симулятор для тренировки навыков работы с «трудными» подростками. 
+            Вы играете роль учителя, а искусственный интеллект отыгрывает ученика с определённой психологической акцентуацией.
+          </p>
+          <p>
+            Каждая сессия — это уникальная ситуация: случайный ученик, случайный контекст, случайная проблема. 
+            Ваша задача — установить контакт, деэскалировать конфликт и помочь ребёнку, не навредив ему.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
+            <Zap size={20} /> Как начать?
+          </h3>
+          <ol className="list-decimal ml-6 space-y-3">
+            <li><strong>Нажмите «Начать тренинг»</strong> на главном экране</li>
+            <li><strong>Настройте параметры сессии:</strong>
+              <ul className="list-disc ml-6 mt-2 space-y-1 text-slate-400">
+                <li>Ваше имя и пол (сохраняются для следующих сессий)</li>
+                <li>Возраст и пол ученика</li>
+                <li>Включить/выключить совещательную комиссию</li>
+              </ul>
+            </li>
+            <li><strong>Прочитайте вводную:</strong> перед началом диалога вы увидите описание ситуации и «досье» ученика</li>
+            <li><strong>Начните диалог:</strong> пишите реплики в поле ввода внизу экрана</li>
+          </ol>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
+            <MessageSquare size={20} /> Как общаться?
+          </h3>
+          <div className="space-y-4">
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-white mb-2">💬 Реплики</p>
+              <p className="text-slate-400">Просто пишите то, что скажете ученику. Например:</p>
+              <p className="text-blue-300 italic mt-2">«Я вижу, что тебе сейчас непросто. Хочешь поговорить?»</p>
+            </div>
+            
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-white mb-2">✨ Действия</p>
+              <p className="text-slate-400">Используйте <strong>*звёздочки*</strong> для описания действий:</p>
+              <p className="text-blue-300 italic mt-2">«*Присаживаюсь рядом, но на расстоянии* Не против, если я тут посижу?»</p>
+            </div>
+            
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-white mb-2">🎤 Голосовой ввод</p>
+              <p className="text-slate-400">Нажмите на иконку микрофона, чтобы диктовать реплики голосом.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
+            <Award size={20} /> Как оценивается?
+          </h3>
+          <p>После завершения сессии ваши действия оценивает <strong>комиссия экспертов</strong>:</p>
+          
+          <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
+            <p className="font-bold text-emerald-400 mb-2">Основная комиссия</p>
+            <p className="text-slate-400">6-8 профессионалов (психологи, педагоги, криминологи). Их оценки формируют итоговый балл.</p>
+          </div>
+          
+          <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
+            <p className="font-bold text-amber-400 mb-2">Совещательная комиссия (опционально)</p>
+            <p className="text-slate-400">Гротескные персонажи из «реального мира» — родители, чиновники, блогеры. Их мнения не влияют на балл, но показывают, с какими реакциями вы столкнётесь в реальности.</p>
+          </div>
+
+          <div className="mt-4">
+            <p className="font-bold text-white mb-2">Шкала оценок:</p>
+            <ul className="space-y-1 text-sm">
+              <li><span className="text-emerald-400 font-bold">90-100:</span> Исключительная работа</li>
+              <li><span className="text-blue-400 font-bold">75-89:</span> Хорошо, с мелкими недочётами</li>
+              <li><span className="text-yellow-400 font-bold">60-74:</span> Удовлетворительно</li>
+              <li><span className="text-orange-400 font-bold">40-59:</span> Ниже среднего, серьёзные ошибки</li>
+              <li><span className="text-red-400 font-bold">0-39:</span> Плохо, грубые ошибки</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
+            <AlertTriangle size={20} /> Чего избегать?
+          </h3>
+          <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+            <ul className="space-y-2 text-slate-300">
+              <li>❌ <strong>Угрозы и шантаж</strong> — «Если не успокоишься, вызову родителей»</li>
+              <li>❌ <strong>Морализаторство</strong> — «Ты должен понимать, что так нельзя»</li>
+              <li>❌ <strong>Обесценивание</strong> — «Это всё ерунда, бывает и хуже»</li>
+              <li>❌ <strong>Шаблонные фразы</strong> — подростки мгновенно чувствуют фальшь</li>
+              <li>❌ <strong>Перебивание</strong> — дайте ученику договорить</li>
+              <li>❌ <strong>Игнорирование состояния</strong> — следите за индикаторами стресса</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-white uppercase tracking-tight">Полезные советы</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-blue-400 mb-2">👁️ Следите за индикаторами</p>
+              <p className="text-slate-400 text-sm">Доверие (зелёный) и Стресс (красный) показывают состояние ученика в реальном времени.</p>
+            </div>
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-blue-400 mb-2">🎯 Читайте «мысли»</p>
+              <p className="text-slate-400 text-sm">Администраторы видят внутренние мысли ученика — это помогает понять, что он на самом деле чувствует.</p>
+            </div>
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-blue-400 mb-2">📚 Изучите акцентуации</p>
+              <p className="text-slate-400 text-sm">В «Экспозиции» есть демо-режимы для каждого психотипа — посмотрите, как с ними работать.</p>
+            </div>
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
+              <p className="font-bold text-blue-400 mb-2">💡 Используйте суфлёра</p>
+              <p className="text-slate-400 text-sm">Кнопка «Суфлёр» подскажет, что сказать в сложной ситуации (для админов).</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4 pt-6 border-t border-slate-700">
+          <h3 className="text-xl font-bold text-white uppercase tracking-tight">Горячие клавиши</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-slate-800/50 px-3 py-2 rounded-lg"><kbd className="bg-slate-700 px-2 py-0.5 rounded text-xs">Enter</kbd> — Отправить сообщение</div>
+            <div className="bg-slate-800/50 px-3 py-2 rounded-lg"><kbd className="bg-slate-700 px-2 py-0.5 rounded text-xs">Shift+Enter</kbd> — Новая строка</div>
+          </div>
+        </section>
+      </div>
+    )
+  },
   {
     id: 'methodology',
     title: 'Методологическое обоснование супервизии',

@@ -9,6 +9,7 @@ import { authService } from '../services/authService';
 import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
 import SecurityShield from './SecurityShield';
+import HelpOverlay, { CHAT_HELP_ITEMS } from './HelpOverlay';
 
 interface Props {
   session: ActiveSession;
@@ -81,6 +82,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [isPrompterLoading, setIsPrompterLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const isPremium = authService.isPremium();
   
   // Защита от хитреца: таймер бездействия
@@ -984,6 +986,14 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               </div>
           </div>
           <div className="flex gap-2">
+              {/* Кнопка помощи */}
+              <button 
+                onClick={() => setShowHelp(true)} 
+                className="p-2.5 rounded-xl transition-all bg-white/5 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10"
+                title="Справка по интерфейсу"
+              >
+                <HelpCircle size={18} />
+              </button>
               {/* БЭКДОР АДМИНА: Автодиалог */}
               {isAdmin && (
                 <button 
@@ -1181,6 +1191,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         isOpen={isSubModalOpen} 
         onClose={() => setIsSubModalOpen(false)}
         onSuccess={() => window.location.reload()}
+      />
+      
+      <HelpOverlay 
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        items={CHAT_HELP_ITEMS}
+        screenName="Экран сессии"
       />
     </div>
   );

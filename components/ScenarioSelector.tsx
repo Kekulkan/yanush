@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, RotateCcw, Network, Activity, Terminal, Crown, Star, Info } from 'lucide-react';
+import { Play, RotateCcw, Network, Activity, Terminal, Crown, Star, Info, HelpCircle } from 'lucide-react';
 import { getSessionBackup } from '../services/storageService';
 import { SubscriptionInfo } from '../services/billingService';
 import DocumentsModal from './DocumentsModal';
@@ -122,6 +122,14 @@ const ScenarioSelector: React.FC<Props> = ({
               )}
             </button>
           )}
+          
+          {/* Кнопка помощи — заметная */}
+          <button 
+            onClick={() => openDoc('guide')}
+            className="w-full sm:w-72 px-6 py-3 glass hover:bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
+          >
+            <HelpCircle size={16} /> КАК ПОЛЬЗОВАТЬСЯ?
+          </button>
         </div>
       </div>
 
