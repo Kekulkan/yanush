@@ -97,6 +97,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [autoPlayStep, setAutoPlayStep] = useState(0);
   const autoPlayStopRef = useRef(false);
   
+  const [expandedProfessional, setExpandedProfessional] = useState<number | null>(null);
+  const [expandedAdvisory, setExpandedAdvisory] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -596,20 +598,38 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                           ОСНОВНАЯ СУПЕРВИЗОРСКАЯ КОМИССИЯ
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {analysis.commission.map((member, i) => (
-                                <div key={i} className="glass p-5 rounded-[28px] border-white/5 space-y-3 hover:border-blue-500/20 transition-all">
-                                    <div className="flex justify-between items-start gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-blue-400 font-bold text-sm block truncate">{member.name}</span>
-                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">{member.role}</span>
+                            {analysis.commission.map((member, i) => {
+                                const isExpanded = expandedProfessional === i;
+                                return (
+                                    <div 
+                                        key={i} 
+                                        onClick={() => setExpandedProfessional(isExpanded ? null : i)}
+                                        className={`glass p-5 rounded-[28px] border-white/5 space-y-3 hover:border-blue-500/20 transition-all cursor-pointer relative overflow-hidden ${
+                                            isExpanded ? 'ring-2 ring-blue-500/30 bg-blue-500/5' : ''
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-start gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-blue-400 font-bold text-sm block truncate">{member.name}</span>
+                                                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">{member.role}</span>
+                                            </div>
+                                            <div className={`text-2xl font-black italic shrink-0 ${getScoreColor(member.score)}`}>
+                                              {member.score}
+                                            </div>
                                         </div>
-                                        <div className={`text-2xl font-black italic shrink-0 ${getScoreColor(member.score)}`}>
-                                          {member.score}
-                                        </div>
+                                        <p className={`text-[11px] text-slate-300 italic leading-relaxed transition-all ${
+                                            isExpanded ? '' : 'line-clamp-4'
+                                        }`}>
+                                            "{member.verdict}"
+                                        </p>
+                                        {!isExpanded && member.verdict.length > 150 && (
+                                            <div className="absolute bottom-2 right-5 text-[8px] font-black text-blue-500/60 uppercase tracking-widest">
+                                                Развернуть →
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-[11px] text-slate-300 italic leading-relaxed line-clamp-4">"{member.verdict}"</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                       </div>
 
@@ -634,32 +654,47 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                 с какими реакциями учителю предстоит столкнуться в реальности.
                               </p>
                               <div className="grid grid-cols-1 gap-3">
-                                {analysis.advisory.map((adv, i) => (
-                                  <div 
-                                    key={i} 
-                                    className="glass p-4 rounded-[20px] border-l-4 border-amber-500/30 bg-amber-500/5 space-y-2"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <span className="text-amber-400 font-bold text-sm">{adv.member.name}</span>
-                                        <span className="text-[9px] text-slate-500 block">{adv.member.title}</span>
+                                {analysis.advisory.map((adv, i) => {
+                                  const isExp = expandedAdvisory === i;
+                                  return (
+                                    <div 
+                                      key={i} 
+                                      onClick={() => setExpandedAdvisory(isExp ? null : i)}
+                                      className={`glass p-4 rounded-[20px] border-l-4 border-amber-500/30 bg-amber-500/5 space-y-2 cursor-pointer transition-all relative overflow-hidden ${
+                                        isExp ? 'ring-2 ring-amber-500/20' : ''
+                                      }`}
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <span className="text-amber-400 font-bold text-sm">{adv.member.name}</span>
+                                          <span className="text-[9px] text-slate-500 block">{adv.member.title}</span>
+                                        </div>
+                                        {adv.score !== undefined && (
+                                          <div className="text-lg font-black text-amber-400/60 italic">{adv.score}/10</div>
+                                        )}
                                       </div>
-                                      {adv.score !== undefined && (
-                                        <div className="text-lg font-black text-amber-400/60 italic">{adv.score}/10</div>
+                                      <p className={`text-[11px] text-amber-200/80 italic leading-relaxed ${
+                                        isExp ? '' : 'line-clamp-3'
+                                      }`}>
+                                        "{adv.verdict}"
+                                      </p>
+                                      {adv.triggered_by && adv.triggered_by.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 pt-1">
+                                          {adv.triggered_by.slice(0, isExp ? 10 : 3).map((trigger, ti) => (
+                                            <span key={ti} className="text-[8px] bg-amber-500/20 text-amber-400/60 px-2 py-0.5 rounded-full">
+                                              {trigger}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {!isExp && adv.verdict.length > 100 && (
+                                        <div className="absolute bottom-1 right-3 text-[7px] font-black text-amber-500/40 uppercase tracking-widest">
+                                            Развернуть →
+                                        </div>
                                       )}
                                     </div>
-                                    <p className="text-[11px] text-amber-200/80 italic leading-relaxed">"{adv.verdict}"</p>
-                                    {adv.triggered_by && adv.triggered_by.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 pt-1">
-                                        {adv.triggered_by.slice(0, 3).map((trigger, ti) => (
-                                          <span key={ti} className="text-[8px] bg-amber-500/20 text-amber-400/60 px-2 py-0.5 rounded-full">
-                                            {trigger}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
