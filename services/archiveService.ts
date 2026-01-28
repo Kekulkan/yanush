@@ -63,7 +63,14 @@ export async function fetchServerLogs(adminKey: string): Promise<SessionLog[]> {
     }
     
     const data = await response.json();
-    return data.logs || [];
+    
+    // Защитная проверка — убеждаемся что logs это массив
+    if (data && Array.isArray(data.logs)) {
+      return data.logs;
+    }
+    
+    console.warn('Server returned invalid logs format:', data);
+    return [];
   } catch (e) {
     console.error('Error fetching server logs:', e);
     return [];

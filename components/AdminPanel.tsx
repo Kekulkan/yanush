@@ -91,11 +91,22 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
     setIsLoadingLogs(true);
     try {
       const serverLogs = await fetchServerLogs('4308'); // Используем тот же код
+      
+      // Защитная проверка — убеждаемся что это массив
+      if (!Array.isArray(serverLogs)) {
+        console.warn('Server logs is not an array:', serverLogs);
+        setIsLoadingLogs(false);
+        return;
+      }
+      
       if (serverLogs.length > 0) {
         setGlobalArchive(serverLogs);
+        const withScores = serverLogs.filter(s => s.result?.overall_score);
         setGlobalStats({
           totalSessions: serverLogs.length,
-          averageScore: serverLogs.filter(s => s.result?.overall_score).reduce((a, s) => a + (s.result?.overall_score || 0), 0) / serverLogs.filter(s => s.result?.overall_score).length || 0,
+          averageScore: withScores.length > 0 
+            ? Math.round(withScores.reduce((a, s) => a + (s.result?.overall_score || 0), 0) / withScores.length)
+            : 0,
           completedSessions: serverLogs.filter(s => s.status === 'completed').length,
           interruptedSessions: serverLogs.filter(s => s.status !== 'completed').length,
           accentuationStats: {},
