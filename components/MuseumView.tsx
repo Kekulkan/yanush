@@ -349,8 +349,9 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
                                 </div>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
+            </div>
             </main>
 
             {selected && (
