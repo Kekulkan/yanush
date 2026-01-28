@@ -224,12 +224,14 @@ export const buildDynamicPrompt = (
     }
 
     // 5. Выбираем контексты с учётом совместимости
+    // Если НЕ премиум — контексты не добавляем (0), только экспозиция
+    const contextCount = isPremium ? 2 : 0;
     const contexts = selectBackgrounds(
         student.gender, 
         student.age, 
         randomAcc.id, 
         incident.id,
-        2
+        contextCount
     );
 
     // 6. Формируем промпт

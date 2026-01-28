@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TeacherProfile, StudentProfile } from '../types';
-import { ChevronRight, User, Settings, LogOut, ArrowLeft, CheckCircle2, Activity, Target, CreditCard, Sparkles, X, Loader2 } from 'lucide-react';
+import { ChevronRight, User, Settings, LogOut, ArrowLeft, CheckCircle2, Activity, Target, CreditCard, Sparkles, X, Loader2, ShieldCheck, MessageSquare } from 'lucide-react';
 import { generateStudentName } from '../services/chaosEngine';
 import { authService } from '../services/authService';
 import { COMMERCIAL_CONFIG } from '../constants';
@@ -16,6 +16,7 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
   const [teacherGender, setTeacherGender] = useState<'male' | 'female'>('male');
   const [studentAge, setStudentAge] = useState(14);
   const [studentGender, setStudentGender] = useState<'male' | 'female'>('male');
+  const [advisoryCommission, setAdvisoryCommission] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -25,7 +26,11 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
   const handleStart = () => {
     const randomName = generateStudentName(studentGender);
     onStart(
-      { name: teacherName, gender: teacherGender },
+      { 
+        name: teacherName, 
+        gender: teacherGender,
+        settings: { mainCommission: true, advisoryCommission }
+      },
       { name: randomName, age: studentAge, gender: studentGender }
     );
   };
@@ -163,6 +168,45 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
                         />
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div className="space-y-4">
+            <div className="flex items-center gap-3 text-emerald-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2">
+                <ShieldCheck size={14} /> Режим Супервизии
+            </div>
+            <div className="glass p-8 rounded-[40px] space-y-6 border-white/5">
+                {/* Главная комиссия всегда активна */}
+                <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-emerald-500 text-white">
+                            <ShieldCheck size={16} />
+                        </div>
+                        <div className="text-left">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-white">Главная Комиссия</div>
+                            <div className="text-[8px] text-slate-500 font-bold uppercase mt-0.5">Обязательный педагогический вердикт</div>
+                        </div>
+                    </div>
+                    <div className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">ВСЕГДА ВКЛ</div>
+                </div>
+
+                <button 
+                    onClick={() => setAdvisoryCommission(!advisoryCommission)}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${advisoryCommission ? 'bg-purple-500/10 border-purple-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${advisoryCommission ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                            <MessageSquare size={16} />
+                        </div>
+                        <div className="text-left">
+                            <div className={`text-[10px] font-black uppercase tracking-widest ${advisoryCommission ? 'text-white' : 'text-slate-500'}`}>Совещательная Комиссия</div>
+                            <div className="text-[8px] text-slate-500 font-bold uppercase mt-0.5">Мнения специалистов</div>
+                        </div>
+                    </div>
+                    <div className={`w-10 h-6 rounded-full relative transition-all ${advisoryCommission ? 'bg-purple-500' : 'bg-slate-700'}`}>
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${advisoryCommission ? 'left-5' : 'left-1'}`}></div>
+                    </div>
+                </button>
             </div>
         </div>
 

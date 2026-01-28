@@ -59,6 +59,10 @@ export interface Message {
 export interface TeacherProfile {
   name: string;
   gender: 'male' | 'female';
+  settings?: {
+    mainCommission: boolean;
+    advisoryCommission: boolean;
+  };
 }
 
 export interface StudentProfile {

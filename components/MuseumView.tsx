@@ -6,7 +6,7 @@ import { getDemoScenario } from '../data/demoScenarios';
 import { DemoScenario } from '../types';
 import { getSubscriptionInfo } from '../services/billingService';
 
-const FREE_ACCENTUATIONS = ['hyperthymic', 'sensitive', 'schizoid'];
+const FREE_ACCENTUATIONS = ['hyperthymic', 'sensitive'];
 
 interface Exhibit {
     id: string;
