@@ -71,7 +71,7 @@ const declineName = (name: string, gender: 'male' | 'female', caseType: 'gen' | 
             if (caseType === 'acc') return n.slice(0, -2) + 'ию';
             return n.slice(0, -2) + 'ией';
         }
-        if (n.endsWith('я')) { // Полина, Алиса... стоп, это на 'а'. На 'я' - например, Надя
+        if (n.endsWith('я')) { // Надя
             if (caseType === 'gen') return n.slice(0, -1) + 'и';
             if (caseType === 'dat' || caseType === 'pre') return n.slice(0, -1) + 'е';
             if (caseType === 'acc') return n.slice(0, -1) + 'ю';
