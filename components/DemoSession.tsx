@@ -486,7 +486,7 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
   );
 
   return (
-    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-sans text-slate-300 relative overflow-hidden">
+    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-sans text-slate-300 relative">
       {/* Фон */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.08),transparent)] pointer-events-none" />
 

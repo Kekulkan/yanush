@@ -571,7 +571,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
   if (analysis) {
       return (
-          <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] overflow-hidden">
+          <div className="flex flex-col h-[100dvh] bg-[#0A0B1A]">
               <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-8">
                   <div className="max-w-5xl mx-auto space-y-8 pb-32 relative">
                       
@@ -787,7 +787,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200">
       {isAnalyzing && (
           <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-3xl px-8 text-center animate-in fade-in duration-500">
               <div className="relative mb-12">

@@ -161,7 +161,7 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
   };
 
   return (
-    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col">
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-800/50 bg-slate-900/30">
         <button

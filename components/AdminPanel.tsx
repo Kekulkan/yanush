@@ -213,7 +213,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   }
 
   return (
-    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-mono text-xs text-slate-300 relative overflow-hidden">
+    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-mono text-xs text-slate-300 relative">
         {/* EDITOR MODAL */}
         {showEditor && editingModule && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">

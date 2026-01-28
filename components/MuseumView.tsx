@@ -247,7 +247,7 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
     }
 
     return (
-        <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-sans text-slate-300 relative overflow-hidden">
+        <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col font-sans text-slate-300 relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.05),transparent)] pointer-events-none"></div>
             
             {/* Цитата Г.К. */}
@@ -360,11 +360,11 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
                     onClick={() => setSelected(null)}
                 >
                     <div 
-                        className="w-full max-w-2xl bg-[#0d1117] rounded-3xl border border-slate-700/50 overflow-hidden shadow-2xl"
+                        className="w-full max-w-2xl max-h-[90dvh] bg-[#0d1117] rounded-3xl border border-slate-700/50 shadow-2xl flex flex-col overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Шапка досье */}
-                        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+                        {/* Шапка досье — всегда видна */}
+                        <div className="flex-shrink-0 bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
@@ -373,14 +373,15 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
                             </div>
                             <button 
                                 onClick={() => setSelected(null)}
-                                className="p-2 text-slate-500 hover:text-white transition-colors"
+                                className="p-2 text-slate-500 hover:text-white transition-colors bg-slate-800/50 rounded-xl"
                             >
                                 <X size={18} />
                             </button>
                         </div>
 
-                        {/* Контент досье */}
-                        <div className="flex flex-col md:flex-row">
+                        {/* Контент досье — скроллируемый */}
+                        <div className="flex-1 overflow-y-auto custom-scroll">
+                            <div className="flex flex-col md:flex-row">
                             {/* Портрет */}
                             <div className="w-full md:w-2/5 bg-slate-900 relative">
                                 <div className="aspect-[3/4] relative overflow-hidden">
@@ -505,6 +506,7 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
                                     })()}
                                 </div>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>
