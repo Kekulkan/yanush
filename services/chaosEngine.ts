@@ -22,29 +22,69 @@ const AVATAR_COUNT = {
 };
 
 /**
- * Склонение имен для родительного падежа (кого? чего?)
+ * Склонение имен (падежи)
  */
-const declineNameGenitive = (name: string, gender: 'male' | 'female'): string => {
+const declineName = (name: string, gender: 'male' | 'female', caseType: 'gen' | 'dat' | 'acc' | 'ins' | 'pre'): string => {
     const n = name.trim();
+    const lastChar = n.slice(-1).toLowerCase();
+    const preLastChar = n.length > 1 ? n.slice(-2, -1).toLowerCase() : '';
+
     if (gender === 'male') {
-        if (n === 'Дмитрий') return 'Дмитрия';
-        if (n === 'Матвей') return 'Матвея';
-        if (n === 'Илья') return 'Ильи';
-        if (n === 'Никита') return 'Никиты';
-        if (n === 'Глеб') return 'Глеба';
-        if (n === 'Артем' || n === 'Артём') return 'Артёма';
-        
-        const vowels = ['а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я', 'й'];
-        if (!vowels.includes(n.slice(-1).toLowerCase())) {
-            return n + 'а';
+        // Исключения и особые случаи
+        if (n === 'Дмитрий') {
+            if (caseType === 'gen' || caseType === 'acc') return 'Дмитрия';
+            if (caseType === 'dat') return 'Дмитрию';
+            if (caseType === 'pre') return 'Дмитрии';
+            return 'Дмитрием';
+        }
+        if (n === 'Матвей') {
+            if (caseType === 'gen' || caseType === 'acc') return 'Матвея';
+            if (caseType === 'dat') return 'Матвею';
+            if (caseType === 'pre') return 'Матвее';
+            return 'Матвеем';
+        }
+        if (n === 'Илья' || n === 'Никита') {
+            if (caseType === 'gen') return n.slice(0, -1) + 'и';
+            if (caseType === 'dat' || caseType === 'pre') return n.slice(0, -1) + 'е';
+            if (caseType === 'acc') return n.slice(0, -1) + 'у';
+            return n.slice(0, -1) + 'ой';
+        }
+
+        // Стандартные мужские имена на согласную (Глеб, Артем)
+        const vowels = ['а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я', 'й', 'ь'];
+        if (!vowels.includes(lastChar)) {
+            if (caseType === 'gen' || caseType === 'acc') return n + 'а';
+            if (caseType === 'dat') return n + 'у';
+            if (caseType === 'pre') return n + 'е';
+            if (caseType === 'ins') return n + 'ом';
+        }
+        if (lastChar === 'й') {
+            if (caseType === 'gen' || caseType === 'acc') return n.slice(0, -1) + 'я';
+            if (caseType === 'dat') return n.slice(0, -1) + 'ю';
+            if (caseType === 'pre') return n.slice(0, -1) + 'е';
+            return n.slice(0, -1) + 'ем';
         }
     } else {
-        if (n.endsWith('ия')) return n.slice(0, -2) + 'ии';
-        if (n.endsWith('я')) return n.slice(0, -1) + 'и';
-        if (n.endsWith('а')) {
-            const preLast = n.slice(-2, -1).toLowerCase();
-            if (['г', 'к', 'х', 'ж', 'ч', 'ш', 'щ'].includes(preLast)) return n.slice(0, -1) + 'и';
-            return n.slice(0, -1) + 'ы';
+        // Женские имена
+        if (n.endsWith('ия')) { // Мария, София
+            if (caseType === 'gen' || caseType === 'dat' || caseType === 'pre') return n.slice(0, -2) + 'ии';
+            if (caseType === 'acc') return n.slice(0, -2) + 'ию';
+            return n.slice(0, -2) + 'ией';
+        }
+        if (n.endsWith('я')) { // Полина, Алиса... стоп, это на 'а'. На 'я' - например, Надя
+            if (caseType === 'gen') return n.slice(0, -1) + 'и';
+            if (caseType === 'dat' || caseType === 'pre') return n.slice(0, -1) + 'е';
+            if (caseType === 'acc') return n.slice(0, -1) + 'ю';
+            return n.slice(0, -1) + 'ей';
+        }
+        if (n.endsWith('а')) { // Ольга, Анна
+            if (caseType === 'gen') {
+                if (['г', 'к', 'х', 'ж', 'ч', 'ш', 'щ'].includes(preLastChar)) return n.slice(0, -1) + 'и';
+                return n.slice(0, -1) + 'ы';
+            }
+            if (caseType === 'dat' || caseType === 'pre') return n.slice(0, -1) + 'е';
+            if (caseType === 'acc') return n.slice(0, -1) + 'у';
+            return n.slice(0, -1) + 'ой';
         }
     }
     return n;
@@ -53,8 +93,13 @@ const declineNameGenitive = (name: string, gender: 'male' | 'female'): string =>
 export const resolveGenderTokens = (text: string, student: StudentProfile): string => {
     let resolved = text;
     
-    resolved = resolved.replace(/{name_gen}/g, declineNameGenitive(student.name, student.gender));
+    // Стандартные токены
     resolved = resolved.replace(/{name}/g, student.name.trim());
+    resolved = resolved.replace(/{name_gen}/g, declineName(student.name, student.gender, 'gen'));
+    resolved = resolved.replace(/{name_dat}/g, declineName(student.name, student.gender, 'dat'));
+    resolved = resolved.replace(/{name_acc}/g, declineName(student.name, student.gender, 'acc'));
+    resolved = resolved.replace(/{name_ins}/g, declineName(student.name, student.gender, 'ins'));
+    resolved = resolved.replace(/{name_pre}/g, declineName(student.name, student.gender, 'pre'));
 
     const genderRegex = /\{([^{}|]*)\|([^{}|]*)\}/g;
     while (genderRegex.test(resolved)) {
