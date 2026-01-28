@@ -21,6 +21,7 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
   const [selectedChoice, setSelectedChoice] = useState<DemoChoice | null>(null);
   const [trust, setTrust] = useState(50);
   const [stress, setStress] = useState(30);
+  const [isDialogueFinished, setIsDialogueFinished] = useState(false);
   
   const dialogueRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -46,10 +47,10 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
       }, delay);
     }
     
-    // Конец диалога — переход к выбору
+    // Конец диалога — ждем нажатия кнопки
     if (phase === 'observation' && dialogueIndex >= scenario.observationDialogue.length) {
       setIsPlaying(false);
-      setTimeout(() => setPhase('choice'), 1000);
+      setIsDialogueFinished(true);
     }
     
     return () => {
@@ -258,6 +259,19 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
             </div>
           ))}
         </div>
+        
+        {/* Кнопка продолжения после диалога */}
+        {isDialogueFinished && (
+          <div className="p-6 bg-slate-900 border-t border-slate-700/50 animate-in slide-in-from-bottom-4 duration-500">
+            <button
+              onClick={() => setPhase('choice')}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black uppercase tracking-wider flex items-center justify-center gap-3 transition-all shadow-lg shadow-blue-500/20"
+            >
+              Перейти к выбору
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
 
         {/* Комментарий куратора (оверлей) */}
         {showCommentary && (

@@ -5,6 +5,7 @@ import DemoSession from './DemoSession';
 import { getDemoScenario } from '../data/demoScenarios';
 import { DemoScenario } from '../types';
 import { getSubscriptionInfo } from '../services/billingService';
+import { authService } from '../services/authService';
 
 const FREE_ACCENTUATIONS = ['hyperthymic', 'sensitive'];
 
@@ -212,8 +213,7 @@ interface Props {
 const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
     const [selected, setSelected] = useState<Exhibit | null>(null);
     const [activeDemo, setActiveDemo] = useState<DemoScenario | null>(null);
-    const subInfo = getSubscriptionInfo();
-    const isPremium = subInfo.tier === 'premium';
+    const isPremium = authService.isPremium();
 
     // Запуск демо-режима
     const startDemo = (exhibit: Exhibit) => {

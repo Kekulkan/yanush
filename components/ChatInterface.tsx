@@ -5,6 +5,7 @@ import { saveSessionBackup, clearSessionBackup } from '../services/storageServic
 import { saveToUserArchive, saveToGlobalArchive } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
+import { authService } from '../services/authService';
 import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
 import SecurityShield from './SecurityShield';
@@ -80,7 +81,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [isPrompterLoading, setIsPrompterLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
-  const isPremium = getSubscriptionInfo().tier === 'premium' || isAdmin;
+  const isPremium = authService.isPremium();
   
   // Защита от хитреца: таймер бездействия
   const [isInactive, setIsInactive] = useState(false);
@@ -808,7 +809,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             </div>
 
             {/* Context Modules with Visibility */}
-            {session.chaosDetails.contexts && session.chaosDetails.contexts.length > 0 && (
+            {isPremium && session.chaosDetails.contexts && session.chaosDetails.contexts.length > 0 && (
               <div className="space-y-3">
                 <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">КОНТЕКСТНЫЕ ОБСТОЯТЕЛЬСТВА</div>
                 {session.chaosDetails.contexts.map((ctx, idx) => {

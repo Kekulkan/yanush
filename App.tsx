@@ -50,7 +50,7 @@ const App: React.FC = () => {
   };
 
   const startSession = (teacher: TeacherProfile, student: StudentProfile) => {
-    const isPremium = user?.role === 'ADMIN' || subscription.tier === 'premium';
+    const isPremium = authService.isPremium();
     const sessionData = buildDynamicPrompt(teacher, student, isPremium);
     setActiveSession(sessionData);
     setRestoredMessages([]); 
