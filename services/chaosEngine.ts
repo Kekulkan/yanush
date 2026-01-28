@@ -74,8 +74,10 @@ const getStudentAvatar = (gender: 'male' | 'female', age: number): string => {
     const max = AVATAR_COUNT[gender][ageGroup];
     const randomId = Math.floor(Math.random() * max) + 1;
     
-    // Путь: /avatars/male/kids/1.jpg и т.д.
-    return `/avatars/${gender}/${ageGroup}/${randomId}.jpg`;
+    // Определяем расширение: kids обычно .jpg, остальные часто .png
+    const ext = (ageGroup === 'kids') ? 'jpg' : 'png';
+    
+    return `/avatars/${gender}/${ageGroup}/${randomId}.${ext}`;
 };
 
 export const generateStudentName = (gender: 'male' | 'female'): string => {
@@ -339,18 +341,10 @@ export const buildDynamicPrompt = (
     startingStress = Math.max(0, Math.min(100, startingStress));
 
     // 8. Формируем contextSummary для учителя
-    // Включаем только известное и слухи
-    const knownContexts = contexts.filter(c => c.visibility === 'known');
-    const rumorContexts = contexts.filter(c => c.visibility === 'rumor');
-    
+    // Включаем ТОЛЬКО основной брифинг (экспозицию)
+    // Контексты и так отображаются ниже отдельными блоками
     let contextSummary = resolveGenderTokens(incident.teacher_briefing, student);
     
-    if (knownContexts.length > 0) {
-        contextSummary += '\n\n' + knownContexts
-            .map(c => resolveGenderTokens(c.module.teacher_briefing, student))
-            .join('\n');
-    }
-
     return {
         teacher,
         student,
