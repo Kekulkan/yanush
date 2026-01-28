@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, RotateCcw, Network, Activity, Terminal, Crown, Star } from 'lucide-react';
+import { Play, RotateCcw, Network, Activity, Terminal, Crown, Star, Info } from 'lucide-react';
 import { getSessionBackup } from '../services/storageService';
 import { SubscriptionInfo } from '../services/billingService';
+import DocumentsModal from './DocumentsModal';
 
 interface Props {
   onStart: () => void;
@@ -20,12 +21,19 @@ const ScenarioSelector: React.FC<Props> = ({
   subscription 
 }) => {
   const [hasBackup, setHasBackup] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [initialDocId, setInitialDocId] = useState('methodology');
   
   const env: any = (import.meta as any).env || {};
   const proxyUrl = env.VITE_REMOTE_PROXY_URL;
   const networkMode = proxyUrl ? 'Защищенный узел' : 'Прямое подключение';
 
   const isPremium = subscription?.tier === 'premium';
+
+  const openDoc = (id: string) => {
+    setInitialDocId(id);
+    setIsDocModalOpen(true);
+  };
 
   useEffect(() => {
     const backup = getSessionBackup();
@@ -125,12 +133,44 @@ const ScenarioSelector: React.FC<Props> = ({
         </p>
       </div>
 
-      <div className="absolute bottom-10 text-slate-600 text-[8px] font-black uppercase tracking-[0.5em] flex flex-col items-center gap-3">
-         <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-900/50 rounded-full border border-slate-800">
-            <Network size={10} className={proxyUrl ? 'text-emerald-500' : 'text-amber-500'} /> {networkMode}
+      <div className="absolute bottom-6 w-full px-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
+         <div className="flex flex-wrap justify-center gap-6">
+            <button 
+              onClick={() => openDoc('methodology')}
+              className="text-[9px] text-slate-500 hover:text-blue-400 font-black uppercase tracking-[0.2em] transition-colors flex items-center gap-2"
+            >
+              <Info size={12} /> Методология
+            </button>
+            <button 
+              onClick={() => openDoc('terms')}
+              className="text-[9px] text-slate-500 hover:text-slate-300 font-black uppercase tracking-[0.2em] transition-colors"
+            >
+              Оферта
+            </button>
+            <button 
+              onClick={() => openDoc('contacts')}
+              className="text-[9px] text-slate-500 hover:text-slate-300 font-black uppercase tracking-[0.2em] transition-colors"
+            >
+              Контакты
+            </button>
          </div>
-         <span className="opacity-40 italic">Только для авторизованного персонала</span>
+
+         <div className="flex flex-col items-center md:items-end gap-3">
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-900/50 rounded-full border border-slate-800">
+               <Network size={10} className={proxyUrl ? 'text-emerald-500' : 'text-amber-500'} /> 
+               <span className="text-slate-600 text-[8px] font-black uppercase tracking-[0.2em]">{networkMode}</span>
+            </div>
+            <span className="text-slate-600 text-[8px] font-black uppercase tracking-[0.4em] opacity-40 italic">
+              Только для авторизованного персонала
+            </span>
+         </div>
       </div>
+
+      <DocumentsModal 
+        isOpen={isDocModalOpen} 
+        onClose={() => setIsDocModalOpen(false)} 
+        initialDocId={initialDocId}
+      />
     </div>
   );
 };
