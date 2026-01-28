@@ -85,6 +85,14 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [showHelp, setShowHelp] = useState(false);
   const isPremium = authService.isPremium();
   
+  // Пауза перед комиссией при автоматическом завершении
+  const [awaitingContinue, setAwaitingContinue] = useState(false);
+  const [pendingTermination, setPendingTermination] = useState<{
+    messages: Message[];
+    reason: string;
+    source: 'game_over' | 'inactivity';
+  } | null>(null);
+  
   // Защита от хитреца: таймер бездействия
   const [isInactive, setIsInactive] = useState(false);
   const [inactivityCount, setInactivityCount] = useState(0);
@@ -250,25 +258,21 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           },
           timestamp: Date.now()
         };
-        setMessages(prev => [...prev, exitMessage]);
+        const finalMessages = [...messages, trollMessage, exitMessage];
+        setMessages(finalMessages);
         
-        // Запускаем анализ с негативным исходом
-        setTimeout(async () => {
-          setIsAnalyzing(true);
-          const isPremium = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
-          const result = await analyzeChatSession(
-            [...messages, trollMessage, exitMessage],
-            session.chaosDetails.accentuation,
-            'Бездействие учителя — ученик ушёл',
-            { includeAdvisory: true, includeAquarium: isPremium }
-          );
-          setAnalysis(result);
-          archiveSession([...messages, trollMessage, exitMessage], result, 'inactivity');
-          setIsAnalyzing(false);
-        }, 1000);
+        // Устанавливаем паузу перед анализом
+        setTimeout(() => {
+          setPendingTermination({
+            messages: finalMessages,
+            reason: 'Бездействие учителя — ученик ушёл',
+            source: 'inactivity'
+          });
+          setAwaitingContinue(true);
+        }, 500);
       }
     }
-  }, [isInactive, inactivityCount]);
+  }, [isInactive, inactivityCount, messages]);
 
   const toggleListening = () => {
       if (!recognitionRef.current) return alert('Голосовой ввод не поддерживается вашим браузером.');
@@ -548,20 +552,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       saveSessionBackup(session, finalMessages);
       
       if (response.game_over) {
-          setIsAnalyzing(true);
-          const isPremium = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
-          const result = await analyzeChatSession(
-            finalMessages, 
-            session.chaosDetails.accentuation, 
-            response.violation_reason || 'Психологический срыв',
-            { 
-              includeAdvisory: true,
-              includeAquarium: isPremium
-            }
-          );
-          setAnalysis(result);
-          archiveSession(finalMessages, result, 'completed');
-          setIsAnalyzing(false);
+          // Не запускаем анализ сразу — даём пользователю прочитать последнюю реплику
+          setPendingTermination({
+            messages: finalMessages,
+            reason: response.violation_reason || 'Психологический срыв',
+            source: 'game_over'
+          });
+          setAwaitingContinue(true);
       }
     } catch (e) { 
         console.error(e); 
@@ -574,6 +571,35 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       if (v <= -0.3) return "bg-rose-500/10 border-l-rose-500 text-rose-300";
       if (v >= 0.3) return "bg-emerald-500/10 border-l-emerald-500 text-emerald-300";
       return "bg-white/5 border-l-slate-500 text-slate-400";
+  };
+
+  // Функция продолжения анализа после паузы
+  const handleContinueAfterTermination = async () => {
+    if (!pendingTermination) return;
+    
+    setAwaitingContinue(false);
+    setIsAnalyzing(true);
+    
+    try {
+      const isPremiumUser = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
+      const result = await analyzeChatSession(
+        pendingTermination.messages,
+        session.chaosDetails.accentuation,
+        pendingTermination.reason,
+        { 
+          includeAdvisory: true,
+          includeAquarium: isPremiumUser
+        }
+      );
+      setAnalysis(result);
+      archiveSession(pendingTermination.messages, result, pendingTermination.source === 'inactivity' ? 'inactivity' : 'completed');
+    } catch (err) {
+      console.error('Analysis error:', err);
+      window.alert('Сбой генерации анализа.');
+    } finally {
+      setIsAnalyzing(false);
+      setPendingTermination(null);
+    }
   };
 
   // Состояния для отображения секций анализа
@@ -1086,12 +1112,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                         </div>
                                       )}
                                       
-                                      {isAdmin && (
-                                        <div className="flex gap-4 mt-3 text-[9px] font-black uppercase tracking-wider text-violet-400/60">
-                                          <span>Δ Доверие: {worldEvent.trust_delta > 0 ? '+' : ''}{worldEvent.trust_delta}</span>
-                                          <span>Δ Стресс: {worldEvent.stress_delta > 0 ? '+' : ''}{worldEvent.stress_delta}</span>
-                                        </div>
-                                      )}
+                                      <div className="flex gap-4 mt-3 text-[9px] font-black uppercase tracking-wider text-violet-400/60">
+                                        <span>Δ Доверие: {worldEvent.trust_delta > 0 ? '+' : ''}{worldEvent.trust_delta}</span>
+                                        <span>Δ Стресс: {worldEvent.stress_delta > 0 ? '+' : ''}{worldEvent.stress_delta}</span>
+                                      </div>
                                     </div>
                                   )}
                                   
@@ -1109,13 +1133,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                   
                                   <div className={`p-4 md:p-6 rounded-[24px] md:rounded-[32px] rounded-tl-none text-sm font-medium border ${gradient.bg} ${gradient.border} ${gradient.text} ${gradient.glow} transition-all duration-500`}>
                                     {msg.content}
-                                    {/* Индикатор состояния */}
-                                    {isAdmin && (
-                                      <div className="flex gap-4 mt-3 pt-3 border-t border-white/10 text-[9px] font-black uppercase tracking-wider opacity-60">
-                                        <span>Доверие: {Math.round(trust)}%</span>
-                                        <span>Стресс: {Math.round(stress)}%</span>
-                                      </div>
-                                    )}
+                                    {/* Индикатор состояния — виден всем */}
+                                    <div className="flex gap-4 mt-3 pt-3 border-t border-white/10 text-[9px] font-black uppercase tracking-wider opacity-60">
+                                      <span className="text-emerald-400">Доверие: {Math.round(trust)}%</span>
+                                      <span className="text-red-400">Стресс: {Math.round(stress)}%</span>
+                                    </div>
                                   </div>
                                 </>
                               );
@@ -1125,6 +1147,29 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                 </div>
             ))}
             {isLoading && <div className="text-blue-500 text-[9px] font-black animate-pulse flex items-center gap-2 uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Обработка...</div>}
+            
+            {/* Пауза перед комиссией */}
+            {awaitingContinue && (
+              <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
+                <button
+                  onClick={handleContinueAfterTermination}
+                  className="w-full p-6 rounded-3xl border-2 border-dashed border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all group"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="text-amber-400 text-4xl animate-bounce">⚖️</div>
+                    <p className="text-amber-300 text-sm font-bold uppercase tracking-wider">
+                      Сессия завершена
+                    </p>
+                    <p className="text-slate-400 text-xs">
+                      Нажмите, чтобы перейти к оценке комиссии
+                    </p>
+                    <div className="mt-2 px-6 py-2 bg-amber-500 text-slate-900 rounded-full text-xs font-black uppercase tracking-wider group-hover:scale-105 transition-transform">
+                      Продолжить →
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
             
             {/* Индикатор бездействия */}
             {isInactive && !isLoading && !autoPlayActive && (

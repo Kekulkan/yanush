@@ -120,20 +120,24 @@ const DOCUMENTS: Document[] = [
           <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
             <Eye size={20} /> Индикаторы состояния
           </h3>
-          <p>Система отслеживает два ключевых параметра:</p>
+          <p>Под каждой репликой ученика отображаются два ключевых параметра:</p>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
               <p className="font-bold text-emerald-400 mb-2">💚 Доверие</p>
-              <p className="text-slate-400 text-sm">Насколько ученик вам доверяет. Растёт при эмпатии, активном слушании, уважении границ.</p>
+              <p className="text-slate-400 text-sm">Насколько ученик вам доверяет. Растёт при эмпатии, активном слушании, уважении границ. Цель — довести до 100%.</p>
             </div>
             <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
-              <p className="font-bold text-red-400 mb-2">❤️ Стресс</p>
-              <p className="text-slate-400 text-sm">Уровень напряжения ученика. Растёт при давлении, угрозах, обесценивании.</p>
+              <p className="font-bold text-red-400 mb-2">❤️‍🔥 Стресс</p>
+              <p className="text-slate-400 text-sm">Уровень напряжения ученика. Растёт при давлении, угрозах, обесценивании. Цель — снизить до 0%.</p>
             </div>
           </div>
-          <p className="text-slate-500 text-sm italic">
-            Эти параметры влияют на цвет рамки реплик ученика: зелёный — контакт установлен, красный — критическое состояние.
-          </p>
+          <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 mt-4">
+            <p className="text-slate-300 text-sm">
+              <strong>Цвет рамки реплики</strong> также отражает состояние: 
+              <span className="text-emerald-400"> зелёный</span> — контакт установлен, 
+              <span className="text-red-400"> красный</span> — критический стресс.
+            </p>
+          </div>
         </section>
 
         <section className="space-y-4">
