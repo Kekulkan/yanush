@@ -23,7 +23,9 @@ import {
   formatSessionDate,
   formatDuration,
   getScoreColor,
-  ArchiveStats
+  ArchiveStats,
+  fetchServerLogs,
+  wipeServerLogs
 } from '../services/archiveService';
 
 interface Props {
@@ -65,15 +67,62 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [globalArchive, setGlobalArchive] = useState<SessionLog[]>([]);
   const [globalStats, setGlobalStats] = useState<ArchiveStats | null>(null);
   const [expandedGlobalSession, setExpandedGlobalSession] = useState<string | null>(null);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logsSource, setLogsSource] = useState<'server' | 'local'>('local');
   
+  // Загрузка данных при авторизации
   useEffect(() => {
     if (isAuthenticated) {
       setHistory(getSessionHistory());
       setModules(getAllModules());
+      
+      // Сначала показываем локальные логи
       setGlobalArchive(getGlobalArchive());
       setGlobalStats(getGlobalArchiveStats());
+      setLogsSource('local');
+      
+      // Затем пытаемся загрузить с сервера
+      loadServerLogs();
     }
   }, [isAuthenticated]);
+  
+  // Загрузка логов с сервера
+  const loadServerLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const serverLogs = await fetchServerLogs('4308'); // Используем тот же код
+      if (serverLogs.length > 0) {
+        setGlobalArchive(serverLogs);
+        setGlobalStats({
+          totalSessions: serverLogs.length,
+          averageScore: serverLogs.filter(s => s.result?.overall_score).reduce((a, s) => a + (s.result?.overall_score || 0), 0) / serverLogs.filter(s => s.result?.overall_score).length || 0,
+          completedSessions: serverLogs.filter(s => s.status === 'completed').length,
+          interruptedSessions: serverLogs.filter(s => s.status !== 'completed').length,
+          accentuationStats: {},
+          lastSessionDate: serverLogs[0]?.timestamp || null
+        });
+        setLogsSource('server');
+      }
+    } catch (e) {
+      console.warn('Failed to load server logs:', e);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+  
+  // Очистка серверных логов
+  const handleWipeServerLogs = async () => {
+    if (!window.confirm('УДАЛИТЬ ВСЕ ЛОГИ С СЕРВЕРА? Это действие необратимо!')) return;
+    
+    const success = await wipeServerLogs('4308');
+    if (success) {
+      setGlobalArchive([]);
+      setGlobalStats(null);
+      alert('Логи успешно удалены');
+    } else {
+      alert('Ошибка при удалении логов');
+    }
+  };
 
   const verify2FA = () => { if (twoFactorCode === '4308') setIsAuthenticated(true); };
 
@@ -683,11 +732,31 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
 
                 {activeTab === 'logs' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between mb-8">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                             <div className="flex items-center gap-4 text-violet-500 uppercase font-black tracking-[0.3em] border-l-4 border-violet-500 pl-4">
                                 <Database size={20} /> ГЛОБАЛЬНЫЙ АРХИВ СЕССИЙ
+                                {isLoadingLogs && (
+                                    <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+                                )}
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap gap-3 items-center">
+                                {/* Индикатор источника */}
+                                <div className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                    logsSource === 'server' 
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                }`}>
+                                    {logsSource === 'server' ? '☁️ Сервер' : '💾 Локально'}
+                                </div>
+                                
+                                <button 
+                                    onClick={loadServerLogs}
+                                    disabled={isLoadingLogs}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 rounded-xl font-black text-[10px] uppercase hover:bg-blue-500/20 transition-all disabled:opacity-30"
+                                >
+                                    <Download size={14} /> Обновить
+                                </button>
+                                
                                 <button 
                                     onClick={() => {
                                         if (globalArchive.length === 0) return;
@@ -696,24 +765,25 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                     disabled={globalArchive.length === 0}
                                     className="flex items-center gap-2 px-4 py-2 bg-violet-500/10 text-violet-400 rounded-xl font-black text-[10px] uppercase hover:bg-violet-500/20 transition-all disabled:opacity-30"
                                 >
-                                    <Download size={14} /> Экспорт JSON
+                                    <Download size={14} /> Экспорт
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        if (globalArchive.length === 0) return;
-                                        if (window.confirm(`Удалить ВСЕ ${globalArchive.length} сессий из глобального архива? Это необратимо!`)) {
-                                            wipeGlobalArchive();
-                                            setGlobalArchive([]);
-                                            setGlobalStats(getGlobalArchiveStats());
-                                        }
-                                    }}
-                                    disabled={globalArchive.length === 0}
+                                    onClick={handleWipeServerLogs}
+                                    disabled={globalArchive.length === 0 || logsSource === 'local'}
                                     className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 rounded-xl font-black text-[10px] uppercase hover:bg-red-500/20 transition-all disabled:opacity-30"
                                 >
-                                    <Trash2 size={14} /> Очистить
+                                    <Trash2 size={14} /> Очистить сервер
                                 </button>
                             </div>
                         </div>
+
+                        {/* Подсказка про сервер */}
+                        {logsSource === 'local' && (
+                            <div className="glass p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-300 text-[11px] mb-4">
+                                <strong>⚠️ Показаны локальные логи.</strong> Для сбора логов со всех пользователей настройте Upstash Redis 
+                                (добавьте UPSTASH_REDIS_REST_URL и UPSTASH_REDIS_REST_TOKEN в Vercel Environment Variables).
+                            </div>
+                        )}
 
                         {/* Stats cards */}
                         {globalStats && (
@@ -724,7 +794,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                 </div>
                                 <div className="glass p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
                                     <div className="text-[10px] text-emerald-400 font-black uppercase mb-1">Средний балл</div>
-                                    <div className="text-3xl font-black text-white">{globalStats.averageScore}%</div>
+                                    <div className="text-3xl font-black text-white">{Math.round(globalStats.averageScore)}%</div>
                                 </div>
                                 <div className="glass p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5">
                                     <div className="text-[10px] text-cyan-400 font-black uppercase mb-1">Завершено</div>

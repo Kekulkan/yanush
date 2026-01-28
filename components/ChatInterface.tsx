@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog } from '../types';
 import { sendMessageToGemini, analyzeChatSession, generateGhostResponse } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
-import { saveToUserArchive, saveToGlobalArchive } from '../services/archiveService';
+import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
@@ -447,10 +447,42 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       saveToUserArchive(user.id, sessionLog);
     }
     saveToGlobalArchive(sessionLog);
+    
+    // Отправляем на сервер для глобального архива админа
+    sendLogToServer(sessionLog).catch(e => console.warn('Failed to send log to server:', e));
+    
     clearSessionBackup();
   };
 
   const handleStop = async () => {
+      // Проверка минимума реплик для анализа
+      const userMessages = messages.filter(m => m.role === MessageRole.USER);
+      const MIN_MESSAGES = 10;
+      
+      if (userMessages.length < MIN_MESSAGES) {
+        const confirmed = window.confirm(
+          `Вы написали только ${userMessages.length} реплик из ${MIN_MESSAGES} минимальных.\n\n` +
+          `Недостаточно данных для полноценного анализа комиссии.\n\n` +
+          `Завершить без вердикта?`
+        );
+        if (confirmed) {
+          // Просто выходим без анализа
+          setAnalysis({
+            overall_score: 0,
+            summary: `Сессия завершена досрочно. Недостаточно данных для анализа (${userMessages.length}/${MIN_MESSAGES} реплик).`,
+            commission: [],
+            timestamp: Date.now()
+          });
+          archiveSession(messages, { 
+            overall_score: 0, 
+            summary: 'Досрочное завершение без анализа', 
+            commission: [], 
+            timestamp: Date.now() 
+          }, 'incomplete');
+        }
+        return;
+      }
+      
       if (!window.confirm('ЗАВЕРШИТЬ СЕАНС И ПОЛУЧИТЬ ВЕРДИКТ?')) return;
       setIsAnalyzing(true);
       try {

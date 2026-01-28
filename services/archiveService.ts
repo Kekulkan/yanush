@@ -1,12 +1,108 @@
 /**
  * Сервис архивирования сессий
- * Двойное сохранение: личный архив юзера + глобальный архив
+ * Двойное сохранение: личный архив юзера + глобальный архив (серверный)
  */
 
 import { SessionLog } from '../types';
 
 const USER_ARCHIVE_PREFIX = 'user_archive_';
 const GLOBAL_ARCHIVE_KEY = 'global_sessions_archive';
+
+// URL для серверного API логов
+const getLogsApiUrl = () => {
+  const env: any = (import.meta as any).env || {};
+  const proxyUrl = env.VITE_REMOTE_PROXY_URL;
+  if (proxyUrl) {
+    // Извлекаем базовый URL из proxy URL
+    const base = proxyUrl.replace('/api/proxy', '');
+    return `${base}/api/logs`;
+  }
+  return '/api/logs';
+};
+
+// ============ ОТПРАВКА НА СЕРВЕР ============
+
+/**
+ * Отправить лог на сервер для глобального архива
+ */
+export async function sendLogToServer(sessionLog: SessionLog): Promise<boolean> {
+  try {
+    const response = await fetch(getLogsApiUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionLog)
+    });
+    
+    if (!response.ok) {
+      console.warn('Failed to send log to server:', response.status);
+      return false;
+    }
+    
+    const data = await response.json();
+    console.log('Log sent to server:', data);
+    return true;
+  } catch (e) {
+    console.error('Error sending log to server:', e);
+    return false;
+  }
+}
+
+/**
+ * Получить глобальные логи с сервера (только для админа)
+ */
+export async function fetchServerLogs(adminKey: string): Promise<SessionLog[]> {
+  try {
+    const response = await fetch(`${getLogsApiUrl()}?adminKey=${encodeURIComponent(adminKey)}`, {
+      method: 'GET',
+      headers: { 'X-Admin-Key': adminKey }
+    });
+    
+    if (!response.ok) {
+      console.warn('Failed to fetch server logs:', response.status);
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.logs || [];
+  } catch (e) {
+    console.error('Error fetching server logs:', e);
+    return [];
+  }
+}
+
+/**
+ * Удалить лог с сервера (только для админа)
+ */
+export async function deleteServerLog(adminKey: string, logId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${getLogsApiUrl()}?id=${encodeURIComponent(logId)}&adminKey=${encodeURIComponent(adminKey)}`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Key': adminKey }
+    });
+    
+    return response.ok;
+  } catch (e) {
+    console.error('Error deleting server log:', e);
+    return false;
+  }
+}
+
+/**
+ * Очистить все логи на сервере (только для админа)
+ */
+export async function wipeServerLogs(adminKey: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${getLogsApiUrl()}?id=all&adminKey=${encodeURIComponent(adminKey)}`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Key': adminKey }
+    });
+    
+    return response.ok;
+  } catch (e) {
+    console.error('Error wiping server logs:', e);
+    return false;
+  }
+}
 
 // ============ ЛИЧНЫЙ АРХИВ ЮЗЕРА ============
 
