@@ -62,7 +62,7 @@ const getEmotionalGradient = (trust: number, stress: number): { bg: string; bord
 };
 
 // Константы защиты от хитреца
-const INACTIVITY_THRESHOLD_MS = 30000; // 30 секунд до троллинга
+const INACTIVITY_THRESHOLD_MS = 60000; // 60 секунд (1 минута) до троллинга
 const INACTIVITY_TRUST_PENALTY = 5;    // -5 доверия за каждый тик бездействия
 const INACTIVITY_STRESS_BONUS = 3;     // +3 стресса за каждый тик
 
