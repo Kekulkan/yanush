@@ -683,40 +683,45 @@ export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide'
   const activeDoc = DOCUMENTS.find(d => d.id === activeDocId) || DOCUMENTS[0];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 md:p-8">
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={onClose} />
       
-      <div className="relative w-full max-w-5xl h-[85vh] bg-[#0d1117] rounded-[40px] border border-white/10 shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        {/* Сайдбар со списком документов */}
-        <div className="w-full md:w-80 bg-slate-900/50 border-b md:border-b-0 md:border-r border-white/5 p-6 space-y-2 overflow-y-auto">
-          <div className="mb-8 px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Документация</div>
-          {DOCUMENTS.map(doc => (
-            <button
-              key={doc.id}
-              onClick={() => setActiveDocId(doc.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all ${
-                activeDocId === doc.id 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                : 'text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              {doc.icon}
-              <span className="text-xs font-bold uppercase tracking-wider leading-tight">{doc.title}</span>
-            </button>
-          ))}
+      <div className="relative w-full max-w-5xl max-h-[95dvh] md:h-[85vh] bg-[#0d1117] rounded-3xl md:rounded-[40px] border border-white/10 shadow-2xl flex flex-col md:flex-row">
+        {/* Сайдбар — на мобильных горизонтальный скролл */}
+        <div className="shrink-0 w-full md:w-80 bg-slate-900/50 border-b md:border-b-0 md:border-r border-white/5 p-3 md:p-6 md:space-y-2 overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
+          <div className="hidden md:block mb-8 px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Документация</div>
+          <div className="flex md:flex-col gap-2 min-w-max md:min-w-0">
+            {DOCUMENTS.map(doc => (
+              <button
+                key={doc.id}
+                onClick={() => setActiveDocId(doc.id)}
+                className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-2xl text-left transition-all whitespace-nowrap md:whitespace-normal md:w-full ${
+                  activeDocId === doc.id 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                  : 'text-slate-400 hover:bg-white/5'
+                }`}
+              >
+                {doc.icon}
+                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight">{doc.title}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Контентная часть */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="h-16 flex items-center justify-between px-8 border-b border-white/5">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest italic">Doc_ID: {activeDoc.id}.pdf</span>
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          <div className="shrink-0 h-12 md:h-16 flex items-center justify-between px-4 md:px-8 border-b border-white/5">
+            <span className="text-[9px] md:text-[10px] font-mono text-slate-500 uppercase tracking-widest italic">Doc_ID: {activeDoc.id}.pdf</span>
             <button onClick={onClose} className="p-2 text-slate-500 hover:text-white transition-colors">
               <X size={20} />
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-8 md:p-12 custom-scrollbar">
-            <div className="max-w-2xl mx-auto">
+          <div 
+            className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-12 touch-scroll"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <div className="max-w-2xl mx-auto pb-10">
               {activeDoc.content}
             </div>
           </div>
