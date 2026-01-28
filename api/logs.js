@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const adminKey = process.env.ADMIN_LOGS_KEY || 'default_admin_key_change_me';
+  const adminKey = process.env.ADMIN_LOGS_KEY || '4308';
   const requestAdminKey = req.headers['x-admin-key'] || req.query.adminKey;
 
   // ============ GET: Получить логи (только админ) ============
