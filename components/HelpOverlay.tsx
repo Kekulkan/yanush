@@ -81,36 +81,29 @@ export default function HelpOverlay({ isOpen, onClose, items, screenName }: Help
 export const CHAT_HELP_ITEMS: HelpItem[] = [
   {
     id: 'header',
-    label: 'Шапка сессии',
-    description: 'Имя ученика, возраст, акцентуация. Нажмите для просмотра полного досье.',
+    label: 'Аватар и досье',
+    description: 'Нажмите на аватар, чтобы открыть полное досье ученика: имя, возраст, семья, характер.',
     position: 'top-left',
     color: 'border-cyan-500'
   },
   {
-    id: 'indicators',
-    label: 'Индикаторы состояния',
-    description: 'ДОВЕРИЕ (зелёный) и СТРЕСС (красный). Меняются в зависимости от ваших действий. Следите за ними!',
-    position: 'top-right',
-    color: 'border-emerald-500'
-  },
-  {
     id: 'dialogue',
     label: 'Диалог',
-    description: 'Ваши реплики — справа (синие). Ответы ученика — слева. Цвет рамки ученика отражает его эмоциональное состояние.',
+    description: 'Ваши реплики — справа (синие). Ученик — слева. Цвет рамки = состояние: зелёный — контакт, красный — критический стресс.',
     position: 'center',
     color: 'border-blue-500'
   },
   {
     id: 'input',
     label: 'Поле ввода',
-    description: 'Пишите реплики или *действия в звёздочках*. Микрофон — голосовой ввод.',
+    description: 'Пишите реплики или *действия в звёздочках*. Кнопка микрофона — голосовой ввод.',
     position: 'bottom-center',
     color: 'border-violet-500'
   },
   {
     id: 'stop',
     label: 'Кнопка СТОП',
-    description: 'Завершает сессию и вызывает комиссию для оценки. Минимум 10 реплик для анализа.',
+    description: 'Завершает сессию и вызывает комиссию. Минимум 10 реплик для получения оценки.',
     position: 'bottom-right',
     color: 'border-red-500'
   }

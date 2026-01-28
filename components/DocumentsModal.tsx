@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, FileText, Shield, Mail, HelpCircle, Zap, MessageSquare, Target, Award, AlertTriangle } from 'lucide-react';
+import { X, BookOpen, FileText, Shield, Mail, HelpCircle, Zap, MessageSquare, Target, Award, AlertTriangle, Users, UserCheck, Eye, Skull, Heart, Trophy } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -55,7 +55,8 @@ const DOCUMENTS: Document[] = [
                 <li>Включить/выключить совещательную комиссию</li>
               </ul>
             </li>
-            <li><strong>Прочитайте вводную:</strong> перед началом диалога вы увидите описание ситуации и «досье» ученика</li>
+            <li><strong>Прочитайте вводную:</strong> перед началом диалога вы увидите описание ситуации</li>
+            <li><strong>Нажмите на аватар ученика</strong> чтобы просмотреть его «досье» — это поможет понять, с кем вы работаете</li>
             <li><strong>Начните диалог:</strong> пишите реплики в поле ввода внизу экрана</li>
           </ol>
         </section>
@@ -85,6 +86,57 @@ const DOCUMENTS: Document[] = [
         </section>
 
         <section className="space-y-4">
+          <h3 className="text-xl font-bold text-emerald-400 uppercase tracking-tight border-l-4 border-emerald-500 pl-4 flex items-center gap-2">
+            <Trophy size={20} /> Условия победы
+          </h3>
+          <div className="bg-emerald-500/10 p-5 rounded-xl border border-emerald-500/20">
+            <p className="font-bold text-emerald-400 mb-3">Идеальное разрешение ситуации:</p>
+            <ul className="space-y-2 text-slate-300">
+              <li>✅ Ученик полностью вам доверяет и успокоился</li>
+              <li>✅ Конфликт деэскалирован</li>
+              <li>✅ Вы нашли подход к ребёнку, не навредив ему</li>
+            </ul>
+            <p className="text-emerald-400/80 text-sm mt-4 italic">При идеальном исходе вы получите бонус к оценке комиссии</p>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-red-400 uppercase tracking-tight border-l-4 border-red-500 pl-4 flex items-center gap-2">
+            <Skull size={20} /> Условия проигрыша
+          </h3>
+          <div className="bg-red-500/10 p-5 rounded-xl border border-red-500/20">
+            <p className="font-bold text-red-400 mb-3">Экстремальные исходы (сессия завершается автоматически):</p>
+            <ul className="space-y-2 text-slate-300">
+              <li>💨 <strong>Побег</strong> — ученик убежал (критически низкое доверие + высокий стресс)</li>
+              <li>👊 <strong>Агрессия</strong> — ученик перешёл к физическим действиям</li>
+              <li>🔇 <strong>Замыкание</strong> — ученик полностью отключился и отказывается говорить</li>
+              <li>🚨 <strong>Вызов помощи</strong> — ситуация вышла из-под контроля, пришлось звать подмогу</li>
+            </ul>
+            <p className="text-red-400/80 text-sm mt-4 italic">При экстремальном исходе оценка комиссии будет существенно ниже</p>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
+            <Eye size={20} /> Индикаторы состояния
+          </h3>
+          <p>Система отслеживает два ключевых параметра:</p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
+              <p className="font-bold text-emerald-400 mb-2">💚 Доверие</p>
+              <p className="text-slate-400 text-sm">Насколько ученик вам доверяет. Растёт при эмпатии, активном слушании, уважении границ.</p>
+            </div>
+            <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+              <p className="font-bold text-red-400 mb-2">❤️ Стресс</p>
+              <p className="text-slate-400 text-sm">Уровень напряжения ученика. Растёт при давлении, угрозах, обесценивании.</p>
+            </div>
+          </div>
+          <p className="text-slate-500 text-sm italic">
+            Эти параметры влияют на цвет рамки реплик ученика: зелёный — контакт установлен, красный — критическое состояние.
+          </p>
+        </section>
+
+        <section className="space-y-4">
           <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4 flex items-center gap-2">
             <Award size={20} /> Как оценивается?
           </h3>
@@ -92,7 +144,7 @@ const DOCUMENTS: Document[] = [
           
           <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
             <p className="font-bold text-emerald-400 mb-2">Основная комиссия</p>
-            <p className="text-slate-400">6-8 профессионалов (психологи, педагоги, криминологи). Их оценки формируют итоговый балл.</p>
+            <p className="text-slate-400">6-8 профессионалов (психологи, педагоги, криминологи). Их оценки формируют итоговый балл. Подробнее — в разделе «Эксперты».</p>
           </div>
           
           <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
@@ -110,6 +162,13 @@ const DOCUMENTS: Document[] = [
               <li><span className="text-red-400 font-bold">0-39:</span> Плохо, грубые ошибки</li>
             </ul>
           </div>
+
+          <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 mt-4">
+            <p className="text-slate-400 text-sm">
+              ⚠️ <strong>Важно:</strong> Для получения оценки необходимо провести диалог минимум из 10 реплик. 
+              Слишком короткие сессии не анализируются.
+            </p>
+          </div>
         </section>
 
         <section className="space-y-4">
@@ -123,7 +182,7 @@ const DOCUMENTS: Document[] = [
               <li>❌ <strong>Обесценивание</strong> — «Это всё ерунда, бывает и хуже»</li>
               <li>❌ <strong>Шаблонные фразы</strong> — подростки мгновенно чувствуют фальшь</li>
               <li>❌ <strong>Перебивание</strong> — дайте ученику договорить</li>
-              <li>❌ <strong>Игнорирование состояния</strong> — следите за индикаторами стресса</li>
+              <li>❌ <strong>Долгое молчание</strong> — если вы не отвечаете, ученик начинает нервничать</li>
             </ul>
           </div>
         </section>
@@ -132,20 +191,20 @@ const DOCUMENTS: Document[] = [
           <h3 className="text-xl font-bold text-white uppercase tracking-tight">Полезные советы</h3>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
-              <p className="font-bold text-blue-400 mb-2">👁️ Следите за индикаторами</p>
-              <p className="text-slate-400 text-sm">Доверие (зелёный) и Стресс (красный) показывают состояние ученика в реальном времени.</p>
+              <p className="font-bold text-blue-400 mb-2">👁️ Читайте цвета</p>
+              <p className="text-slate-400 text-sm">Рамка реплик ученика меняет цвет: зелёный = контакт, красный = критическое состояние.</p>
             </div>
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
-              <p className="font-bold text-blue-400 mb-2">🎯 Читайте «мысли»</p>
-              <p className="text-slate-400 text-sm">Администраторы видят внутренние мысли ученика — это помогает понять, что он на самом деле чувствует.</p>
+              <p className="font-bold text-blue-400 mb-2">📋 Изучите досье</p>
+              <p className="text-slate-400 text-sm">Нажмите на аватар ученика, чтобы узнать его историю, семью, особенности характера.</p>
             </div>
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
               <p className="font-bold text-blue-400 mb-2">📚 Изучите акцентуации</p>
               <p className="text-slate-400 text-sm">В «Экспозиции» есть демо-режимы для каждого психотипа — посмотрите, как с ними работать.</p>
             </div>
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
-              <p className="font-bold text-blue-400 mb-2">💡 Используйте суфлёра</p>
-              <p className="text-slate-400 text-sm">Кнопка «Суфлёр» подскажет, что сказать в сложной ситуации (для админов).</p>
+              <p className="font-bold text-blue-400 mb-2">🎯 Не спешите</p>
+              <p className="text-slate-400 text-sm">Лучше подумать перед репликой, чем потом исправлять ошибки.</p>
             </div>
           </div>
         </section>
@@ -161,8 +220,185 @@ const DOCUMENTS: Document[] = [
     )
   },
   {
+    id: 'experts',
+    title: 'Состав экспертов',
+    icon: <Users size={18} />,
+    content: (
+      <div className="space-y-8 text-slate-300 leading-relaxed pb-20">
+        <header className="border-b border-slate-700 pb-6">
+          <h2 className="text-2xl font-black text-white uppercase italic">
+            Экспертный состав комиссий
+          </h2>
+          <p className="text-slate-500 mt-2">Кто оценивает ваши действия и по каким критериям</p>
+        </header>
+
+        {/* ОСНОВНАЯ КОМИССИЯ */}
+        <section className="space-y-6">
+          <h3 className="text-xl font-bold text-emerald-400 uppercase tracking-tight border-l-4 border-emerald-500 pl-4 flex items-center gap-2">
+            <UserCheck size={20} /> Основная комиссия
+          </h3>
+          <p className="text-slate-400">Профессиональные эксперты, чьи оценки формируют итоговый балл (0-100).</p>
+          
+          <div className="space-y-4">
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-emerald-500/20">
+              <p className="font-bold text-white text-lg">Маргарита Сергеевна Ковалёва</p>
+              <p className="text-emerald-400 text-sm font-bold uppercase tracking-wider">Председатель комиссии • Детский клинический психолог, д.пс.н.</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Психологическая безопасность взаимодействия, соблюдение границ, эмпатия, техники активного слушания, риск ретравматизации.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Андрей Викторович Берёзин</p>
+              <p className="text-blue-400 text-sm font-bold uppercase tracking-wider">Детский психиатр, к.м.н.</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Распознавание острых состояний, адекватность реакций на суицидальные маркеры, понимание границ педагогической компетенции.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Елена Павловна Соколова</p>
+              <p className="text-pink-400 text-sm font-bold uppercase tracking-wider">Семейный психолог, супервизор</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Понимание семейного контекста, работа с переносом, нейтральность к «третьим лицам», избегание триангуляции.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Дмитрий Олегович Петров</p>
+              <p className="text-orange-400 text-sm font-bold uppercase tracking-wider">Криминолог, специалист по профилактике</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Распознавание маркеров деструктивного поведения, техники деэскалации, алгоритмы действий при угрозе насилия.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Наталья Александровна Иванова</p>
+              <p className="text-cyan-400 text-sm font-bold uppercase tracking-wider">Социальный педагог, методист</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Межведомственное взаимодействие, знание ресурсов помощи, понимание своих функций по 120-ФЗ.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Игорь Станиславович Волков</p>
+              <p className="text-violet-400 text-sm font-bold uppercase tracking-wider">Медиатор, конфликтолог</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Я-высказывания, отсутствие обвинений, работа с сопротивлением, поиск точек соприкосновения.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Ольга Михайловна Кузнецова</p>
+              <p className="text-teal-400 text-sm font-bold uppercase tracking-wider">Подростковый психолог</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Понимание специфики подросткового возраста, уважение автономии, умение мотивировать без давления.
+              </p>
+            </div>
+
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Владимир Николаевич Морозов</p>
+              <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">Юрист, специалист по правам несовершеннолетних</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                <strong>Фокус оценки:</strong> Правовая корректность, защита прав ребёнка, соблюдение конфиденциальности.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* СОВЕЩАТЕЛЬНАЯ КОМИССИЯ */}
+        <section className="space-y-6">
+          <h3 className="text-xl font-bold text-amber-400 uppercase tracking-tight border-l-4 border-amber-500 pl-4 flex items-center gap-2">
+            <Users size={20} /> Совещательная комиссия
+          </h3>
+          <p className="text-slate-400">Гротескные персонажи, чьи оценки НЕ влияют на итоговый балл, но демонстрируют спектр реакций «реального мира».</p>
+          
+          <div className="space-y-4">
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Абрам Романович Златогорский</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Меценат, попечитель школы, 67 лет</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                «Архитектор 90-х», владелец всего. Оценивает: поддержали ли вы нарратив о личной ответственности и справедливости рынка.
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Трепонем Гельминтович Насонов-Грядущий</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Партийный функционер, 58 лет</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                Профессиональный чиновник, был всем по очереди. Оценивает: насколько вы «правильный», хотя сам не понимает критерии.
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Опир Ерофеевич Упалнамоченов</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Участковый, инспектор ПДН, 44 года</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                Любит порядок и власть. Оценивает одно: сообщили вы «куда следует» или нет. Всё остальное — «укрывательство».
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Отец Онуфрий (Скалозубов)</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Боевой протоиерей, генерал-майор запаса, 54 года</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                К Богу пришёл через войну. Оценивает: укрепляете вы «духовные скрепы» или разрушаете.
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Тимоха (Тимофей Ларин)</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Зумер-блогер, 14 лет, 120K подписчиков</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                Голос поколения. Оценивает по шкале «душно — нормально — база». Ценит честность и юмор, ненавидит фальшь.
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Людмила Аркадьевна Защитникова-Материнская</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Гиперопекающая мать, 42 года</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                Мать Ванечки из 7Б, эксперт по всему. Оценивает: как бы её Ванечка себя чувствовал. Любая твёрдость — «абьюз».
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Игорь Валерьевич Обороноспособнов</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Военрук, подполковник запаса, 56 лет</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                25 лет в армии, 15 в школе. Оценивает: навели вы порядок или развели демократию. «Разговоры» — для слабаков.
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Снежана Донатовна Световзор</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Инстаграм-психолог, 34 года, 340K подписчиков</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                Коуч, автор марафона «Роди себя заново». Оценивает: были ли вы «в теле» и «продышали ли боль».
+              </p>
+            </div>
+
+            <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
+              <p className="font-bold text-white text-lg">Аноним (Правдоруб_777)</p>
+              <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Голос комментаторов</p>
+              <p className="text-slate-400 mt-2 text-sm">
+                Нет лица, но есть МНЕНИЕ. Обвинит кого-нибудь: учителя, ученика, родителей, систему или всех сразу.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="pt-6 border-t border-slate-700">
+          <p className="text-slate-500 text-sm italic">
+            Подробнее о педагогическом смысле совещательной комиссии — в разделе «Методологическое обоснование».
+          </p>
+        </section>
+      </div>
+    )
+  },
+  {
     id: 'methodology',
-    title: 'Методологическое обоснование супервизии',
+    title: 'Методологическое обоснование',
     icon: <BookOpen size={18} />,
     content: (
       <div className="space-y-8 text-slate-300 leading-relaxed pb-20">
@@ -226,8 +462,8 @@ const DOCUMENTS: Document[] = [
           </p>
           <p>Когда пользователь видит, что один и тот же его поступок:</p>
           <ul className="list-disc ml-6 space-y-1 italic text-slate-400">
-            <li>Маргарита Львовна оценивает как «недостаточное контейнирование аффекта»</li>
-            <li>Валентина Фёдоровна — как «правильную твёрдость»</li>
+            <li>Маргарита Сергеевна оценивает как «недостаточное контейнирование аффекта»</li>
+            <li>Обороноспособнов — как «правильную твёрдость»</li>
             <li>Опир Упалнамоченов — как «несообщение о правонарушении»</li>
             <li>Тимоха — как «ну норм, не орал хотя бы»</li>
             <li>Людмила Аркадьевна — как «травму на всю жизнь»</li>
@@ -283,7 +519,6 @@ const DOCUMENTS: Document[] = [
             <li>восстановить чувство контроля и агентности</li>
             <li>создать общий язык для обсуждения абсурдных ситуаций с коллегами</li>
           </ul>
-          <p>Функция «онлайн-комментирования» — когда пользователь видит, как второй пул в реальном времени реагирует на его реплики — усиливает этот эффект. Это создаёт ироническую дистанцию: «я делаю своё дело, а они пусть говорят».</p>
 
           <h4 className="font-bold text-white">4.3. Теоретическое основание</h4>
           <p>
@@ -319,7 +554,7 @@ const DOCUMENTS: Document[] = [
 
           <h4 className="font-bold text-white">6.2. Решение</h4>
           <p>
-            На фоне Опира Упалнамоченова и Снежаны Световзор разница между позицией Маргариты Львовны (психоаналитик) и Дмитрия Сергеевича (когнитивно-поведенческий подход) становится осмысленной дискуссией внутри профессионального поля, а не «кто из них прав».
+            На фоне Опира Упалнамоченова и Снежаны Световзор разница между позицией Маргариты Сергеевны (психоаналитик) и Дмитрия Олеговича (когнитивно-поведенческий подход) становится осмысленной дискуссией внутри профессионального поля, а не «кто из них прав».
           </p>
           <p>Пользователь учится видеть:</p>
           <ul className="list-disc ml-6 space-y-1">
@@ -335,58 +570,9 @@ const DOCUMENTS: Document[] = [
           </p>
         </section>
 
-        <section className="space-y-4">
-          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4">
-            VII. Функция режима «онлайн-комментирования»
-          </h3>
-          <h4 className="font-bold text-white">7.1. Описание</h4>
-          <p>Пользователь может не только получить итоговую оценку, но и просмотреть стенограмму того, как члены второго пула в режиме реального времени реагировали на каждую его реплики: возмущались, аплодировали, требовали «записать», угрожали жалобой, восхищались или ужасались.</p>
-
-          <h4 className="font-bold text-white">7.2. Педагогический смысл</h4>
-          <p>Этот режим создаёт:</p>
-          <p>
-            <strong>Мета-позицию наблюдателя.</strong> Пользователь видит свой диалог «со стороны», глазами разных (включая абсурдных) наблюдателей. Это развивает рефлексивность и децентрацию.
-          </p>
-          <p>
-            <strong>Осознание публичности профессии.</strong> Педагог работает «на сцене»: его видят, оценивают, интерпретируют. Режим онлайн-комментирования делает эту публичность ощутимой — и позволяет к ней подготовиться.
-          </p>
-          <p>
-            <strong>Тренировку эмоциональной устойчивости.</strong> Видеть, как Людмила Аркадьевна в реальном времени пишет «ЭТО ТРАВМА!!!» — и продолжать делать своё дело — это навык.
-          </p>
-          <p>
-            <strong>Материал для последующей рефлексии.</strong> Пользователь может вернуться к стенограмме и проанализировать: в какие моменты какие «голоса» активизировались? Что это говорит о ситуации? Что — о «голосах»?
-          </p>
-
-          <h4 className="font-bold text-white">7.3. Теоретическое основание</h4>
-          <p>
-            Концепция «обучения через наблюдение» (Bandura, 1986) и практика «дебрифинга» в симуляционном обучении (Fanning & Gaba, 2007) предполагают, что ключевой обучающий момент — не само действие, а его последующий анализ с разных точек зрения. Режим онлайн-комментирования предоставляет богатый материал для такого анализа.
-          </p>
-        </section>
-
         <section className="space-y-6">
           <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4">
-            VIII. Ответ на возможные возражения
-          </h3>
-          <div className="space-y-4">
-            <p><strong>8.1. «Это несерьёзно и превращает симулятор в развлечение»</strong></p>
-            <p>Юмор и серьёзность не противоположны. Сатира — древнейший инструмент критического осмысления реальности. Комедия Аристофана, сатиры Салтыкова-Щедрина, театр абсурда — всё это «несерьёзно» по форме и глубоко серьёзно по содержанию.</p>
-            <p>Кроме того, «развлечение» — легитимный педагогический приём. Вовлечённость пользователя — условие эффективного обучения. Если второй пул делает симулятор более увлекательным — это повышает, а не снижает его образовательную ценность.</p>
-
-            <p><strong>8.2. «Это формирует цинизм по отношению к обратной связи»</strong></p>
-            <p>Напротив. Цинизм формируется, когда человек не имеет инструментов для различения осмысленной и бессмысленной критики — и отвергает всё подряд. Симулятор учит различать: первый пул — принимай всерьёз, второй — распознавай и дистанцируйся.</p>
-
-            <p><strong>8.3. «Это оскорбляет реальных людей (верующих, полицейских, чиновников, родителей)»</strong></p>
-            <p>Персонажи второго пула — не изображения социальных групп, а архетипы дисфункционального поведения внутри этих групп. Отец Онуфрий — не «типичный священник», а патологический случай. Опир Упалнамоченов — не «типичный полицейский», а коррумпированный садист.</p>
-            <p>Более того: сами представители этих групп, если они профессиональны и адекватны, заинтересованы в маркировании патологии внутри своего сообщества.</p>
-
-            <p><strong>8.4. «Это политически ангажировано»</strong></p>
-            <p>Симулятор не предписывает пользователю политических взглядов. Он показывает, что любая идеологическая одержимость — левая, правая, религиозная, атеистическая — искажает профессиональную оценку. Если в текущей версии больше персонажей, представляющих консервативно-государственническую идеологию — это отражает реальный баланс давления, с которым сталкивается российский учитель в 2025 году. При изменении контекста состав может быть скорректирован.</p>
-          </div>
-        </section>
-
-        <section className="space-y-6">
-          <h3 className="text-xl font-bold text-blue-400 uppercase tracking-tight border-l-4 border-blue-500 pl-4">
-            IX. Заключение
+            VII. Заключение
           </h3>
           <p>Включение второго экспертного пула в систему супервизии педагогического симулятора обосновано следующими соображениями:</p>
           <div className="overflow-x-auto">
@@ -428,11 +614,6 @@ const DOCUMENTS: Document[] = [
                   <td className="p-3 border border-slate-700">Эффект контраста</td>
                   <td className="p-3 border border-slate-700">Второй пул как фон для первого</td>
                   <td className="p-3 border border-slate-700">Укрепление профессиональной идентичности</td>
-                </tr>
-                <tr>
-                  <td className="p-3 border border-slate-700">Рефлексивный материал</td>
-                  <td className="p-3 border border-slate-700">Стенограмма онлайн-комментирования</td>
-                  <td className="p-3 border border-slate-700">Глубокий разбор ситуации постфактум</td>
                 </tr>
               </tbody>
             </table>
@@ -487,8 +668,15 @@ const DOCUMENTS: Document[] = [
   }
 ];
 
-export default function DocumentsModal({ isOpen, onClose, initialDocId = 'methodology' }: DocumentsModalProps) {
+export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide' }: DocumentsModalProps) {
   const [activeDocId, setActiveDocId] = React.useState(initialDocId);
+
+  // Синхронизация activeDocId с initialDocId при открытии
+  React.useEffect(() => {
+    if (isOpen) {
+      setActiveDocId(initialDocId);
+    }
+  }, [isOpen, initialDocId]);
 
   if (!isOpen) return null;
 
@@ -501,7 +689,7 @@ export default function DocumentsModal({ isOpen, onClose, initialDocId = 'method
       <div className="relative w-full max-w-5xl h-[85vh] bg-[#0d1117] rounded-[40px] border border-white/10 shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Сайдбар со списком документов */}
         <div className="w-full md:w-80 bg-slate-900/50 border-b md:border-b-0 md:border-r border-white/5 p-6 space-y-2 overflow-y-auto">
-          <div className="mb-8 px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Юридический архив</div>
+          <div className="mb-8 px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Документация</div>
           {DOCUMENTS.map(doc => (
             <button
               key={doc.id}
