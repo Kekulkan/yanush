@@ -53,7 +53,7 @@ const emptyModule = (category: 'incident' | 'background'): Partial<ContextModule
 const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [activeTab, setActiveTab] = useState<'stats' | 'database' | 'logs' | 'global_archive'>('database');
+  const [activeTab, setActiveTab] = useState<'stats' | 'database' | 'logs'>('database');
   const [history, setHistory] = useState<SessionLog[]>([]);
   const [modules, setModules] = useState<ContextModule[]>([]);
   
@@ -486,13 +486,13 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                 </div>
             </div>
             <div className="flex gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5">
-                {['stats', 'database', 'logs', 'global_archive'].map((t) => (
+                {['stats', 'database', 'logs'].map((t) => (
                     <button 
                         key={t} 
                         onClick={() => setActiveTab(t as any)} 
                         className={`uppercase font-black tracking-widest px-4 md:px-6 py-2 md:py-3 rounded-xl transition-all ${activeTab === t ? 'text-white bg-blue-600' : 'text-slate-500'}`}
                     >
-                        {t === 'stats' ? 'СТАТ' : (t === 'database' ? 'БАЗА' : (t === 'logs' ? 'ЛОГИ' : 'ВСЕ'))}
+                        {t === 'stats' ? 'СТАТ' : (t === 'database' ? 'БАЗА' : 'ЛОГИ')}
                     </button>
                 ))}
             </div>
@@ -683,43 +683,9 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
 
                 {activeTab === 'logs' && (
                     <div className="space-y-6">
-                        <div className="flex items-center gap-4 text-rose-500 uppercase font-black tracking-[0.3em] border-l-4 border-rose-500 pl-4 mb-8">
-                            АРХИВ СЕАНСОВ
-                        </div>
-                        {history.length === 0 ? (
-                            <div className="glass py-24 rounded-[40px] text-center text-slate-600 font-black uppercase tracking-widest italic border-white/5 bg-slate-900/20">АРХИВ ПУСТ</div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-4">
-                                {history.map((log) => (
-                                    <div key={log.id} className="glass p-6 md:p-8 rounded-[30px] md:rounded-[40px] flex items-center justify-between border-white/5 bg-slate-900/20 group">
-                                        <div className="flex items-center gap-4 md:gap-6">
-                                            <div className="p-3 md:p-4 bg-blue-600/10 rounded-2xl text-blue-500">
-                                                <ActivityIcon size={24} />
-                                            </div>
-                                            <div>
-                                                <div className="text-white font-black uppercase text-xs md:text-sm italic">{log.student_name}</div>
-                                                <div className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">{new Date(log.timestamp).toLocaleString()}</div>
-                                            </div>
-                                        </div>
-                                        <button 
-                                            onClick={() => onRestoreSession(log)} 
-                                            className="px-6 md:px-8 py-3 md:py-4 bg-white text-slate-950 rounded-2xl font-black uppercase text-[10px] hover:bg-blue-600 hover:text-white transition-all shadow-xl"
-                                        >
-                                            Восстановить
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* GLOBAL ARCHIVE TAB */}
-                {activeTab === 'global_archive' && (
-                    <div className="space-y-6">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4 text-violet-500 uppercase font-black tracking-[0.3em] border-l-4 border-violet-500 pl-4">
-                                <Database size={20} /> ГЛОБАЛЬНЫЙ АРХИВ
+                                <Database size={20} /> ГЛОБАЛЬНЫЙ АРХИВ СЕССИЙ
                             </div>
                             <div className="flex gap-3">
                                 <button 
@@ -792,10 +758,11 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                         {globalArchive.length === 0 ? (
                             <div className="glass py-24 rounded-[40px] text-center text-slate-600 font-black uppercase tracking-widest italic border-white/5 bg-slate-900/20">
                                 <Archive size={48} className="mx-auto mb-4 opacity-30" />
-                                ГЛОБАЛЬНЫЙ АРХИВ ПУСТ
+                                АРХИВ ПУСТ
+                                <p className="text-[10px] mt-2 normal-case tracking-normal">Сессии всех пользователей будут сохраняться здесь</p>
                             </div>
                         ) : (
-                            <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scroll">
+                            <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scroll">
                                 {globalArchive.map((log) => (
                                     <div 
                                         key={log.id} 
@@ -824,7 +791,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                     </div>
                                                     <div className="text-[9px] text-slate-500 mt-0.5">
                                                         {formatSessionDate(log.timestamp)} • {formatDuration(log.duration_seconds)} • 
-                                                        <span className="text-slate-600 ml-1">{log.userEmail || 'Anonymous'}</span>
+                                                        <span className="text-amber-400 ml-1">{(log as any).userId?.slice(0, 8) || 'anon'}...</span>
                                                     </div>
                                                 </div>
                                             </div>
