@@ -1089,33 +1089,81 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                               const stress = msg.state?.stress ?? 50;
                               const gradient = getEmotionalGradient(trust, stress);
                               const worldEvent = msg.state?.world_event;
+                              const eventReaction = msg.state?.event_reaction;
                               const extremeOutcome = msg.state?.extreme_outcome;
                               
                               return (
                                 <>
-                                  {/* World Event - если есть */}
-                                  {worldEvent && (
-                                    <div className="w-full mb-4 p-4 rounded-2xl bg-violet-500/10 border border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                                  {/* Event Reaction — оценка реакции учителя на предыдущее событие */}
+                                  {eventReaction && (
+                                    <div className="w-full mb-4 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
                                       <div className="flex items-center gap-3 mb-2">
-                                        <Radio size={16} className="text-violet-400" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
-                                          {worldEvent.type?.toUpperCase().replace(/_/g, ' ') || 'СОБЫТИЕ'}
+                                        <Target size={16} className="text-cyan-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">
+                                          РЕАКЦИЯ ОЦЕНЕНА
                                         </span>
                                       </div>
-                                      <p className="text-violet-200 text-sm italic">{worldEvent.description}</p>
+                                      <p className="text-cyan-200 text-sm">{eventReaction.evaluation}</p>
+                                      <div className="flex gap-4 mt-3 text-[9px] font-black uppercase tracking-wider">
+                                        <span className={eventReaction.trust_change >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                                          Δ Доверие: {eventReaction.trust_change > 0 ? '+' : ''}{eventReaction.trust_change}
+                                        </span>
+                                        <span className={eventReaction.stress_change <= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                                          Δ Стресс: {eventReaction.stress_change > 0 ? '+' : ''}{eventReaction.stress_change}
+                                        </span>
+                                      </div>
+                                      {eventReaction.ethics_violation && (
+                                        <div className="mt-2 p-2 bg-amber-500/20 rounded-lg border border-amber-500/30">
+                                          <span className="text-[9px] font-black text-amber-400 uppercase">⚠️ Комиссия учтёт: </span>
+                                          <span className="text-amber-300 text-xs">{eventReaction.ethics_violation}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* World Event - если есть */}
+                                  {worldEvent && (
+                                    <div className={`w-full mb-4 p-4 rounded-2xl border shadow-[0_0_30px_rgba(139,92,246,0.3)] ${
+                                      worldEvent.requires_response 
+                                        ? 'bg-amber-500/10 border-amber-500/50 animate-pulse' 
+                                        : 'bg-violet-500/10 border-violet-500/30'
+                                    }`}>
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <Radio size={16} className={worldEvent.requires_response ? 'text-amber-400' : 'text-violet-400'} />
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${worldEvent.requires_response ? 'text-amber-400' : 'text-violet-400'}`}>
+                                          {worldEvent.type?.toUpperCase().replace(/_/g, ' ') || 'СОБЫТИЕ'}
+                                          {worldEvent.requires_response && ' — ОЖИДАЕТ РЕАКЦИИ'}
+                                        </span>
+                                      </div>
+                                      <p className={`text-sm italic ${worldEvent.requires_response ? 'text-amber-200' : 'text-violet-200'}`}>{worldEvent.description}</p>
                                       
                                       {/* NPC диалог если есть */}
                                       {worldEvent.npc_name && worldEvent.npc_dialogue && (
-                                        <div className="mt-3 p-3 bg-violet-900/30 rounded-xl border border-violet-500/20">
-                                          <div className="text-[9px] font-black text-violet-400 uppercase mb-1">{worldEvent.npc_name}:</div>
-                                          <p className="text-violet-100 text-sm">"{worldEvent.npc_dialogue}"</p>
+                                        <div className={`mt-3 p-3 rounded-xl border ${
+                                          worldEvent.requires_response 
+                                            ? 'bg-amber-900/30 border-amber-500/20' 
+                                            : 'bg-violet-900/30 border-violet-500/20'
+                                        }`}>
+                                          <div className={`text-[9px] font-black uppercase mb-1 ${worldEvent.requires_response ? 'text-amber-400' : 'text-violet-400'}`}>
+                                            {worldEvent.npc_name}:
+                                          </div>
+                                          <p className={`text-sm ${worldEvent.requires_response ? 'text-amber-100' : 'text-violet-100'}`}>"{worldEvent.npc_dialogue}"</p>
                                         </div>
                                       )}
                                       
-                                      <div className="flex gap-4 mt-3 text-[9px] font-black uppercase tracking-wider text-violet-400/60">
-                                        <span>Δ Доверие: {worldEvent.trust_delta > 0 ? '+' : ''}{worldEvent.trust_delta}</span>
-                                        <span>Δ Стресс: {worldEvent.stress_delta > 0 ? '+' : ''}{worldEvent.stress_delta}</span>
-                                      </div>
+                                      {/* Показываем дельты только если они не нулевые */}
+                                      {(worldEvent.trust_delta !== 0 || worldEvent.stress_delta !== 0) && (
+                                        <div className="flex gap-4 mt-3 text-[9px] font-black uppercase tracking-wider text-violet-400/60">
+                                          <span>Δ Доверие: {worldEvent.trust_delta > 0 ? '+' : ''}{worldEvent.trust_delta}</span>
+                                          <span>Δ Стресс: {worldEvent.stress_delta > 0 ? '+' : ''}{worldEvent.stress_delta}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {worldEvent.requires_response && (
+                                        <div className="mt-3 pt-3 border-t border-amber-500/20 text-[10px] text-amber-300 font-bold">
+                                          💡 Отреагируйте на это событие в своей следующей реплике
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   
