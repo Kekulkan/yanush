@@ -103,7 +103,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [previousAdvice, setPreviousAdvice] = useState<string[]>([]);
   
   // Контроль частоты GM событий (минимум 15 реплик между событиями)
-  const lastEventIndexRef = useRef<number>(-20); // Начинаем с -20 чтобы первое событие могло появиться
+  // Начинаем с 0 — первое событие не раньше 15-й реплики
+  const lastEventIndexRef = useRef<number>(0);
   const MIN_MESSAGES_BETWEEN_EVENTS = 15;
   
   // БЭКДОР: Автоматический диалог для отладки комиссии (только админ)
