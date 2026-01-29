@@ -899,7 +899,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                     </div>
                                                 )}
                                                 <div className="max-h-48 overflow-y-auto custom-scroll">
-                                                    {log.messages
+                                                    {(log.messages || log.dialogue || [])
                                                         .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
                                                         .slice(0, 20)
                                                         .map((msg, i) => (
