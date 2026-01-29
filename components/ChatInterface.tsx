@@ -203,97 +203,82 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     }
   }, [input, isListening]);
 
-  // Обработка бездействия — добавляем троллинг от ученика
+  // Обработка бездействия — подросток не будет долго ждать
+  // 1-й тик: удивление/вопрос
+  // 2-й тик: испугался и ушёл
   useEffect(() => {
     if (!isInactive || inactivityCount === 0 || isLoading) return;
     
-    // Генерируем троллинг на 1, 3, 5, 7 тик
-    if (inactivityCount === 1 || inactivityCount === 3 || inactivityCount === 5 || inactivityCount === 7) {
-      const trollingMessages = [
-        "Эээ... алло? Вы там уснули?",
-        "*демонстративно смотрит на телефон*",
-        "Может, мне самому уйти, раз вы заняты?",
-        "*начинает барабанить пальцами по столу*",
-        "Я так и знал, что вам плевать...",
-        "*громко вздыхает*",
-        "Ладно, я понял, разговор окончен...",
+    // Первый тик — удивление
+    if (inactivityCount === 1) {
+      const firstReactions = [
+        "Эээ... алло? Вы там?",
+        "*смотрит на учителя с недоумением*",
+        "Вы меня вообще слышите?",
       ];
       
-      const worldEvents = [
-        { type: 'звук', description: 'Из коридора доносится смех — кто-то явно заметил затянувшуюся паузу.' },
-        { type: 'npc', description: 'В дверь заглядывает другой ученик, хихикает и убегает.', npc_name: 'Одноклассник', npc_dialogue: 'Опа, а чё это вы тут застыли?' },
-        { type: 'звук', description: 'Слышен шёпот за дверью: "Смотри, он завис..."' },
-      ];
-
-      const trollMsg = trollingMessages[Math.floor(Math.random() * trollingMessages.length)];
-      const worldEvent = inactivityCount >= 3 ? worldEvents[Math.floor(Math.random() * worldEvents.length)] : undefined;
-      
-      // Рассчитываем штрафы
-      const newTrust = Math.max(0, currentTrust - INACTIVITY_TRUST_PENALTY * inactivityCount);
-      const newStress = Math.min(100, currentStress + INACTIVITY_STRESS_BONUS * inactivityCount);
+      const trollMsg = firstReactions[Math.floor(Math.random() * firstReactions.length)];
+      const newTrust = Math.max(0, currentTrust - 10);
+      const newStress = Math.min(100, currentStress + 15);
       
       const trollMessage: Message = {
         id: `troll-${Date.now()}`,
         role: MessageRole.MODEL,
         content: trollMsg,
         state: {
-          thought: 'Учитель завис. Типичный взрослый — делает вид, что ему не плевать, а сам даже ответить не может.',
+          thought: 'Что с ним? Он завис? Это странно... Мне как-то не по себе.',
           trust: newTrust,
-          stress: newStress,
-          world_event: worldEvent
+          stress: newStress
         },
         timestamp: Date.now()
       };
       
       setMessages(prev => [...prev, trollMessage]);
       saveSessionBackup(session, [...messages, trollMessage]);
+    }
+    
+    // Второй тик — испугался и убежал
+    if (inactivityCount === 2) {
+      const exitReasons = [
+        "*резко встаёт* Мне страшно. Я ухожу.",
+        "*пятится к двери* Что-то не так... Я лучше пойду.",
+        "*испуганно* Вам плохо? Я... я позову кого-нибудь... *убегает*",
+      ];
       
-      // Критическое состояние: trust = 0, stress = 100, ИЛИ 8+ тиков с низким доверием
-      const isCritical = newTrust <= 0 || newStress >= 100 || (inactivityCount >= 8 && newTrust < 20);
+      const exitThoughts = [
+        'Что с ним происходит?! Он как будто отключился. Мне страшно. Надо уходить.',
+        'Это ненормально. Взрослые так себя не ведут. Что-то случилось? Надо бежать.',
+        'Он завис как компьютер. Может, ему плохо? Мне надо выйти. Сейчас.',
+      ];
       
-      if (isCritical) {
-        // Ученик уходит — выбираем причину
-        const exitReason = newTrust <= 0 
-          ? "Вы меня вообще не слушаете. Я ухожу." 
-          : newStress >= 100 
-            ? "*резко встаёт* Всё, мне плохо, я не могу здесь находиться!"
-            : "Всё, хватит. Я ухожу. Нечего тут время терять.";
-        
-        const exitThought = newTrust <= 0
-          ? 'Ему плевать. Абсолютно плевать. Зачем я вообще пытался?'
-          : newStress >= 100
-            ? 'Не могу дышать. Надо выйти. Сейчас. Немедленно.'
-            : 'Он даже не может нормально поговорить. Зачем я вообще пришёл?';
-        
-        const exitMessage: Message = {
-          id: `exit-${Date.now()}`,
-          role: MessageRole.MODEL,
-          content: exitReason,
-          state: {
-            thought: exitThought,
-            trust: 0,
-            stress: 100,
-            extreme_outcome: newStress >= 100 ? 'shutdown' : 'runaway'
-          },
-          timestamp: Date.now()
-        };
-        const finalMessages = [...messages, trollMessage, exitMessage];
-        setMessages(finalMessages);
-        
-        // Устанавливаем паузу перед анализом
-        setTimeout(() => {
-          setPendingTermination({
-            messages: finalMessages,
-            reason: newTrust <= 0 
-              ? 'Полная потеря доверия — ученик ушёл'
-              : newStress >= 100
-                ? 'Критический стресс — ученик сбежал'
-                : 'Бездействие учителя — ученик ушёл',
-            source: 'inactivity'
-          });
-          setAwaitingContinue(true);
-        }, 500);
-      }
+      const idx = Math.floor(Math.random() * exitReasons.length);
+      
+      const exitMessage: Message = {
+        id: `exit-${Date.now()}`,
+        role: MessageRole.MODEL,
+        content: exitReasons[idx],
+        state: {
+          thought: exitThoughts[idx],
+          trust: Math.max(0, currentTrust - 20),
+          stress: 90,
+          extreme_outcome: 'runaway'
+        },
+        timestamp: Date.now()
+      };
+      
+      const finalMessages = [...messages, exitMessage];
+      setMessages(finalMessages);
+      saveSessionBackup(session, finalMessages);
+      
+      // Устанавливаем паузу перед анализом
+      setTimeout(() => {
+        setPendingTermination({
+          messages: finalMessages,
+          reason: 'Бездействие учителя — ученик испугался и ушёл',
+          source: 'inactivity'
+        });
+        setAwaitingContinue(true);
+      }, 500);
     }
   }, [isInactive, inactivityCount, messages]);
 
