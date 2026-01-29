@@ -1,5 +1,6 @@
 export default async function handler(req, res) {
   const API_KEY = process.env.API_KEY;
+  const ELLYAI_KEY = process.env.ELLYAI_KEY; // Отдельный ключ для EllyAI
 
   if (req.method === "GET") {
     return res.status(200).json({ ok: true, route: "/api/proxy", ts: Date.now() });
@@ -12,7 +13,38 @@ export default async function handler(req, res) {
     const action = String(req.query.url || "").trim();
     let targetUrl;
     
-    // Определяем провайдера по названию модели
+    // ============ ELLYAI (OpenAI-совместимый) ============
+    if (action.startsWith("ellyai:")) {
+      const model = action.replace("ellyai:", "");
+      targetUrl = "https://ellyai.pro/v1/chat/completions";
+      
+      const body = {
+        model: model,
+        messages: req.body?.messages || [],
+        max_tokens: req.body?.max_tokens || 4096,
+        temperature: req.body?.temperature || 0.7,
+      };
+      
+      const upstream = await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ELLYAI_KEY}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const text = await upstream.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+      return res.status(upstream.status).json(data);
+    }
+    
+    // ============ CLAUDE (Anthropic) ============
     if (action.startsWith("claude-")) {
       // Claude (Anthropic) API
       // Формат: claude-sonnet-4-20250514

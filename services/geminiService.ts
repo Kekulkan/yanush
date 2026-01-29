@@ -37,24 +37,33 @@ type GeminiChatResponse = {
 };
 
 // ============ ВЫБОР ПРОВАЙДЕРА ============
-// "claude" — Claude Sonnet (умнее, лучше понимает контекст)
-// "gemini" — Gemini Flash (дешевле, но тупее)
-const AI_PROVIDER: "claude" | "gemini" = "claude";
+// "ellyai" — EllyAI прокси (gemini-2.5-pro безлимит за 350₽/мес)
+// "claude" — Claude Sonnet через proxyapi.ru
+// "gemini" — Gemini через proxyapi.ru
+const AI_PROVIDER: "ellyai" | "claude" | "gemini" = "ellyai";
 
-// Модели для Claude
+// Модели для EllyAI (OpenAI-совместимый формат)
+const ELLYAI_CHAT_MODEL = "gemini-2.5-pro";
+const ELLYAI_ANALYSIS_MODEL = "gemini-2.5-pro";
+const ELLYAI_GHOST_MODEL = "gemini-2.5-flash"; // Дешевле для суфлёра
+
+// Модели для Claude (proxyapi.ru)
 const CLAUDE_CHAT_MODEL = "claude-sonnet-4-20250514";
 const CLAUDE_ANALYSIS_MODEL = "claude-sonnet-4-20250514";
 const CLAUDE_GHOST_MODEL = "claude-haiku-4-5-20251001";
 
-// Модели для Gemini
+// Модели для Gemini (proxyapi.ru)
 const GEMINI_CHAT_MODEL = "gemini-2.0-flash";
 const GEMINI_ANALYSIS_MODEL = "gemini-2.0-flash";
 const GEMINI_GHOST_MODEL = "gemini-2.0-flash-lite";
 
 // Активные модели (зависят от провайдера)
-const CHAT_MODEL = AI_PROVIDER === "claude" ? CLAUDE_CHAT_MODEL : GEMINI_CHAT_MODEL;
-const ANALYSIS_MODEL = AI_PROVIDER === "claude" ? CLAUDE_ANALYSIS_MODEL : GEMINI_ANALYSIS_MODEL;
-const GHOST_MODEL = AI_PROVIDER === "claude" ? CLAUDE_GHOST_MODEL : GEMINI_GHOST_MODEL;
+const CHAT_MODEL = AI_PROVIDER === "ellyai" ? ELLYAI_CHAT_MODEL 
+  : AI_PROVIDER === "claude" ? CLAUDE_CHAT_MODEL : GEMINI_CHAT_MODEL;
+const ANALYSIS_MODEL = AI_PROVIDER === "ellyai" ? ELLYAI_ANALYSIS_MODEL
+  : AI_PROVIDER === "claude" ? CLAUDE_ANALYSIS_MODEL : GEMINI_ANALYSIS_MODEL;
+const GHOST_MODEL = AI_PROVIDER === "ellyai" ? ELLYAI_GHOST_MODEL
+  : AI_PROVIDER === "claude" ? CLAUDE_GHOST_MODEL : GEMINI_GHOST_MODEL;
 
 const getSettings = (): GlobalSettings => {
   const stored = localStorage.getItem("global_settings");
@@ -93,8 +102,18 @@ function extractClaudeText(data: any): string {
   return "";
 }
 
+function extractOpenAIText(data: any): string {
+  // OpenAI format (EllyAI): choices[0].message.content
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content.trim();
+  return "";
+}
+
 // Универсальная функция извлечения текста
 function extractModelText(data: any): string {
+  if (AI_PROVIDER === "ellyai") {
+    return extractOpenAIText(data);
+  }
   if (AI_PROVIDER === "claude") {
     return extractClaudeText(data);
   }
@@ -243,7 +262,19 @@ async function queryAI(
 ): Promise<string> {
   let data: any;
   
-  if (AI_PROVIDER === "claude") {
+  if (AI_PROVIDER === "ellyai") {
+    // EllyAI (OpenAI-совместимый формат)
+    const body = {
+      messages: [
+        { role: "system", content: "Отвечай СТРОГО в формате JSON. Никакого текста вне JSON." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 4096,
+      temperature,
+    };
+    data = await postViaProxy(`ellyai:${model}`, body, timeoutMs);
+    return extractOpenAIText(data);
+  } else if (AI_PROVIDER === "claude") {
     const body = {
       system: "Отвечай СТРОГО в формате JSON. Никакого текста вне JSON.",
       messages: [{ role: "user", content: prompt }],
@@ -276,31 +307,61 @@ export const sendMessageToGemini = async (
   try {
     let data: any;
     
-    if (AI_PROVIDER === "claude") {
-    // Claude API format
-    const messages = history
-      .filter((m) => m.role !== MessageRole.SYSTEM)
-      .map((msg) => ({
-        role: msg.role === MessageRole.USER ? "user" : "assistant",
-        content: msg.role === MessageRole.USER
-          ? msg.content
-          : JSON.stringify(msg.state ?? { text: msg.content }),
-      }));
+    if (AI_PROVIDER === "ellyai") {
+      // EllyAI (OpenAI-совместимый формат)
+      const messages: {role: string; content: string}[] = [
+        { role: "system", content: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON." }
+      ];
+      
+      history
+        .filter((m) => m.role !== MessageRole.SYSTEM)
+        .forEach((msg) => {
+          messages.push({
+            role: msg.role === MessageRole.USER ? "user" : "assistant",
+            content: msg.role === MessageRole.USER
+              ? msg.content
+              : JSON.stringify(msg.state ?? { text: msg.content }),
+          });
+        });
 
-    messages.push({
-      role: "user",
-      content: lastUserMessage,
-    });
+      messages.push({
+        role: "user",
+        content: lastUserMessage,
+      });
 
-    const body = {
-      system: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON.",
-      messages,
-      max_tokens: 4096,
-    };
+      const body = {
+        messages,
+        max_tokens: 4096,
+        temperature: settings.chat_temperature,
+      };
 
-    data = await postViaProxy(CHAT_MODEL, body, 60_000);
+      data = await postViaProxy(`ellyai:${CHAT_MODEL}`, body, 60_000);
+      
+    } else if (AI_PROVIDER === "claude") {
+      // Claude API format
+      const messages = history
+        .filter((m) => m.role !== MessageRole.SYSTEM)
+        .map((msg) => ({
+          role: msg.role === MessageRole.USER ? "user" : "assistant",
+          content: msg.role === MessageRole.USER
+            ? msg.content
+            : JSON.stringify(msg.state ?? { text: msg.content }),
+        }));
+
+      messages.push({
+        role: "user",
+        content: lastUserMessage,
+      });
+
+      const body = {
+        system: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON.",
+        messages,
+        max_tokens: 4096,
+      };
+
+      data = await postViaProxy(CHAT_MODEL, body, 60_000);
     
-  } else {
+    } else {
     // Gemini API format
     const contents = history
       .filter((m) => m.role !== MessageRole.SYSTEM)
