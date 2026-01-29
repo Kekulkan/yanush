@@ -138,8 +138,15 @@ export function saveToUserArchive(userId: string, sessionLog: SessionLog): void 
     // Добавляем userId если его нет
     const logWithUser = { ...sessionLog, userId };
     
-    // Добавляем в начало (новые сверху)
-    archive.unshift(logWithUser);
+    // Проверяем, есть ли уже запись с таким ID (обновление)
+    const existingIndex = archive.findIndex(log => log.id === sessionLog.id);
+    if (existingIndex !== -1) {
+      // Обновляем существующую запись
+      archive[existingIndex] = logWithUser;
+    } else {
+      // Добавляем в начало (новые сверху)
+      archive.unshift(logWithUser);
+    }
     
     localStorage.setItem(key, JSON.stringify(archive));
   } catch (e) {
@@ -201,8 +208,15 @@ export function saveToGlobalArchive(sessionLog: SessionLog): void {
   try {
     const archive = getGlobalArchive();
     
-    // Добавляем в начало
-    archive.unshift(sessionLog);
+    // Проверяем, есть ли уже запись с таким ID (обновление)
+    const existingIndex = archive.findIndex(log => log.id === sessionLog.id);
+    if (existingIndex !== -1) {
+      // Обновляем существующую запись
+      archive[existingIndex] = sessionLog;
+    } else {
+      // Добавляем в начало
+      archive.unshift(sessionLog);
+    }
     
     localStorage.setItem(GLOBAL_ARCHIVE_KEY, JSON.stringify(archive));
   } catch (e) {

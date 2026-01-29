@@ -91,6 +91,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     messages: Message[];
     reason: string;
     source: 'game_over' | 'inactivity';
+    sessionLogId: string; // ID для обновления записи после анализа
   } | null>(null);
   
   // Защита от хитреца: таймер бездействия
@@ -271,8 +272,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       saveSessionBackup(session, finalMessages);
       
       // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
+      const sessionLogId = crypto.randomUUID();
       const preliminaryLog: SessionLog = {
-        id: crypto.randomUUID(),
+        id: sessionLogId,
         timestamp: Date.now(),
         duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
         teacher: session.teacher,
@@ -288,12 +290,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       if (user?.id) saveToUserArchive(user.id, preliminaryLog);
       saveToGlobalArchive(preliminaryLog);
       
-      // Устанавливаем паузу перед анализом
+      // Устанавливаем паузу перед анализом, сохраняем ID для обновления
       setTimeout(() => {
         setPendingTermination({
           messages: finalMessages,
           reason: 'Бездействие учителя — ученик испугался и ушёл',
-          source: 'inactivity'
+          source: 'inactivity',
+          sessionLogId
         });
         setAwaitingContinue(true);
       }, 500);
@@ -458,10 +461,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setAutoPlayActive(false);
   };
 
-  // Функция сохранения сессии в архив
-  const archiveSession = (finalMessages: Message[], analysisResult: AnalysisResult, status: string) => {
+  // Функция сохранения сессии в архив (existingId для обновления предварительной записи)
+  const archiveSession = (finalMessages: Message[], analysisResult: AnalysisResult, status: string, existingId?: string) => {
     const sessionLog: SessionLog = {
-      id: crypto.randomUUID(),
+      id: existingId || crypto.randomUUID(), // Используем существующий ID если есть
       timestamp: Date.now(),
       duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
       teacher: session.teacher,
@@ -626,8 +629,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       
       if (response.game_over) {
           // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
+          const sessionLogId = crypto.randomUUID();
           const preliminaryLog: SessionLog = {
-            id: crypto.randomUUID(),
+            id: sessionLogId,
             timestamp: Date.now(),
             duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
             teacher: session.teacher,
@@ -643,11 +647,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           if (user?.id) saveToUserArchive(user.id, preliminaryLog);
           saveToGlobalArchive(preliminaryLog);
           
-          // Даём пользователю прочитать последнюю реплику
+          // Даём пользователю прочитать последнюю реплику, сохраняем ID для обновления
           setPendingTermination({
             messages: finalMessages,
             reason: response.violation_reason || 'Психологический срыв',
-            source: 'game_over'
+            source: 'game_over',
+            sessionLogId
           });
           setAwaitingContinue(true);
       }
@@ -683,7 +688,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         }
       );
       setAnalysis(result);
-      archiveSession(pendingTermination.messages, result, pendingTermination.source === 'inactivity' ? 'inactivity' : 'completed');
+      // Используем существующий ID чтобы обновить предварительную запись
+      archiveSession(
+        pendingTermination.messages, 
+        result, 
+        pendingTermination.source === 'inactivity' ? 'inactivity' : 'completed',
+        pendingTermination.sessionLogId
+      );
     } catch (err) {
       console.error('Analysis error:', err);
       window.alert('Сбой генерации анализа.');
