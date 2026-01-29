@@ -169,11 +169,25 @@ export default async function handler(req, res) {
   // ============ POST: Добавить лог ============
   if (req.method === 'POST') {
     console.log('[POST /api/logs] Received request');
+    console.log('[POST /api/logs] Content-Type:', req.headers['content-type']);
     
     try {
-      const sessionLog = req.body;
+      // Vercel автоматически парсит JSON, но на всякий случай обработаем строку
+      let sessionLog = req.body;
+      
+      // Если body это строка — попробуем распарсить
+      if (typeof sessionLog === 'string') {
+        try {
+          sessionLog = JSON.parse(sessionLog);
+          console.log('[POST /api/logs] Parsed body from string');
+        } catch (parseErr) {
+          console.error('[POST /api/logs] Failed to parse body string:', parseErr.message);
+          return res.status(400).json({ error: 'Invalid JSON in request body' });
+        }
+      }
       
       console.log('[POST /api/logs] Body type:', typeof sessionLog);
+      console.log('[POST /api/logs] Body keys:', sessionLog ? Object.keys(sessionLog).join(', ') : 'null');
       console.log('[POST /api/logs] Has ID:', !!sessionLog?.id);
       
       if (!sessionLog) {

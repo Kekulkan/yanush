@@ -27,19 +27,33 @@ const getLogsApiUrl = () => {
  */
 export async function sendLogToServer(sessionLog: SessionLog): Promise<boolean> {
   try {
+    console.log('[sendLogToServer] Sending log with ID:', sessionLog.id);
+    console.log('[sendLogToServer] URL:', getLogsApiUrl());
+    
+    const bodyStr = JSON.stringify(sessionLog);
+    console.log('[sendLogToServer] Body size:', bodyStr.length, 'chars');
+    
     const response = await fetch(getLogsApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sessionLog)
+      body: bodyStr
     });
     
+    const responseText = await response.text();
+    console.log('[sendLogToServer] Response status:', response.status);
+    console.log('[sendLogToServer] Response body:', responseText);
+    
     if (!response.ok) {
-      console.warn('Failed to send log to server:', response.status);
+      console.warn('Failed to send log to server:', response.status, responseText);
       return false;
     }
     
-    const data = await response.json();
-    console.log('Log sent to server:', data);
+    try {
+      const data = JSON.parse(responseText);
+      console.log('Log sent to server:', data);
+    } catch {
+      console.log('Log sent (non-JSON response)');
+    }
     return true;
   } catch (e) {
     console.error('Error sending log to server:', e);
