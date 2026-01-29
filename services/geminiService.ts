@@ -23,6 +23,14 @@ type GeminiChatResponse = {
     stress_delta: number;
     npc_name?: string;
     npc_dialogue?: string;
+    requires_response?: boolean;
+  } | null;
+  event_reaction: {
+    teacher_action: string;
+    evaluation: string;
+    trust_change: number;
+    stress_change: number;
+    ethics_violation?: string;
   } | null;
   game_over: boolean;
   violation_reason?: string | null;
@@ -108,6 +116,18 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
     }
   }
 
+  // Парсим event_reaction (оценка реакции учителя на предыдущее событие)
+  let eventReaction: any = null;
+  if (raw?.event_reaction && typeof raw.event_reaction === 'object') {
+    eventReaction = {
+      teacher_action: raw.event_reaction.teacher_action || '',
+      evaluation: raw.event_reaction.evaluation || '',
+      trust_change: coerceNum(raw.event_reaction.trust_change, 0),
+      stress_change: coerceNum(raw.event_reaction.stress_change, 0),
+      ethics_violation: raw.event_reaction.ethics_violation || undefined
+    };
+  }
+
   return {
     text: text || "...",
     thought,
@@ -116,6 +136,7 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
     trust: coerceNum(raw?.trust, 50),
     stress: coerceNum(raw?.stress, 50),
     world_event: worldEvent,
+    event_reaction: eventReaction,
     game_over: Boolean(raw?.game_over ?? false),
     violation_reason: raw?.violation_reason != null ? String(raw.violation_reason) : null,
   };
@@ -223,6 +244,7 @@ export const sendMessageToGemini = async (
       trust: 0,
       stress: 100,
       world_event: null,
+      event_reaction: null,
       game_over: false,
       violation_reason: null,
     };
@@ -236,6 +258,7 @@ export const sendMessageToGemini = async (
       trust: 0,
       stress: 100,
       world_event: null,
+      event_reaction: null,
       game_over: false,
       violation_reason: error?.message ? String(error.message) : null,
     };

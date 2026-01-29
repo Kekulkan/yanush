@@ -102,6 +102,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // История советов суфлёра (для избежания повторов)
   const [previousAdvice, setPreviousAdvice] = useState<string[]>([]);
   
+  // Контроль частоты GM событий (минимум 15 реплик между событиями)
+  const lastEventIndexRef = useRef<number>(-20); // Начинаем с -20 чтобы первое событие могло появиться
+  const MIN_MESSAGES_BETWEEN_EVENTS = 15;
+  
   // БЭКДОР: Автоматический диалог для отладки комиссии (только админ)
   const [autoPlayActive, setAutoPlayActive] = useState(false);
   const [autoPlayStep, setAutoPlayStep] = useState(0);
@@ -527,6 +531,19 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     try {
       const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text);
 
+      // Контроль частоты GM событий
+      const currentMsgIndex = newMessages.length;
+      const messagesSinceLastEvent = currentMsgIndex - lastEventIndexRef.current;
+      let filteredWorldEvent = response.world_event;
+      
+      if (filteredWorldEvent && messagesSinceLastEvent < MIN_MESSAGES_BETWEEN_EVENTS) {
+        console.log(`[GM Event] Suppressed - only ${messagesSinceLastEvent} messages since last event (need ${MIN_MESSAGES_BETWEEN_EVENTS})`);
+        filteredWorldEvent = undefined;
+      } else if (filteredWorldEvent) {
+        console.log(`[GM Event] Allowed - ${messagesSinceLastEvent} messages since last event`);
+        lastEventIndexRef.current = currentMsgIndex;
+      }
+
       const modelMsg: Message = {
         id: (Date.now() + 2).toString(),
         role: MessageRole.MODEL,
@@ -535,7 +552,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           thought: response.thought ?? undefined, 
           trust: response.trust, 
           stress: response.stress,
-          world_event: response.world_event ?? undefined,
+          world_event: filteredWorldEvent,
+          event_reaction: response.event_reaction ?? undefined,
           extreme_outcome: response.violation_reason?.includes('агресс') ? 'physical_aggression' 
             : response.violation_reason?.includes('побег') ? 'runaway'
             : response.violation_reason?.includes('замк') ? 'shutdown'
