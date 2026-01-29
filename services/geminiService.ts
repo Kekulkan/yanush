@@ -346,7 +346,18 @@ export const analyzeChatSession = async (
           const advisoryParsed = JSON.parse(advisoryJsonStr);
           if (Array.isArray(advisoryParsed.advisory)) {
             result.advisory = advisoryParsed.advisory.map((a: any) => {
-              const member = ADVISORY_COMMISSION.find(m => m.id === a.id);
+              // Ищем по ID, имени или части имени (LLM может вернуть разные форматы)
+              const member = ADVISORY_COMMISSION.find(m => 
+                m.id === a.id || 
+                m.name === a.name ||
+                m.name.toLowerCase().includes((a.name || '').toLowerCase().split(' ')[0]) ||
+                (a.name || '').toLowerCase().includes(m.name.toLowerCase().split(' ')[0])
+              );
+              
+              if (!member) {
+                console.warn(`[Advisory] Member not found: id=${a.id}, name=${a.name}`);
+              }
+              
               return {
                 member: member || {
                   id: a.id,
