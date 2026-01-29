@@ -328,7 +328,7 @@ export const analyzeChatSession = async (
       const activeAdvisory = getActiveAdvisoryMembers(history);
       
       if (activeAdvisory.length > 0) {
-        const advisoryPrompt = buildAdvisoryCommissionPrompt(transcript, activeAdvisory);
+        const advisoryPrompt = buildAdvisoryCommissionPrompt(transcript, activeAdvisory, scenarioName);
         
         const advisoryBody = {
           contents: [{ role: "user", parts: [{ text: advisoryPrompt }] }],
@@ -381,7 +381,7 @@ export const analyzeChatSession = async (
         triggeredBy: a.triggered_by || []
       }));
       
-      const aquariumPrompt = buildAquariumPrompt(transcript, activeForAquarium);
+      const aquariumPrompt = buildAquariumPrompt(transcript, activeForAquarium, scenarioName);
       
       const aquariumBody = {
         contents: [{ role: "user", parts: [{ text: aquariumPrompt }] }],

@@ -702,7 +702,8 @@ ${dialogSummary}
  */
 export function buildAdvisoryCommissionPrompt(
   dialogSummary: string,
-  activeMembers: { member: AdvisoryCommissionMember; triggeredBy: string[] }[]
+  activeMembers: { member: AdvisoryCommissionMember; triggeredBy: string[] }[],
+  scenarioName: string
 ): string {
   if (activeMembers.length === 0) {
     return '';
@@ -722,6 +723,12 @@ export function buildAdvisoryCommissionPrompt(
 Ты — генератор реплик для совещательной комиссии.
 Это НЕ профессионалы, а гротескные персонажи, представляющие разные слои общества.
 Их оценки НЕ влияют на итоговый балл, но показывают, с какими мнениями учителю предстоит столкнуться в реальности.
+
+═══════════════════════════════════════════════════════════════════════════════
+ИСХОДНАЯ СИТУАЦИЯ (ИНЦИДЕНТ):
+═══════════════════════════════════════════════════════════════════════════════
+
+${scenarioName}
 
 ═══════════════════════════════════════════════════════════════════════════════
 АКТИВНЫЕ УЧАСТНИКИ (сработали триггеры):
@@ -769,7 +776,8 @@ ${dialogSummary}
  */
 export function buildAquariumPrompt(
   dialogSummary: string,
-  activeMembers: { member: AdvisoryCommissionMember; triggeredBy: string[] }[]
+  activeMembers: { member: AdvisoryCommissionMember; triggeredBy: string[] }[],
+  scenarioName: string
 ): string {
   if (activeMembers.length < 2) {
     return '';
@@ -795,6 +803,12 @@ export function buildAquariumPrompt(
 Сгенерируй ЖИВОЙ ДИАЛОГ между членами совещательной комиссии.
 Они обсуждают педагогическую ситуацию, но постоянно съезжают на конфликты друг с другом.
 Это должно быть СМЕШНО и АБСУРДНО — сатира на общественные дискуссии.
+
+═══════════════════════════════════════════════════════════════════════════════
+ИСХОДНАЯ СИТУАЦИЯ (ИНЦИДЕНТ):
+═══════════════════════════════════════════════════════════════════════════════
+
+${scenarioName}
 
 ═══════════════════════════════════════════════════════════════════════════════
 УЧАСТНИКИ:
