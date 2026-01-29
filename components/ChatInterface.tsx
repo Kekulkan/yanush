@@ -563,14 +563,42 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         lastEventIndexRef.current = currentMsgIndex;
       }
 
+      // Получаем предыдущие значения trust/stress
+      const lastModelMsg = [...newMessages].reverse().find(m => m.role === MessageRole.MODEL);
+      const prevTrust = lastModelMsg?.state?.trust ?? 50;
+      const prevStress = lastModelMsg?.state?.stress ?? 50;
+      
+      // Корректируем trust/stress если есть event_reaction с дельтами
+      // GM может выдать несогласованные абсолютные значения — исправляем это
+      let finalTrust = response.trust;
+      let finalStress = response.stress;
+      
+      if (response.event_reaction) {
+        const trustDelta = response.event_reaction.trust_change || 0;
+        const stressDelta = response.event_reaction.stress_change || 0;
+        
+        // Применяем дельты к предыдущим значениям
+        const calculatedTrust = Math.max(0, Math.min(100, prevTrust + trustDelta));
+        const calculatedStress = Math.max(0, Math.min(100, prevStress + stressDelta));
+        
+        // Логируем если GM выдал несогласованные значения
+        if (Math.abs(finalTrust - calculatedTrust) > 5 || Math.abs(finalStress - calculatedStress) > 5) {
+          console.warn(`[Trust/Stress] GM inconsistent! GM: trust=${finalTrust}, stress=${finalStress}. Calculated: trust=${calculatedTrust}, stress=${calculatedStress}. Using calculated.`);
+        }
+        
+        // Используем рассчитанные значения
+        finalTrust = calculatedTrust;
+        finalStress = calculatedStress;
+      }
+
       const modelMsg: Message = {
         id: (Date.now() + 2).toString(),
         role: MessageRole.MODEL,
         content: response.text,
         state: { 
           thought: response.thought ?? undefined, 
-          trust: response.trust, 
-          stress: response.stress,
+          trust: finalTrust, 
+          stress: finalStress,
           world_event: filteredWorldEvent,
           event_reaction: response.event_reaction ?? undefined,
           extreme_outcome: response.violation_reason?.includes('агресс') ? 'physical_aggression' 
