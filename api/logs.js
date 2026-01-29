@@ -20,35 +20,59 @@ const hasRedis = () => {
   return process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
 };
 
-// Упрощенный Redis клиент через REST API
+// Упрощенный Redis клиент через REST API (Upstash формат)
 const redis = {
   async get(key) {
     if (!hasRedis()) return null;
     try {
-      const res = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/get/${key}`, {
+      const url = `${process.env.UPSTASH_REDIS_REST_URL}/get/${key}`;
+      console.log('[Redis GET]', url.substring(0, 50) + '...');
+      
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` }
       });
+      
+      if (!res.ok) {
+        console.error('[Redis GET] HTTP error:', res.status, res.statusText);
+        return null;
+      }
+      
       const data = await res.json();
+      console.log('[Redis GET] Result exists:', !!data.result);
       return data.result ? JSON.parse(data.result) : null;
     } catch (e) {
-      console.error('Redis GET error:', e);
+      console.error('[Redis GET] Error:', e.message);
       return null;
     }
   },
   async set(key, value) {
     if (!hasRedis()) return false;
     try {
-      await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/set/${key}`, {
+      const url = `${process.env.UPSTASH_REDIS_REST_URL}`;
+      const stringValue = JSON.stringify(value);
+      console.log('[Redis SET] Key:', key, 'Value length:', stringValue.length);
+      
+      // Upstash REST API формат: POST с командой в body
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 
           Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(JSON.stringify(value))
+        body: JSON.stringify(['SET', key, stringValue])
       });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[Redis SET] HTTP error:', res.status, errorText);
+        return false;
+      }
+      
+      const result = await res.json();
+      console.log('[Redis SET] Success:', result);
       return true;
     } catch (e) {
-      console.error('Redis SET error:', e);
+      console.error('[Redis SET] Error:', e.message);
       return false;
     }
   }
@@ -69,6 +93,18 @@ export default async function handler(req, res) {
 
   const adminKey = process.env.ADMIN_LOGS_KEY || '4308';
   const requestAdminKey = req.headers['x-admin-key'] || req.query.adminKey;
+  
+  // ============ ДИАГНОСТИКА: /api/logs?status=1 ============
+  if (req.query.status === '1') {
+    return res.status(200).json({
+      redis_configured: hasRedis(),
+      redis_url_set: !!process.env.UPSTASH_REDIS_REST_URL,
+      redis_token_set: !!process.env.UPSTASH_REDIS_REST_TOKEN,
+      admin_key_set: !!process.env.ADMIN_LOGS_KEY,
+      memory_logs_count: memoryLogs.length,
+      timestamp: new Date().toISOString()
+    });
+  }
 
   // ============ GET: Получить логи (только админ) ============
   if (req.method === 'GET') {
