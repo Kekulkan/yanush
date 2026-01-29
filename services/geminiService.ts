@@ -37,15 +37,16 @@ type GeminiChatResponse = {
 };
 
 // ============ ВЫБОР ПРОВАЙДЕРА ============
-// "ellyai" — EllyAI прокси (gemini-2.5-pro безлимит за 350₽/мес)
+// "aitunnel" — AITUNNEL (российский сервер, без VPN, дёшево)
 // "claude" — Claude Sonnet через proxyapi.ru
 // "gemini" — Gemini через proxyapi.ru
-const AI_PROVIDER: "ellyai" | "claude" | "gemini" = "ellyai";
+const AI_PROVIDER: "aitunnel" | "claude" | "gemini" = "aitunnel";
 
-// Модели для EllyAI (OpenAI-совместимый формат)
-const ELLYAI_CHAT_MODEL = "gemini-2.5-pro";
-const ELLYAI_ANALYSIS_MODEL = "gemini-2.5-pro";
-const ELLYAI_GHOST_MODEL = "gemini-2.5-flash"; // Дешевле для суфлёра
+// Модели для AITUNNEL (OpenAI-совместимый формат)
+// Цены за 1M токенов: gemini-2.5-flash = 57.6₽/480₽, gemini-2.5-pro = 240₽/1920₽
+const AITUNNEL_CHAT_MODEL = "gemini-2.5-flash";      // ~15₽/сессия - баланс цена/качество
+const AITUNNEL_ANALYSIS_MODEL = "gemini-2.5-pro";   // ~62₽ - для комиссии нужна умная модель
+const AITUNNEL_GHOST_MODEL = "gemini-2.5-flash-lite"; // ~3.5₽ - для суфлёра достаточно
 
 // Модели для Claude (proxyapi.ru)
 const CLAUDE_CHAT_MODEL = "claude-sonnet-4-20250514";
@@ -58,11 +59,11 @@ const GEMINI_ANALYSIS_MODEL = "gemini-2.0-flash";
 const GEMINI_GHOST_MODEL = "gemini-2.0-flash-lite";
 
 // Активные модели (зависят от провайдера)
-const CHAT_MODEL = AI_PROVIDER === "ellyai" ? ELLYAI_CHAT_MODEL 
+const CHAT_MODEL = AI_PROVIDER === "aitunnel" ? AITUNNEL_CHAT_MODEL 
   : AI_PROVIDER === "claude" ? CLAUDE_CHAT_MODEL : GEMINI_CHAT_MODEL;
-const ANALYSIS_MODEL = AI_PROVIDER === "ellyai" ? ELLYAI_ANALYSIS_MODEL
+const ANALYSIS_MODEL = AI_PROVIDER === "aitunnel" ? AITUNNEL_ANALYSIS_MODEL
   : AI_PROVIDER === "claude" ? CLAUDE_ANALYSIS_MODEL : GEMINI_ANALYSIS_MODEL;
-const GHOST_MODEL = AI_PROVIDER === "ellyai" ? ELLYAI_GHOST_MODEL
+const GHOST_MODEL = AI_PROVIDER === "aitunnel" ? AITUNNEL_GHOST_MODEL
   : AI_PROVIDER === "claude" ? CLAUDE_GHOST_MODEL : GEMINI_GHOST_MODEL;
 
 const getSettings = (): GlobalSettings => {
@@ -103,7 +104,7 @@ function extractClaudeText(data: any): string {
 }
 
 function extractOpenAIText(data: any): string {
-  // OpenAI format (EllyAI): choices[0].message.content
+  // OpenAI format (AITUNNEL): choices[0].message.content
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content === "string") return content.trim();
   return "";
@@ -111,7 +112,7 @@ function extractOpenAIText(data: any): string {
 
 // Универсальная функция извлечения текста
 function extractModelText(data: any): string {
-  if (AI_PROVIDER === "ellyai") {
+  if (AI_PROVIDER === "aitunnel") {
     return extractOpenAIText(data);
   }
   if (AI_PROVIDER === "claude") {
@@ -262,8 +263,8 @@ async function queryAI(
 ): Promise<string> {
   let data: any;
   
-  if (AI_PROVIDER === "ellyai") {
-    // EllyAI (OpenAI-совместимый формат)
+  if (AI_PROVIDER === "aitunnel") {
+    // AITUNNEL (OpenAI-совместимый формат, российский сервер)
     const body = {
       messages: [
         { role: "system", content: "Отвечай СТРОГО в формате JSON. Никакого текста вне JSON." },
@@ -272,7 +273,7 @@ async function queryAI(
       max_tokens: 4096,
       temperature,
     };
-    data = await postViaProxy(`ellyai:${model}`, body, timeoutMs);
+    data = await postViaProxy(`aitunnel:${model}`, body, timeoutMs);
     return extractOpenAIText(data);
   } else if (AI_PROVIDER === "claude") {
     const body = {
@@ -307,8 +308,8 @@ export const sendMessageToGemini = async (
   try {
     let data: any;
     
-    if (AI_PROVIDER === "ellyai") {
-      // EllyAI (OpenAI-совместимый формат)
+    if (AI_PROVIDER === "aitunnel") {
+      // AITUNNEL (OpenAI-совместимый формат, российский сервер)
       const messages: {role: string; content: string}[] = [
         { role: "system", content: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON." }
       ];
@@ -335,7 +336,7 @@ export const sendMessageToGemini = async (
         temperature: settings.chat_temperature,
       };
 
-      data = await postViaProxy(`ellyai:${CHAT_MODEL}`, body, 60_000);
+      data = await postViaProxy(`aitunnel:${CHAT_MODEL}`, body, 60_000);
       
     } else if (AI_PROVIDER === "claude") {
       // Claude API format

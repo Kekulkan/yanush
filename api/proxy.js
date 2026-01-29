@@ -1,6 +1,5 @@
 export default async function handler(req, res) {
   const API_KEY = process.env.API_KEY;
-  const ELLYAI_KEY = process.env.ELLYAI_KEY; // Отдельный ключ для EllyAI
 
   if (req.method === "GET") {
     return res.status(200).json({ ok: true, route: "/api/proxy", ts: Date.now() });
@@ -13,10 +12,11 @@ export default async function handler(req, res) {
     const action = String(req.query.url || "").trim();
     let targetUrl;
     
-    // ============ ELLYAI (OpenAI-совместимый) ============
-    if (action.startsWith("ellyai:")) {
-      const model = action.replace("ellyai:", "");
-      targetUrl = "https://ellyai.pro/v1/chat/completions";
+    // ============ AITUNNEL (OpenAI-совместимый, российский сервер) ============
+    if (action.startsWith("aitunnel:")) {
+      const AITUNNEL_KEY = process.env.AITUNNEL_KEY;
+      const model = action.replace("aitunnel:", "");
+      targetUrl = "https://api.aitunnel.ru/v1/chat/completions";
       
       const body = {
         model: model,
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${ELLYAI_KEY}`,
+          "Authorization": `Bearer ${AITUNNEL_KEY}`,
         },
         body: JSON.stringify(body),
       });
