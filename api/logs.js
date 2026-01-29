@@ -150,9 +150,10 @@ export default async function handler(req, res) {
     try {
       let logs;
       if (hasRedis()) {
-        logs = await redis.get(LOGS_KEY) || [];
+        const redisData = await redis.get(LOGS_KEY);
+        logs = Array.isArray(redisData) ? redisData : [];
       } else {
-        logs = memoryLogs;
+        logs = Array.isArray(memoryLogs) ? memoryLogs : [];
       }
       
       return res.status(200).json({ 
@@ -239,9 +240,12 @@ export default async function handler(req, res) {
 
       let logs;
       if (hasRedis()) {
-        logs = await redis.get(LOGS_KEY) || [];
+        const redisData = await redis.get(LOGS_KEY);
+        console.log('[POST /api/logs] Redis data type:', typeof redisData, Array.isArray(redisData));
+        // Гарантируем, что logs — это массив
+        logs = Array.isArray(redisData) ? redisData : [];
       } else {
-        logs = memoryLogs;
+        logs = Array.isArray(memoryLogs) ? memoryLogs : [];
       }
 
       // Проверяем дубликаты
@@ -297,9 +301,10 @@ export default async function handler(req, res) {
     try {
       let logs;
       if (hasRedis()) {
-        logs = await redis.get(LOGS_KEY) || [];
+        const redisData = await redis.get(LOGS_KEY);
+        logs = Array.isArray(redisData) ? redisData : [];
       } else {
-        logs = memoryLogs;
+        logs = Array.isArray(memoryLogs) ? memoryLogs : [];
       }
 
       const filtered = logs.filter(l => l.id !== logId);
