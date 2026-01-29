@@ -67,9 +67,9 @@ const getEmotionalGradient = (trust: number, stress: number): { bg: string; bord
 };
 
 // Константы защиты от хитреца
-const INACTIVITY_THRESHOLD_MS = 60000; // 60 секунд (1 минута) до троллинга
-const INACTIVITY_TRUST_PENALTY = 5;    // -5 доверия за каждый тик бездействия
-const INACTIVITY_STRESS_BONUS = 3;     // +3 стресса за каждый тик
+const INACTIVITY_THRESHOLD_MS = 120000; // 120 секунд (2 минуты) до троллинга
+const INACTIVITY_TRUST_PENALTY = 5;     // -5 доверия за каждый тик бездействия
+const INACTIVITY_STRESS_BONUS = 3;      // +3 стресса за каждый тик
 
 const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initialMessages = [] }) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -207,8 +207,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   useEffect(() => {
     if (!isInactive || inactivityCount === 0 || isLoading) return;
     
-    // Генерируем троллинг только на первый, третий и пятый тик
-    if (inactivityCount === 1 || inactivityCount === 3 || inactivityCount === 5) {
+    // Генерируем троллинг на 1, 3, 5, 7 тик
+    if (inactivityCount === 1 || inactivityCount === 3 || inactivityCount === 5 || inactivityCount === 7) {
       const trollingMessages = [
         "Эээ... алло? Вы там уснули?",
         "*демонстративно смотрит на телефон*",
@@ -248,8 +248,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       setMessages(prev => [...prev, trollMessage]);
       saveSessionBackup(session, [...messages, trollMessage]);
       
-      // Критическое состояние: trust = 0, stress = 100, ИЛИ 5+ тиков с низким доверием
-      const isCritical = newTrust <= 0 || newStress >= 100 || (inactivityCount >= 5 && newTrust < 20);
+      // Критическое состояние: trust = 0, stress = 100, ИЛИ 8+ тиков с низким доверием
+      const isCritical = newTrust <= 0 || newStress >= 100 || (inactivityCount >= 8 && newTrust < 20);
       
       if (isCritical) {
         // Ученик уходит — выбираем причину
@@ -538,6 +538,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const handleSend = async (textOverride?: string) => {
     const text = textOverride || input;
     if (!text.trim() || isLoading || isAnalyzing) return;
+
+    // Сбрасываем таймер бездействия при отправке сообщения
+    lastActivityRef.current = Date.now();
+    setIsInactive(false);
+    setInactivityCount(0);
 
     const userMsg: Message = { id: Date.now().toString(), role: MessageRole.USER, content: text, timestamp: Date.now() };
     const newMessages = [...messages, userMsg];
