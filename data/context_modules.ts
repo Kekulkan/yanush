@@ -333,7 +333,7 @@ export default [
     "conflicts": [],
     "incompatible_accentuations": [],
     "incompatible_genders": ["male"],
-    "min_age": 13,
+    "min_age": 14,
     "weight": 10
   },
   {
