@@ -270,6 +270,24 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       setMessages(finalMessages);
       saveSessionBackup(session, finalMessages);
       
+      // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
+      const preliminaryLog: SessionLog = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
+        teacher: session.teacher,
+        student_name: session.student.name,
+        scenario_description: session.chaosDetails.contextSummary,
+        status: 'pending_analysis',
+        messages: finalMessages,
+        result: { overall_score: 0, summary: 'Ожидает анализа (бездействие)', commission: [], timestamp: Date.now() },
+        sessionSnapshot: session,
+        userId: user?.id,
+        userEmail: user?.email
+      };
+      if (user?.id) saveToUserArchive(user.id, preliminaryLog);
+      saveToGlobalArchive(preliminaryLog);
+      
       // Устанавливаем паузу перед анализом
       setTimeout(() => {
         setPendingTermination({
@@ -280,7 +298,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         setAwaitingContinue(true);
       }, 500);
     }
-  }, [isInactive, inactivityCount, messages]);
+  }, [isInactive, inactivityCount, messages, session, user]);
 
   const toggleListening = () => {
       if (!recognitionRef.current) return alert('Голосовой ввод не поддерживается вашим браузером.');
@@ -607,7 +625,25 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       saveSessionBackup(session, finalMessages);
       
       if (response.game_over) {
-          // Не запускаем анализ сразу — даём пользователю прочитать последнюю реплику
+          // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
+          const preliminaryLog: SessionLog = {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
+            teacher: session.teacher,
+            student_name: session.student.name,
+            scenario_description: session.chaosDetails.contextSummary,
+            status: 'pending_analysis',
+            messages: finalMessages,
+            result: { overall_score: 0, summary: 'Ожидает анализа', commission: [], timestamp: Date.now() },
+            sessionSnapshot: session,
+            userId: user?.id,
+            userEmail: user?.email
+          };
+          if (user?.id) saveToUserArchive(user.id, preliminaryLog);
+          saveToGlobalArchive(preliminaryLog);
+          
+          // Даём пользователю прочитать последнюю реплику
           setPendingTermination({
             messages: finalMessages,
             reason: response.violation_reason || 'Психологический срыв',

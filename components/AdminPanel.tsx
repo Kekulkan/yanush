@@ -919,6 +919,24 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                         ))
                                                     }
                                                 </div>
+                                                {/* Кнопка скачивания отдельной сессии */}
+                                                <div className="px-4 py-3 border-t border-white/5 flex justify-end">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+                                                            const url = URL.createObjectURL(blob);
+                                                            const a = document.createElement('a');
+                                                            a.href = url;
+                                                            a.download = `session_${log.student_name}_${new Date(log.timestamp).toISOString().split('T')[0]}.json`;
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                        }}
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 text-violet-400 rounded-lg text-[10px] font-bold uppercase hover:bg-violet-500/20 transition-all"
+                                                    >
+                                                        <Download size={12} /> Скачать сессию
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
