@@ -314,6 +314,8 @@ export const sendMessageToGemini = async (
         { role: "system", content: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON." }
       ];
       
+      // ВАЖНО: history уже содержит последнее сообщение пользователя!
+      // НЕ добавляем lastUserMessage отдельно — это вызывало дубликаты
       history
         .filter((m) => m.role !== MessageRole.SYSTEM)
         .forEach((msg) => {
@@ -325,10 +327,7 @@ export const sendMessageToGemini = async (
           });
         });
 
-      messages.push({
-        role: "user",
-        content: lastUserMessage,
-      });
+      // lastUserMessage НЕ добавляем — он уже в history!
 
       const body = {
         messages,
@@ -340,6 +339,7 @@ export const sendMessageToGemini = async (
       
     } else if (AI_PROVIDER === "claude") {
       // Claude API format
+      // ВАЖНО: history уже содержит последнее сообщение пользователя!
       const messages = history
         .filter((m) => m.role !== MessageRole.SYSTEM)
         .map((msg) => ({
@@ -349,10 +349,7 @@ export const sendMessageToGemini = async (
             : JSON.stringify(msg.state ?? { text: msg.content }),
         }));
 
-      messages.push({
-        role: "user",
-        content: lastUserMessage,
-      });
+      // lastUserMessage НЕ добавляем — он уже в history!
 
       const body = {
         system: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON.",
@@ -364,6 +361,7 @@ export const sendMessageToGemini = async (
     
     } else {
     // Gemini API format
+    // ВАЖНО: history уже содержит последнее сообщение пользователя!
     const contents = history
       .filter((m) => m.role !== MessageRole.SYSTEM)
       .map((msg) => ({
@@ -378,10 +376,7 @@ export const sendMessageToGemini = async (
         ],
       }));
 
-    contents.push({
-      role: "user",
-      parts: [{ text: lastUserMessage }],
-    });
+    // lastUserMessage НЕ добавляем — он уже в history!
 
     const body = {
       systemInstruction: {
