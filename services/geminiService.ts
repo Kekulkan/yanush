@@ -36,20 +36,32 @@ type GeminiChatResponse = {
   violation_reason?: string | null;
 };
 
-// GM (основной диалог) — 2.0-flash стабильнее для ролевых симуляторов
-// 2.5-flash слишком "драматизирует" и выдаёт случайные game_over
-const CHAT_MODEL = "gemini-2.0-flash";
-// Анализ комиссии — тоже 2.0-flash для консистентности
-const ANALYSIS_MODEL = "gemini-2.0-flash";
-// Суфлёр — можно оставить lite, это вспомогательная функция
-const GHOST_MODEL = "gemini-2.0-flash-lite";
+// ============ ВЫБОР ПРОВАЙДЕРА ============
+// "claude" — Claude Sonnet (умнее, лучше понимает контекст)
+// "gemini" — Gemini Flash (дешевле, но тупее)
+const AI_PROVIDER: "claude" | "gemini" = "claude";
+
+// Модели для Claude
+const CLAUDE_CHAT_MODEL = "claude-sonnet-4-20250514";
+const CLAUDE_ANALYSIS_MODEL = "claude-sonnet-4-20250514";
+const CLAUDE_GHOST_MODEL = "claude-haiku-4-5-20251001";
+
+// Модели для Gemini
+const GEMINI_CHAT_MODEL = "gemini-2.0-flash";
+const GEMINI_ANALYSIS_MODEL = "gemini-2.0-flash";
+const GEMINI_GHOST_MODEL = "gemini-2.0-flash-lite";
+
+// Активные модели (зависят от провайдера)
+const CHAT_MODEL = AI_PROVIDER === "claude" ? CLAUDE_CHAT_MODEL : GEMINI_CHAT_MODEL;
+const ANALYSIS_MODEL = AI_PROVIDER === "claude" ? CLAUDE_ANALYSIS_MODEL : GEMINI_ANALYSIS_MODEL;
+const GHOST_MODEL = AI_PROVIDER === "claude" ? CLAUDE_GHOST_MODEL : GEMINI_GHOST_MODEL;
 
 const getSettings = (): GlobalSettings => {
   const stored = localStorage.getItem("global_settings");
   return stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
 };
 
-// --- Robust text extraction from Gemini REST response ---
+// --- Robust text extraction from API responses ---
 
 function extractGeminiText(data: any): string {
   // v1beta format: candidates[0].content.parts[].text
@@ -65,6 +77,28 @@ function extractGeminiText(data: any): string {
   // fallback variants
   if (typeof data?.text === "string") return data.text.trim();
   return "";
+}
+
+function extractClaudeText(data: any): string {
+  // Claude format: content[0].text
+  const content = data?.content;
+  if (Array.isArray(content)) {
+    const text = content
+      .filter((c: any) => c?.type === "text")
+      .map((c: any) => c?.text || "")
+      .join("")
+      .trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+// Универсальная функция извлечения текста
+function extractModelText(data: any): string {
+  if (AI_PROVIDER === "claude") {
+    return extractClaudeText(data);
+  }
+  return extractGeminiText(data);
 }
 
 function stripCodeFences(s: string): string {
@@ -163,7 +197,7 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
 // --- Proxy call (Vercel function) ---
 
 async function postViaProxy(
-  action: string, // e.g. "gemini-2.0-flash-lite:generateContent"
+  action: string, // e.g. "gemini-2.0-flash:generateContent" or "claude-sonnet-4-..."
   body: any,
   timeoutMs = 60_000
 ): Promise<any> {
@@ -187,7 +221,6 @@ async function postViaProxy(
     }
 
     if (!res.ok) {
-      // максимально информативно для отладки
       const msg =
         payload?.upstream?.error?.message ||
         payload?.error ||
@@ -201,6 +234,36 @@ async function postViaProxy(
   }
 }
 
+// Универсальная функция для простых запросов к AI (один промпт → один ответ)
+async function queryAI(
+  model: string,
+  prompt: string,
+  temperature: number = 0.4,
+  timeoutMs: number = 60_000
+): Promise<string> {
+  let data: any;
+  
+  if (AI_PROVIDER === "claude") {
+    const body = {
+      system: "Отвечай СТРОГО в формате JSON. Никакого текста вне JSON.",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 4096,
+    };
+    data = await postViaProxy(model, body, timeoutMs);
+    return extractClaudeText(data);
+  } else {
+    const body = {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature,
+        responseMimeType: "application/json",
+      },
+    };
+    data = await postViaProxy(`${model}:generateContent`, body, timeoutMs);
+    return extractGeminiText(data);
+  }
+}
+
 // --- Public API ---
 
 export const sendMessageToGemini = async (
@@ -210,42 +273,70 @@ export const sendMessageToGemini = async (
 ): Promise<GeminiChatResponse> => {
   const settings = getSettings();
 
-  // Gemini roles: user | model. SYSTEM в contents не отправляем; кладём systemInstruction отдельно.
-  const contents = history
-    .filter((m) => m.role !== MessageRole.SYSTEM)
-    .map((msg) => ({
-      role: msg.role === MessageRole.USER ? "user" : "model",
-      parts: [
-        {
-          text:
-            msg.role === MessageRole.USER
-              ? msg.content
-              : // ответы модели в истории часто хранят state-структуру; сохраняем как JSON
-                JSON.stringify(msg.state ?? { text: msg.content }),
-        },
-      ],
-    }));
-
-  contents.push({
-    role: "user",
-    parts: [{ text: lastUserMessage }],
-  });
-
-  const body = {
-    systemInstruction: {
-      role: "system",
-      parts: [{ text: systemPrompt }],
-    },
-    contents,
-    generationConfig: {
-      temperature: settings.chat_temperature,
-      responseMimeType: "application/json",
-    },
-  };
-
   try {
-    const data = await postViaProxy(`${CHAT_MODEL}:generateContent`, body, 60_000);
-    const modelText = extractGeminiText(data);
+    let data: any;
+    
+    if (AI_PROVIDER === "claude") {
+    // Claude API format
+    const messages = history
+      .filter((m) => m.role !== MessageRole.SYSTEM)
+      .map((msg) => ({
+        role: msg.role === MessageRole.USER ? "user" : "assistant",
+        content: msg.role === MessageRole.USER
+          ? msg.content
+          : JSON.stringify(msg.state ?? { text: msg.content }),
+      }));
+
+    messages.push({
+      role: "user",
+      content: lastUserMessage,
+    });
+
+    const body = {
+      system: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON.",
+      messages,
+      max_tokens: 4096,
+    };
+
+    data = await postViaProxy(CHAT_MODEL, body, 60_000);
+    
+  } else {
+    // Gemini API format
+    const contents = history
+      .filter((m) => m.role !== MessageRole.SYSTEM)
+      .map((msg) => ({
+        role: msg.role === MessageRole.USER ? "user" : "model",
+        parts: [
+          {
+            text:
+              msg.role === MessageRole.USER
+                ? msg.content
+                : JSON.stringify(msg.state ?? { text: msg.content }),
+          },
+        ],
+      }));
+
+    contents.push({
+      role: "user",
+      parts: [{ text: lastUserMessage }],
+    });
+
+    const body = {
+      systemInstruction: {
+        role: "system",
+        parts: [{ text: systemPrompt }],
+      },
+      contents,
+      generationConfig: {
+        temperature: settings.chat_temperature,
+        responseMimeType: "application/json",
+      },
+    };
+
+    data = await postViaProxy(`${CHAT_MODEL}:generateContent`, body, 60_000);
+  }
+
+    const modelText = extractModelText(data);
 
     const jsonStr = extractFirstJsonObject(modelText);
     if (jsonStr) {
@@ -267,7 +358,7 @@ export const sendMessageToGemini = async (
       violation_reason: null,
     };
   } catch (error: any) {
-    console.error("Gemini(proxy) Error:", error);
+    console.error("AI(proxy) Error:", error);
     return {
       text: "Связь прервана.",
       thought: "Ошибка API",
@@ -301,16 +392,7 @@ export const analyzeChatSession = async (
   
   const mainPrompt = buildMainCommissionPrompt(transcript, scenarioName, endReason);
   
-  const mainBody = {
-    contents: [{ role: "user", parts: [{ text: mainPrompt }] }],
-    generationConfig: {
-      temperature: 0.4,
-      responseMimeType: "application/json",
-    },
-  };
-
-  const mainData = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, mainBody, 120_000);
-  const mainText = extractGeminiText(mainData);
+  const mainText = await queryAI(ANALYSIS_MODEL, mainPrompt, 0.4, 120_000);
   const mainJsonStr = extractFirstJsonObject(mainText) ?? stripCodeFences(mainText);
   
   let result: AnalysisResult;
@@ -348,16 +430,7 @@ export const analyzeChatSession = async (
       if (activeAdvisory.length > 0) {
         const advisoryPrompt = buildAdvisoryCommissionPrompt(transcript, activeAdvisory, scenarioName);
         
-        const advisoryBody = {
-          contents: [{ role: "user", parts: [{ text: advisoryPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,  // Выше для более характерных реплик
-            responseMimeType: "application/json",
-          },
-        };
-
-        const advisoryData = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, advisoryBody, 90_000);
-        const advisoryText = extractGeminiText(advisoryData);
+        const advisoryText = await queryAI(ANALYSIS_MODEL, advisoryPrompt, 0.7, 90_000);
         const advisoryJsonStr = extractFirstJsonObject(advisoryText);
         
         if (advisoryJsonStr) {
@@ -412,16 +485,7 @@ export const analyzeChatSession = async (
       
       const aquariumPrompt = buildAquariumPrompt(transcript, activeForAquarium, scenarioName);
       
-      const aquariumBody = {
-        contents: [{ role: "user", parts: [{ text: aquariumPrompt }] }],
-        generationConfig: {
-          temperature: 0.85,  // Ещё выше для живых диалогов
-          responseMimeType: "application/json",
-        },
-      };
-
-      const aquariumData = await postViaProxy(`${ANALYSIS_MODEL}:generateContent`, aquariumBody, 90_000);
-      const aquariumText = extractGeminiText(aquariumData);
+      const aquariumText = await queryAI(ANALYSIS_MODEL, aquariumPrompt, 0.85, 90_000);
       const aquariumJsonStr = extractFirstJsonObject(aquariumText);
       
       if (aquariumJsonStr) {
@@ -530,20 +594,15 @@ ${additionalContext.previousAdvice.slice(-3).map(a => `- "${a}"`).join('\n')}
   "advice": "Конкретная реплика для учителя"
 }`;
 
-  const body = {
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.7,
-      responseMimeType: "application/json",
-    },
-  };
-
-  const data = await postViaProxy(`${GHOST_MODEL}:generateContent`, body, 45_000);
-  const modelText = extractGeminiText(data);
+  const modelText = await queryAI(GHOST_MODEL, prompt, 0.7, 45_000);
   const jsonStr = extractFirstJsonObject(modelText);
 
   if (!jsonStr) return stripCodeFences(modelText) || "Продолжайте диалог.";
 
-  const parsed = JSON.parse(jsonStr);
-  return String(parsed?.advice ?? "Продолжайте диалог.");
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return String(parsed?.advice ?? "Продолжайте диалог.");
+  } catch {
+    return stripCodeFences(modelText) || "Продолжайте диалог.";
+  }
 };

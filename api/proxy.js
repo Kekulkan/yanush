@@ -9,39 +9,80 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Ожидаем действие вида: gemini-2.0-flash-lite:generateContent
     const action = String(req.query.url || "").trim();
+    let targetUrl;
+    
+    // Определяем провайдера по названию модели
+    if (action.startsWith("claude-")) {
+      // Claude (Anthropic) API
+      // Формат: claude-sonnet-4-20250514
+      if (!/^claude[-\w.]+$/.test(action)) {
+        return res.status(400).json({
+          error: "Bad Claude model name. Expected like 'claude-sonnet-4-20250514'.",
+        });
+      }
+      targetUrl = `https://api.proxyapi.ru/anthropic/v1/messages`;
+      
+      // Claude требует model в теле запроса
+      const body = {
+        model: action,
+        max_tokens: req.body?.max_tokens || 4096,
+        messages: req.body?.messages || [],
+        system: req.body?.system || undefined,
+      };
+      
+      const upstream = await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify(body),
+      });
 
-    // Мини-валидация, чтобы не проксировать произвольные пути
-    if (!action || !/^gemini[-\w.]*:(generateContent|streamGenerateContent)$/.test(action)) {
+      const text = await upstream.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+      return res.status(upstream.status).json(data);
+      
+    } else if (action.includes(":")) {
+      // Gemini API (формат: gemini-2.0-flash:generateContent)
+      if (!/^gemini[-\w.]*:(generateContent|streamGenerateContent)$/.test(action)) {
+        return res.status(400).json({
+          error:
+            "Bad url parameter. Expected like 'gemini-2.0-flash:generateContent' " +
+            "or 'claude-sonnet-4-20250514'.",
+        });
+      }
+      targetUrl = `https://api.proxyapi.ru/google/v1beta/models/${encodeURIComponent(action)}`;
+      
+      const upstream = await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify(req.body ?? {}),
+      });
+
+      const text = await upstream.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+      return res.status(upstream.status).json(data);
+      
+    } else {
       return res.status(400).json({
-        error:
-          "Bad url parameter. Expected like 'gemini-2.0-flash-lite:generateContent' " +
-          "or 'gemini-2.0-flash-lite:streamGenerateContent'.",
+        error: "Unknown model format. Use 'gemini-...:generateContent' or 'claude-...'",
       });
     }
-
-    const targetUrl = `https://api.proxyapi.ru/google/v1beta/models/${encodeURIComponent(action)}`;
-
-    const upstream = await fetch(targetUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify(req.body ?? {}),
-    });
-
-    // Пробуем вернуть JSON, но если вдруг вернётся не-JSON — вернём как текст
-    const text = await upstream.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { raw: text };
-    }
-
-    return res.status(upstream.status).json(data);
   } catch (e) {
     return res.status(500).json({ error: e?.message || String(e) });
   }
