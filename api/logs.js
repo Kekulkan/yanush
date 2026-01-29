@@ -168,43 +168,60 @@ export default async function handler(req, res) {
 
   // ============ POST: Добавить лог ============
   if (req.method === 'POST') {
+    console.log('[POST /api/logs] Received request');
+    
     try {
       const sessionLog = req.body;
       
-      if (!sessionLog || !sessionLog.id) {
-        return res.status(400).json({ error: 'Invalid session log' });
+      console.log('[POST /api/logs] Body type:', typeof sessionLog);
+      console.log('[POST /api/logs] Has ID:', !!sessionLog?.id);
+      
+      if (!sessionLog) {
+        return res.status(400).json({ error: 'Empty request body' });
+      }
+      
+      if (!sessionLog.id) {
+        return res.status(400).json({ error: 'Missing session log ID' });
       }
 
-      // Анонимизация: убираем потенциально чувствительные данные
+      // Анонимизация с защитными проверками
       const anonymizedLog = {
         id: sessionLog.id,
         timestamp: sessionLog.timestamp || Date.now(),
         student_name: sessionLog.student_name || 'Аноним',
-        student_age: sessionLog.sessionSnapshot?.student?.age,
-        student_gender: sessionLog.sessionSnapshot?.student?.gender,
-        accentuation: sessionLog.sessionSnapshot?.chaosDetails?.accentuation,
-        intensity: sessionLog.sessionSnapshot?.chaosDetails?.intensity,
-        contexts: sessionLog.sessionSnapshot?.chaosDetails?.contexts?.map(c => c.name) || [],
-        messages_count: sessionLog.messages?.length || 0,
-        duration_seconds: sessionLog.duration_seconds,
-        status: sessionLog.status,
+        student_age: sessionLog.sessionSnapshot?.student?.age || null,
+        student_gender: sessionLog.sessionSnapshot?.student?.gender || null,
+        accentuation: sessionLog.sessionSnapshot?.chaosDetails?.accentuation || null,
+        intensity: sessionLog.sessionSnapshot?.chaosDetails?.intensity || null,
+        contexts: Array.isArray(sessionLog.sessionSnapshot?.chaosDetails?.contexts) 
+          ? sessionLog.sessionSnapshot.chaosDetails.contexts.map(c => c?.name || 'unknown') 
+          : [],
+        messages_count: Array.isArray(sessionLog.messages) ? sessionLog.messages.length : 0,
+        duration_seconds: sessionLog.duration_seconds || 0,
+        status: sessionLog.status || 'unknown',
         result: sessionLog.result ? {
-          overall_score: sessionLog.result.overall_score,
-          summary: sessionLog.result.summary,
-          commission: sessionLog.result.commission?.map(m => ({
-            name: m.name,
-            role: m.role,
-            score: m.score,
-            verdict: m.verdict
-          }))
+          overall_score: sessionLog.result.overall_score || 0,
+          summary: sessionLog.result.summary || '',
+          commission: Array.isArray(sessionLog.result.commission) 
+            ? sessionLog.result.commission.map(m => ({
+                name: m?.name || '',
+                role: m?.role || '',
+                score: m?.score || 0,
+                verdict: m?.verdict || ''
+              }))
+            : []
         } : null,
         // Сохраняем полный диалог для анализа
-        dialogue: sessionLog.messages?.map(m => ({
-          role: m.role,
-          content: m.content,
-          state: m.state
-        })) || []
+        dialogue: Array.isArray(sessionLog.messages) 
+          ? sessionLog.messages.map(m => ({
+              role: m?.role || '',
+              content: m?.content || '',
+              state: m?.state || null
+            })) 
+          : []
       };
+      
+      console.log('[POST /api/logs] Anonymized log ID:', anonymizedLog.id);
 
       let logs;
       if (hasRedis()) {
@@ -229,13 +246,15 @@ export default async function handler(req, res) {
         }
       }
 
+      console.log('[POST /api/logs] Log saved successfully');
       return res.status(200).json({ 
         success: true, 
         message: 'Log saved',
         storage: hasRedis() ? 'redis' : 'memory'
       });
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      console.error('[POST /api/logs] Error:', e.message, e.stack);
+      return res.status(500).json({ error: e.message, stack: e.stack });
     }
   }
 
