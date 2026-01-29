@@ -248,18 +248,32 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       setMessages(prev => [...prev, trollMessage]);
       saveSessionBackup(session, [...messages, trollMessage]);
       
-      // После 5 тиков — критическое состояние
-      if (inactivityCount >= 5 && newTrust < 20) {
-        // Ученик уходит
+      // Критическое состояние: trust = 0, stress = 100, ИЛИ 5+ тиков с низким доверием
+      const isCritical = newTrust <= 0 || newStress >= 100 || (inactivityCount >= 5 && newTrust < 20);
+      
+      if (isCritical) {
+        // Ученик уходит — выбираем причину
+        const exitReason = newTrust <= 0 
+          ? "Вы меня вообще не слушаете. Я ухожу." 
+          : newStress >= 100 
+            ? "*резко встаёт* Всё, мне плохо, я не могу здесь находиться!"
+            : "Всё, хватит. Я ухожу. Нечего тут время терять.";
+        
+        const exitThought = newTrust <= 0
+          ? 'Ему плевать. Абсолютно плевать. Зачем я вообще пытался?'
+          : newStress >= 100
+            ? 'Не могу дышать. Надо выйти. Сейчас. Немедленно.'
+            : 'Он даже не может нормально поговорить. Зачем я вообще пришёл?';
+        
         const exitMessage: Message = {
           id: `exit-${Date.now()}`,
           role: MessageRole.MODEL,
-          content: "Всё, хватит. Я ухожу. Нечего тут время терять.",
+          content: exitReason,
           state: {
-            thought: 'Он даже не может нормально поговорить. Зачем я вообще пришёл?',
+            thought: exitThought,
             trust: 0,
             stress: 100,
-            extreme_outcome: 'runaway'
+            extreme_outcome: newStress >= 100 ? 'shutdown' : 'runaway'
           },
           timestamp: Date.now()
         };
@@ -270,7 +284,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         setTimeout(() => {
           setPendingTermination({
             messages: finalMessages,
-            reason: 'Бездействие учителя — ученик ушёл',
+            reason: newTrust <= 0 
+              ? 'Полная потеря доверия — ученик ушёл'
+              : newStress >= 100
+                ? 'Критический стресс — ученик сбежал'
+                : 'Бездействие учителя — ученик ушёл',
             source: 'inactivity'
           });
           setAwaitingContinue(true);
