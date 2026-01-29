@@ -332,6 +332,8 @@ export default [
     "initial_stress": 90,
     "conflicts": [],
     "incompatible_accentuations": [],
+    "incompatible_genders": ["male"],
+    "min_age": 13,
     "weight": 10
   },
   {
