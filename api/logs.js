@@ -199,21 +199,39 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing session log ID' });
       }
 
-      // Анонимизация с защитными проверками
+      // Сохраняем полную информацию о сессии
       const anonymizedLog = {
         id: sessionLog.id,
         timestamp: sessionLog.timestamp || Date.now(),
+        
+        // Учитель
+        teacher_name: sessionLog.teacher?.name || 'Аноним',
+        teacher_gender: sessionLog.teacher?.gender || null,
+        
+        // Ученик
         student_name: sessionLog.student_name || 'Аноним',
         student_age: sessionLog.sessionSnapshot?.student?.age || null,
         student_gender: sessionLog.sessionSnapshot?.student?.gender || null,
+        
+        // Ситуация
+        scenario_description: sessionLog.scenario_description || '',
+        
+        // Chaos Details (акцентуация, интенсивность, контексты)
         accentuation: sessionLog.sessionSnapshot?.chaosDetails?.accentuation || null,
         intensity: sessionLog.sessionSnapshot?.chaosDetails?.intensity || null,
         contexts: Array.isArray(sessionLog.sessionSnapshot?.chaosDetails?.contexts) 
-          ? sessionLog.sessionSnapshot.chaosDetails.contexts.map(c => c?.name || 'unknown') 
+          ? sessionLog.sessionSnapshot.chaosDetails.contexts.map(c => ({
+              name: c?.name || 'unknown',
+              visibility: c?.visibility || 'unknown'
+            })) 
           : [],
+        
+        // Метаданные
         messages_count: Array.isArray(sessionLog.messages) ? sessionLog.messages.length : 0,
         duration_seconds: sessionLog.duration_seconds || 0,
         status: sessionLog.status || 'unknown',
+        
+        // Результат — основная комиссия
         result: sessionLog.result ? {
           overall_score: sessionLog.result.overall_score || 0,
           summary: sessionLog.result.summary || '',
@@ -224,9 +242,27 @@ export default async function handler(req, res) {
                 score: m?.score || 0,
                 verdict: m?.verdict || ''
               }))
+            : [],
+          // Совещательная комиссия
+          advisory: Array.isArray(sessionLog.result.advisory)
+            ? sessionLog.result.advisory.map(a => ({
+                name: a?.member?.name || a?.name || '',
+                title: a?.member?.title || a?.title || '',
+                score: a?.score || 0,
+                verdict: a?.verdict || '',
+                triggered_by: a?.triggered_by || []
+              }))
+            : [],
+          // Аквариум (диалог совещательной комиссии)
+          aquarium: Array.isArray(sessionLog.result.aquarium)
+            ? sessionLog.result.aquarium.map(line => ({
+                speaker: line?.speaker_name || line?.speaker || '',
+                text: line?.text || ''
+              }))
             : []
         } : null,
-        // Сохраняем полный диалог для анализа
+        
+        // Полный диалог для анализа
         dialogue: Array.isArray(sessionLog.messages) 
           ? sessionLog.messages.map(m => ({
               role: m?.role || '',
