@@ -96,11 +96,46 @@ export default async function handler(req, res) {
   
   // ============ ДИАГНОСТИКА: /api/logs?status=1 ============
   if (req.query.status === '1') {
+    let redisTest = null;
+    
+    // Тест записи/чтения Redis
+    if (hasRedis()) {
+      try {
+        const testKey = 'yanush_test_' + Date.now();
+        const testValue = { test: true, time: Date.now() };
+        
+        // Пробуем записать
+        const writeOk = await redis.set(testKey, testValue);
+        
+        // Пробуем прочитать
+        const readResult = await redis.get(testKey);
+        
+        redisTest = {
+          write_success: writeOk,
+          read_success: !!readResult,
+          data_match: JSON.stringify(readResult) === JSON.stringify(testValue)
+        };
+      } catch (e) {
+        redisTest = { error: e.message };
+      }
+    }
+    
+    // Также получим количество логов
+    let logsCount = 0;
+    try {
+      const logs = hasRedis() ? (await redis.get(LOGS_KEY) || []) : memoryLogs;
+      logsCount = Array.isArray(logs) ? logs.length : 0;
+    } catch (e) {
+      logsCount = -1;
+    }
+    
     return res.status(200).json({
       redis_configured: hasRedis(),
       redis_url_set: !!process.env.UPSTASH_REDIS_REST_URL,
       redis_token_set: !!process.env.UPSTASH_REDIS_REST_TOKEN,
       admin_key_set: !!process.env.ADMIN_LOGS_KEY,
+      redis_test: redisTest,
+      logs_count: logsCount,
       memory_logs_count: memoryLogs.length,
       timestamp: new Date().toISOString()
     });
