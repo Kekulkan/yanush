@@ -36,8 +36,11 @@ type GeminiChatResponse = {
   violation_reason?: string | null;
 };
 
-const CHAT_MODEL = "gemini-2.0-flash-lite";
-const ANALYSIS_MODEL = "gemini-2.0-flash-lite";
+// GM (основной диалог) — нужна умная модель для реалистичного поведения
+const CHAT_MODEL = "gemini-2.0-flash";
+// Анализ комиссии — тоже нужна умная модель для адекватных оценок
+const ANALYSIS_MODEL = "gemini-2.0-flash";
+// Суфлёр — можно оставить lite, это вспомогательная функция
 const GHOST_MODEL = "gemini-2.0-flash-lite";
 
 const getSettings = (): GlobalSettings => {
