@@ -36,12 +36,13 @@ type GeminiChatResponse = {
   violation_reason?: string | null;
 };
 
-// GM (основной диалог) — умная модель для реалистичного поведения
-const CHAT_MODEL = "gemini-2.5-flash";
-// Анализ комиссии — тоже умная модель для адекватных оценок  
-const ANALYSIS_MODEL = "gemini-2.5-flash";
-// Суфлёр — можно оставить дешевле, это вспомогательная функция
-const GHOST_MODEL = "gemini-2.0-flash";
+// GM (основной диалог) — 2.0-flash стабильнее для ролевых симуляторов
+// 2.5-flash слишком "драматизирует" и выдаёт случайные game_over
+const CHAT_MODEL = "gemini-2.0-flash";
+// Анализ комиссии — тоже 2.0-flash для консистентности
+const ANALYSIS_MODEL = "gemini-2.0-flash";
+// Суфлёр — можно оставить lite, это вспомогательная функция
+const GHOST_MODEL = "gemini-2.0-flash-lite";
 
 const getSettings = (): GlobalSettings => {
   const stored = localStorage.getItem("global_settings");
