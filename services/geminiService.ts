@@ -99,8 +99,22 @@ function coerceNum(v: any, def: number): number {
 }
 
 function normalizeChatJson(raw: any): GeminiChatResponse {
-  // поддерживаем оба нейминга: text / verbal_response
-  const text = String(raw?.text ?? raw?.verbal_response ?? "");
+  // Поддерживаем новый формат (speech + action) и старый (text / verbal_response)
+  let text = "";
+  let action = raw?.action != null ? String(raw.action) : null;
+  
+  if (raw?.speech) {
+    // Новый формат: речь отдельно от действий
+    text = String(raw.speech);
+    // Если есть action, добавляем его перед речью для отображения
+    if (action) {
+      text = `${action}\n\n${text}`;
+    }
+  } else {
+    // Старый формат: всё в одном поле
+    text = String(raw?.text ?? raw?.verbal_response ?? "");
+  }
+  
   const thought = raw?.thought != null ? String(raw.thought) : null;
 
   // world_event может быть объектом или строкой — нормализуем в объект
