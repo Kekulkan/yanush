@@ -579,9 +579,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       const prevTrust = lastModelMsg?.state?.trust ?? 50;
       const prevStress = lastModelMsg?.state?.stress ?? 50;
       
+      // Считаем номер реплики (для правила "разогрева")
+      const replyNumber = newMessages.filter(m => m.role === MessageRole.MODEL).length + 1;
+      
       // ЖЁСТКАЯ ВАЛИДАЦИЯ: ограничиваем изменение метрик
-      // Максимум ±40 за реплику (даже для критических событий)
-      const MAX_DELTA = 40;
+      // В первые 5 реплик — max ±15, потом — max ±40
+      const MAX_DELTA = replyNumber <= 5 ? 15 : 40;
       
       let finalTrust = response.trust;
       let finalStress = response.stress;
@@ -592,7 +595,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       
       // Если дельты превышают максимум — ограничиваем и логируем
       if (Math.abs(trustDelta) > MAX_DELTA || Math.abs(stressDelta) > MAX_DELTA) {
-        console.error(`[Trust/Stress] GM АБСУРД! prev: ${prevTrust}/${prevStress}, GM wants: ${finalTrust}/${finalStress} (delta: ${trustDelta}/${stressDelta}). ОГРАНИЧИВАЕМ до ±${MAX_DELTA}!`);
+        console.error(`[Trust/Stress] GM АБСУРД! Реплика #${replyNumber}, prev: ${prevTrust}/${prevStress}, GM wants: ${finalTrust}/${finalStress} (delta: ${trustDelta}/${stressDelta}). ОГРАНИЧИВАЕМ до ±${MAX_DELTA}!`);
         
         // Ограничиваем дельты
         const clampedTrustDelta = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, trustDelta));
