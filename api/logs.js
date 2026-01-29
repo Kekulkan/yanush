@@ -17,7 +17,7 @@ let memoryLogs = [];
 
 // Проверка наличия Upstash credentials
 const hasRedis = () => {
-  return process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 };
 
 // Упрощенный Redis клиент через REST API (Upstash формат)
