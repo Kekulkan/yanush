@@ -579,27 +579,39 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       const prevTrust = lastModelMsg?.state?.trust ?? 50;
       const prevStress = lastModelMsg?.state?.stress ?? 50;
       
-      // Корректируем trust/stress если есть event_reaction с дельтами
-      // GM может выдать несогласованные абсолютные значения — исправляем это
+      // ЖЁСТКАЯ ВАЛИДАЦИЯ: ограничиваем изменение метрик
+      // Максимум ±40 за реплику (даже для критических событий)
+      const MAX_DELTA = 40;
+      
       let finalTrust = response.trust;
       let finalStress = response.stress;
       
+      // Вычисляем дельты которые хочет GM
+      const trustDelta = finalTrust - prevTrust;
+      const stressDelta = finalStress - prevStress;
+      
+      // Если дельты превышают максимум — ограничиваем и логируем
+      if (Math.abs(trustDelta) > MAX_DELTA || Math.abs(stressDelta) > MAX_DELTA) {
+        console.error(`[Trust/Stress] GM АБСУРД! prev: ${prevTrust}/${prevStress}, GM wants: ${finalTrust}/${finalStress} (delta: ${trustDelta}/${stressDelta}). ОГРАНИЧИВАЕМ до ±${MAX_DELTA}!`);
+        
+        // Ограничиваем дельты
+        const clampedTrustDelta = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, trustDelta));
+        const clampedStressDelta = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, stressDelta));
+        
+        finalTrust = Math.max(0, Math.min(100, prevTrust + clampedTrustDelta));
+        finalStress = Math.max(0, Math.min(100, prevStress + clampedStressDelta));
+        
+        console.log(`[Trust/Stress] Исправлено на: ${finalTrust}/${finalStress}`);
+      }
+      
+      // Дополнительно корректируем если есть event_reaction с дельтами
       if (response.event_reaction) {
-        const trustDelta = response.event_reaction.trust_change || 0;
-        const stressDelta = response.event_reaction.stress_change || 0;
+        const eventTrustDelta = response.event_reaction.trust_change || 0;
+        const eventStressDelta = response.event_reaction.stress_change || 0;
         
-        // Применяем дельты к предыдущим значениям
-        const calculatedTrust = Math.max(0, Math.min(100, prevTrust + trustDelta));
-        const calculatedStress = Math.max(0, Math.min(100, prevStress + stressDelta));
-        
-        // Логируем если GM выдал несогласованные значения
-        if (Math.abs(finalTrust - calculatedTrust) > 5 || Math.abs(finalStress - calculatedStress) > 5) {
-          console.warn(`[Trust/Stress] GM inconsistent! GM: trust=${finalTrust}, stress=${finalStress}. Calculated: trust=${calculatedTrust}, stress=${calculatedStress}. Using calculated.`);
-        }
-        
-        // Используем рассчитанные значения
-        finalTrust = calculatedTrust;
-        finalStress = calculatedStress;
+        // Применяем дельты события к текущим значениям
+        finalTrust = Math.max(0, Math.min(100, finalTrust + eventTrustDelta));
+        finalStress = Math.max(0, Math.min(100, finalStress + eventStressDelta));
       }
 
       const modelMsg: Message = {
@@ -627,7 +639,15 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       setMessages(finalMessages);
       saveSessionBackup(session, finalMessages);
       
-      if (response.game_over) {
+      // ВАЛИДАЦИЯ game_over: только если метрики РЕАЛЬНО критические
+      // GM может выдать game_over без причины — проверяем
+      const isReallyGameOver = response.game_over && (finalTrust <= 5 || finalStress >= 95);
+      
+      if (response.game_over && !isReallyGameOver) {
+        console.error(`[Game Over] GM выдал game_over БЕЗ причины! trust=${finalTrust}, stress=${finalStress}. ИГНОРИРУЕМ game_over!`);
+      }
+      
+      if (isReallyGameOver) {
           // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
           const sessionLogId = crypto.randomUUID();
           const preliminaryLog: SessionLog = {
