@@ -43,9 +43,9 @@ type GeminiChatResponse = {
 const AI_PROVIDER: "aitunnel" | "claude" | "gemini" = "aitunnel";
 
 // Модели для AITUNNEL (OpenAI-совместимый формат)
-// Цены за 1M токенов: gemini-2.5-flash = 57.6₽/480₽, gemini-2.5-pro = 240₽/1920₽
-const AITUNNEL_CHAT_MODEL = "gemini-2.5-flash";      // ~15₽/сессия - баланс цена/качество
-const AITUNNEL_ANALYSIS_MODEL = "gemini-2.5-pro";   // ~62₽ - для комиссии нужна умная модель
+// ЭКСПЕРИМЕНТ: дорогая модель на ученика, дешёвая на комиссию
+const AITUNNEL_CHAT_MODEL = "gemini-2.5-pro";         // ~62₽/сессия - УМНАЯ для ученика
+const AITUNNEL_ANALYSIS_MODEL = "gemini-2.5-flash";   // ~15₽ - дешевле для комиссии
 const AITUNNEL_GHOST_MODEL = "gemini-2.5-flash-lite"; // ~3.5₽ - для суфлёра достаточно
 
 // Модели для Claude (proxyapi.ru)
