@@ -34,6 +34,14 @@ type GeminiChatResponse = {
   } | null;
   game_over: boolean;
   violation_reason?: string | null;
+  extreme_outcome?: string | null; // physical_aggression | runaway | shutdown | selfharm | etc
+  active_npc?: {
+    name: string;
+    role: string;
+    action?: string;
+    dialogue?: string;
+  } | null;
+  gm_note?: string | null;
 };
 
 // ============ ВЫБОР ПРОВАЙДЕРА ============
@@ -160,10 +168,23 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
   
   if (raw?.speech) {
     // Новый формат: речь отдельно от действий
-    text = String(raw.speech);
-    // Если есть action, добавляем его перед речью для отображения
-    if (action) {
-      text = `${action}\n\n${text}`;
+    const speech = String(raw.speech).trim();
+    
+    // Если речь пустая или "..." — показываем только action (невербалику)
+    const isSilent = speech === "" || speech === "..." || speech === "…";
+    
+    if (isSilent && action) {
+      // Молчание с невербаликой — показываем только action
+      text = action;
+    } else if (action) {
+      // Есть и action, и речь — объединяем
+      text = `${action}\n\n${speech}`;
+    } else if (isSilent) {
+      // Молчание БЕЗ невербалики — показываем визуальный индикатор
+      text = "*молчит*";
+    } else {
+      // Только речь
+      text = speech;
     }
   } else {
     // Старый формат: всё в одном поле
@@ -200,6 +221,17 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
     };
   }
 
+  // Парсим active_npc (NPC присутствующий в сцене)
+  let activeNpc: any = null;
+  if (raw?.active_npc && typeof raw.active_npc === 'object') {
+    activeNpc = {
+      name: raw.active_npc.name || '',
+      role: raw.active_npc.role || '',
+      action: raw.active_npc.action || undefined,
+      dialogue: raw.active_npc.dialogue || undefined
+    };
+  }
+
   return {
     text: text || "...",
     thought,
@@ -211,6 +243,9 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
     event_reaction: eventReaction,
     game_over: Boolean(raw?.game_over ?? false),
     violation_reason: raw?.violation_reason != null ? String(raw.violation_reason) : null,
+    extreme_outcome: raw?.extreme_outcome != null ? String(raw.extreme_outcome) : null,
+    active_npc: activeNpc,
+    gm_note: raw?.gm_note != null ? String(raw.gm_note) : null,
   };
 }
 
@@ -413,6 +448,9 @@ export const sendMessageToGemini = async (
       event_reaction: null,
       game_over: false,
       violation_reason: null,
+      extreme_outcome: null,
+      active_npc: null,
+      gm_note: null,
     };
   } catch (error: any) {
     console.error("AI(proxy) Error:", error);
@@ -427,6 +465,9 @@ export const sendMessageToGemini = async (
       event_reaction: null,
       game_over: false,
       violation_reason: error?.message ? String(error.message) : null,
+      extreme_outcome: null,
+      active_npc: null,
+      gm_note: null,
     };
   }
 };

@@ -629,6 +629,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         }
       }
 
+      // Определяем extreme_outcome: берём из ответа модели или выводим из violation_reason
+      const extremeOutcome = response.extreme_outcome 
+        ?? (response.violation_reason?.includes('агресс') ? 'physical_aggression' 
+          : response.violation_reason?.includes('побег') ? 'runaway'
+          : response.violation_reason?.includes('замк') ? 'shutdown'
+          : undefined);
+      
       const modelMsg: Message = {
         id: (Date.now() + 2).toString(),
         role: MessageRole.MODEL,
@@ -641,10 +648,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           event_reaction: response.event_reaction ?? undefined,
           active_npc: response.active_npc ?? undefined, // NPC в сцене
           gm_note: response.gm_note ?? undefined, // GM подсказка для админа
-          extreme_outcome: response.violation_reason?.includes('агресс') ? 'physical_aggression' 
-            : response.violation_reason?.includes('побег') ? 'runaway'
-            : response.violation_reason?.includes('замк') ? 'shutdown'
-            : undefined
+          extreme_outcome: extremeOutcome,
+          violation_reason: response.violation_reason ?? undefined // Описание исхода
         },
         timestamp: Date.now()
       };
@@ -1358,12 +1363,18 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                   {/* Extreme Outcome Warning */}
                                   {extremeOutcome && (
                                     <div className="w-full mb-4 p-4 rounded-2xl bg-red-900/50 border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.5)] animate-pulse">
-                                      <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-3 mb-2">
                                         <AlertOctagon size={20} className="text-red-500" />
                                         <span className="text-[10px] font-black uppercase tracking-widest text-red-400">
-                                          КРИТИЧЕСКИЙ ИСХОД: {extremeOutcome.toUpperCase().replace('_', ' ')}
+                                          КРИТИЧЕСКИЙ ИСХОД: {extremeOutcome.toUpperCase().replace(/_/g, ' ')}
                                         </span>
                                       </div>
+                                      {/* Показываем описание исхода если есть */}
+                                      {msg.state?.violation_reason && (
+                                        <p className="text-red-200 text-sm mt-2 border-t border-red-500/30 pt-2">
+                                          {msg.state.violation_reason}
+                                        </p>
+                                      )}
                                     </div>
                                   )}
                                   
