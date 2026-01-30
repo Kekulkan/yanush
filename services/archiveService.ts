@@ -280,6 +280,46 @@ export function exportSessionToJSON(session: SessionLog): void {
   exportToJSON([session], filename);
 }
 
+/**
+ * Импортировать логи из JSON строки в архив пользователя
+ */
+export function importFromJSON(jsonStr: string, userId: string): { success: boolean; count: number; error?: string } {
+  try {
+    const data = JSON.parse(jsonStr);
+    const logsToImport: SessionLog[] = Array.isArray(data) ? data : [data];
+    
+    // Минимальная валидация структуры
+    const validLogs = logsToImport.filter(log =>
+      log && typeof log === 'object' && log.id && log.messages && Array.isArray(log.messages)
+    );
+
+    if (validLogs.length === 0 && logsToImport.length > 0) {
+      // Попробуем еще раз, вдруг там вложенный объект logs (как от сервера)
+      if (data.logs && Array.isArray(data.logs)) {
+        return importFromJSON(JSON.stringify(data.logs), userId);
+      }
+    }
+
+    let importedCount = 0;
+    validLogs.forEach(log => {
+      // Помечаем что это импорт
+      const importedLog: SessionLog = {
+        ...log,
+        importedFrom: log.importedFrom || 'file',
+        importedAt: Date.now(),
+        userId // Привязываем к текущему юзеру
+      };
+      saveToUserArchive(userId, importedLog);
+      importedCount++;
+    });
+
+    return { success: true, count: importedCount };
+  } catch (e) {
+    console.error('Failed to import JSON:', e);
+    return { success: false, count: 0, error: String(e) };
+  }
+}
+
 // ============ СТАТИСТИКА ============
 
 export interface ArchiveStats {

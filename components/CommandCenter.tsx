@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Terminal, Archive, Trash2, Download, Eye, X, ChevronDown, ChevronUp, Globe, User } from 'lucide-react';
+import { ArrowLeft, Terminal, Archive, Trash2, Download, Upload, Eye, X, ChevronDown, ChevronUp, Globe, User } from 'lucide-react';
 import { UserAccount, SessionLog, Message, MessageRole } from '../types';
 import { 
   getUserArchive, 
@@ -11,7 +11,8 @@ import {
   getScoreColor,
   getScoreGradient,
   getGlobalArchive,
-  getGlobalArchiveStats
+  getGlobalArchiveStats,
+  importFromJSON
 } from '../services/archiveService';
 import { 
   executeCommand, 
@@ -33,6 +34,7 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Archive state
   const [sessions, setSessions] = useState<SessionLog[]>([]);
@@ -41,7 +43,7 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
   const [wipeConfirmPending, setWipeConfirmPending] = useState(false);
   const [archiveTab, setArchiveTab] = useState<'personal' | 'global'>('personal');
   
-  const isAdmin = user.role === 'admin';
+  const isAdmin = user.role === 'ADMIN';
 
   // Initialize
   useEffect(() => {
@@ -149,6 +151,44 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
     }]);
   }, [sessions, user.email]);
 
+  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+
+      const result = importFromJSON(content, user.id);
+      if (result.success) {
+        setTerminalHistory(prev => [...prev, {
+          type: 'success' as const,
+          text: `Successfully imported ${result.count} session(s).`,
+          timestamp: Date.now()
+        }]);
+        loadSessions();
+      } else {
+        setTerminalHistory(prev => [...prev, {
+          type: 'error' as const,
+          text: `Import failed: ${result.error || 'Unknown error'}`,
+          timestamp: Date.now()
+        }]);
+      }
+      
+      // Clear input so same file can be imported again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.onerror = () => {
+      setTerminalHistory(prev => [...prev, {
+        type: 'error' as const,
+        text: 'Failed to read file.',
+        timestamp: Date.now()
+      }]);
+    };
+    reader.readAsText(file);
+  }, [user.id, loadSessions]);
+
   // Get terminal line color
   const getLineColor = (type: TerminalOutput['type']): string => {
     switch (type) {
@@ -162,6 +202,13 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
 
   return (
     <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImport}
+        accept=".json"
+        className="hidden"
+      />
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-800/50 bg-slate-900/30">
         <button
@@ -260,21 +307,31 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
                   {archiveTab === 'global' ? 'ГЛОБАЛЬНЫЙ АРХИВ' : 'АРХИВ СЕССИЙ'}
                 </span>
               </div>
-              {(archiveTab === 'personal' ? sessions : globalSessions).length > 0 && (
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => {
-                    const data = archiveTab === 'personal' ? sessions : globalSessions;
-                    const filename = archiveTab === 'personal' 
-                      ? `archive_${user.email}_${new Date().toISOString().split('T')[0]}.json`
-                      : `global_archive_${new Date().toISOString().split('T')[0]}.json`;
-                    exportToJSON(data, filename);
-                  }}
-                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-cyan-400 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors"
                 >
-                  <Download size={12} />
-                  Экспорт всех
+                  <Upload size={12} />
+                  Импорт
                 </button>
-              )}
+                
+                {(archiveTab === 'personal' ? sessions : globalSessions).length > 0 && (
+                  <button
+                    onClick={() => {
+                      const data = archiveTab === 'personal' ? sessions : globalSessions;
+                      const filename = archiveTab === 'personal'
+                        ? `archive_${user.email}_${new Date().toISOString().split('T')[0]}.json`
+                        : `global_archive_${new Date().toISOString().split('T')[0]}.json`;
+                      exportToJSON(data, filename);
+                    }}
+                    className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-cyan-400 transition-colors"
+                  >
+                    <Download size={12} />
+                    Экспорт всех
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
