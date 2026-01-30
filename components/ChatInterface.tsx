@@ -106,7 +106,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // Контроль частоты GM событий (минимум 15 реплик между событиями)
   // Начинаем с 0 — первое событие не раньше 15-й реплики
   const lastEventIndexRef = useRef<number>(0);
-  const MIN_MESSAGES_BETWEEN_EVENTS = 15;
+  const MIN_MESSAGES_BETWEEN_EVENTS = 8; // GM события чаще — создают дилеммы
   
   // БЭКДОР: Автоматический диалог для отладки комиссии (только админ)
   const [autoPlayActive, setAutoPlayActive] = useState(false);
@@ -638,6 +638,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           stress: finalStress,
           world_event: filteredWorldEvent,
           event_reaction: response.event_reaction ?? undefined,
+          gm_note: response.gm_note ?? undefined, // GM подсказка для админа
           extreme_outcome: response.violation_reason?.includes('агресс') ? 'physical_aggression' 
             : response.violation_reason?.includes('побег') ? 'runaway'
             : response.violation_reason?.includes('замк') ? 'shutdown'

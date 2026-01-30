@@ -28,8 +28,9 @@ export type ExtremeOutcome =
 
 // Событие мира (GM) — тип открытый, LLM может генерировать любые события
 export interface WorldEvent {
-  type: string;           // Тип события: phone_call, npc_enters, noise, student_phone, other
+  type: string;           // Тип события: phone_call, npc_enters, emergency, dilemma, other
   description: string;    // Описание для учителя
+  dilemma?: string;       // В чём выбор? Какие варианты?
   trust_delta: number;    // Влияние на доверие (выставляется ПОСЛЕ реакции учителя)
   stress_delta: number;   // Влияние на стресс
   npc_name?: string;      // Имя NPC, если появился
@@ -54,6 +55,8 @@ export interface SimulationState {
   world_event?: WorldEvent;
   // Оценка реакции на предыдущее событие
   event_reaction?: EventReaction;
+  // GM подсказка для админа (не видит учитель!)
+  gm_note?: string;
   // Флаг экстремального исхода
   extreme_outcome?: ExtremeOutcome;
   game_over?: boolean;
