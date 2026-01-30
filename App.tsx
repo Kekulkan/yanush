@@ -16,6 +16,7 @@ import { getSessionBackup } from './services/storageService';
 import { authService } from './services/authService';
 import { preloadPrompts } from './services/promptsService';
 import { getSubscriptionInfo, SubscriptionInfo } from './services/billingService';
+import { resetApiLimits } from './services/geminiService';
 
 type ViewState = 'landing' | 'setup' | 'chat' | 'admin' | 'auth' | 'museum' | 'command_center';
 
@@ -52,6 +53,7 @@ const App: React.FC = () => {
   const startSession = (teacher: TeacherProfile, student: StudentProfile) => {
     const isPremium = authService.isPremium();
     const sessionData = buildDynamicPrompt(teacher, student, isPremium);
+    resetApiLimits(); // Сброс лимитов API для новой сессии
     setActiveSession(sessionData);
     setRestoredMessages([]); 
     setView('chat');
@@ -60,6 +62,7 @@ const App: React.FC = () => {
   const resumeSession = () => {
       const backup = getSessionBackup();
       if (backup) {
+          resetApiLimits(); // Сброс лимитов при восстановлении
           setActiveSession(backup.session);
           setRestoredMessages(backup.messages);
           setView('chat');
@@ -68,6 +71,7 @@ const App: React.FC = () => {
 
   const handleRestoreSession = (log: SessionLog) => {
       if (log.sessionSnapshot) {
+          resetApiLimits(); // Сброс лимитов при восстановлении из архива
           setActiveSession(log.sessionSnapshot);
           setRestoredMessages(log.messages);
           setView('chat');

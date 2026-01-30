@@ -257,6 +257,51 @@ let isOnFallback = false;
 let fallbackSince: number | null = null;
 const FALLBACK_RETRY_INTERVAL = 60_000; // Пробовать вернуться на pro каждые 60 сек
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ЗАЩИТА ОТ СЛИВА ДЕНЕГ: Лимит API-вызовов за сессию
+// ═══════════════════════════════════════════════════════════════════════════
+let apiCallCount = 0;
+let sessionStartTime: number | null = null;
+const MAX_API_CALLS_PER_SESSION = 200;    // Максимум 200 вызовов за сессию
+const MAX_SESSION_DURATION_MS = 3600_000; // Максимум 1 час на сессию
+
+export function resetApiLimits() {
+  apiCallCount = 0;
+  sessionStartTime = Date.now();
+  isOnFallback = false;
+  fallbackSince = null;
+  console.log('[API] Limits reset for new session');
+}
+
+export function getApiUsage() {
+  return {
+    calls: apiCallCount,
+    maxCalls: MAX_API_CALLS_PER_SESSION,
+    sessionDuration: sessionStartTime ? Date.now() - sessionStartTime : 0,
+    maxDuration: MAX_SESSION_DURATION_MS,
+  };
+}
+
+function checkApiLimits() {
+  // Инициализируем время сессии при первом вызове
+  if (!sessionStartTime) {
+    sessionStartTime = Date.now();
+  }
+  
+  // Проверяем лимит вызовов
+  if (apiCallCount >= MAX_API_CALLS_PER_SESSION) {
+    throw new Error(`API limit exceeded: ${apiCallCount}/${MAX_API_CALLS_PER_SESSION} calls. Start a new session.`);
+  }
+  
+  // Проверяем длительность сессии
+  const duration = Date.now() - sessionStartTime;
+  if (duration > MAX_SESSION_DURATION_MS) {
+    throw new Error(`Session too long: ${Math.floor(duration / 60000)} minutes. Start a new session.`);
+  }
+  
+  apiCallCount++;
+}
+
 async function postViaProxySingle(
   action: string,
   body: any,
@@ -294,6 +339,9 @@ async function postViaProxy(
   body: any,
   timeoutMs = 60_000
 ): Promise<any> {
+  // Проверяем лимиты перед каждым вызовом
+  checkApiLimits();
+  
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   
