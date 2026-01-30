@@ -6,7 +6,7 @@ import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../serv
 import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
-import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
+import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, User, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
 import SecurityShield from './SecurityShield';
 import HelpOverlay, { CHAT_HELP_ITEMS } from './HelpOverlay';
@@ -1302,6 +1302,53 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                           💡 Отреагируйте на это событие в своей следующей реплике
                                         </div>
                                       )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Active NPC - присутствует в сцене */}
+                                  {msg.state?.active_npc && (
+                                    <div className="w-full mb-4 p-4 rounded-2xl border bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <User size={16} className="text-indigo-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
+                                          {msg.state.active_npc.role?.toUpperCase() || 'NPC'} — ПРИСУТСТВУЕТ
+                                        </span>
+                                      </div>
+                                      
+                                      <div className="space-y-2">
+                                        <div className="text-[11px] font-bold text-indigo-300">
+                                          {msg.state.active_npc.name}
+                                        </div>
+                                        
+                                        {msg.state.active_npc.action && (
+                                          <div className="text-sm italic text-indigo-200/70">
+                                            {msg.state.active_npc.action}
+                                          </div>
+                                        )}
+                                        
+                                        {msg.state.active_npc.dialogue && (
+                                          <div className="mt-2 p-3 rounded-xl bg-indigo-900/30 border border-indigo-500/20">
+                                            <p className="text-sm text-indigo-100">"{msg.state.active_npc.dialogue}"</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="mt-3 pt-3 border-t border-indigo-500/20 text-[10px] text-indigo-300 font-bold">
+                                        💡 Можете обращаться к {msg.state.active_npc.name} по имени в своей реплике
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* GM Note - подсказка для админа */}
+                                  {isAdmin && msg.state?.gm_note && (
+                                    <div className="w-full mb-4 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <Radio size={16} className="text-purple-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-purple-400">
+                                          GM ПОДСКАЗКА (только для админа)
+                                        </span>
+                                      </div>
+                                      <p className="text-sm text-purple-200 italic">{msg.state.gm_note}</p>
                                     </div>
                                   )}
                                   
