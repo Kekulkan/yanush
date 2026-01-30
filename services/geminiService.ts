@@ -252,6 +252,11 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
 
 // --- Proxy call (Vercel function) with retry & fallback ---
 
+// Состояние fallback: если pro упал, временно используем flash
+let isOnFallback = false;
+let fallbackSince: number | null = null;
+const FALLBACK_RETRY_INTERVAL = 60_000; // Пробовать вернуться на pro каждые 60 сек
+
 async function postViaProxySingle(
   action: string,
   body: any,
@@ -291,20 +296,49 @@ async function postViaProxy(
 ): Promise<any> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  
+  const isPro = AI_PROVIDER === "aitunnel" && action.includes("gemini-2.5-pro");
+  
+  // Если на fallback и пора попробовать вернуться на pro
+  const shouldTryPro = isPro && isOnFallback && 
+    fallbackSince && (Date.now() - fallbackSince > FALLBACK_RETRY_INTERVAL);
 
   try {
-    // Первая попытка
-    return await postViaProxySingle(action, body, timeoutMs, controller.signal);
+    // Если сейчас на fallback — используем flash, но периодически пробуем pro
+    if (isPro && isOnFallback && !shouldTryPro) {
+      // Продолжаем на flash
+      const flashAction = action.replace("gemini-2.5-pro", AITUNNEL_CHAT_FALLBACK);
+      const flashBody = { ...body };
+      if (flashBody.model) flashBody.model = AITUNNEL_CHAT_FALLBACK;
+      
+      return await postViaProxySingle(flashAction, flashBody, timeoutMs, controller.signal);
+    }
+    
+    // Пробуем pro (или это не pro запрос)
+    const result = await postViaProxySingle(action, body, timeoutMs, controller.signal);
+    
+    // Pro сработал! Возвращаемся с fallback
+    if (isPro && isOnFallback) {
+      console.log("[API] ✅ Pro is back! Switching from fallback");
+      isOnFallback = false;
+      fallbackSince = null;
+    }
+    
+    return result;
+    
   } catch (err: any) {
-    // Если это AITUNNEL с pro — пробуем fallback на flash
-    if (AI_PROVIDER === "aitunnel" && action.includes("gemini-2.5-pro")) {
-      console.warn(`[API] Pro failed: ${err.message}, trying flash fallback...`);
+    // Если pro упал — переключаемся на fallback
+    if (isPro) {
+      console.warn(`[API] ⚠️ Pro failed: ${err.message}, using flash fallback...`);
+      
+      if (!isOnFallback) {
+        isOnFallback = true;
+        fallbackSince = Date.now();
+      }
       
       const fallbackAction = action.replace("gemini-2.5-pro", AITUNNEL_CHAT_FALLBACK);
       const fallbackBody = { ...body };
-      if (fallbackBody.model) {
-        fallbackBody.model = AITUNNEL_CHAT_FALLBACK;
-      }
+      if (fallbackBody.model) fallbackBody.model = AITUNNEL_CHAT_FALLBACK;
       
       // Новый контроллер для fallback
       const fallbackController = new AbortController();
@@ -312,14 +346,14 @@ async function postViaProxy(
       
       try {
         const result = await postViaProxySingle(fallbackAction, fallbackBody, timeoutMs, fallbackController.signal);
-        console.log("[API] Fallback to flash succeeded");
+        console.log("[API] Fallback succeeded");
         return result;
       } finally {
         window.clearTimeout(fallbackTimer);
       }
     }
     
-    // Не AITUNNEL или не pro — просто пробрасываем ошибку
+    // Не pro — пробрасываем ошибку
     throw err;
   } finally {
     window.clearTimeout(timer);
