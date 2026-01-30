@@ -1065,13 +1065,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               </div>
             </div>
 
-            {/* Psychotype (Admin only) */}
-            {isAdmin && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">ПСИХОТИП</div>
-                <div className="text-white font-bold">{session.chaosDetails.accentuation}</div>
-              </div>
-            )}
+            {/* Psychotype */}
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+              <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">ПСИХОТИП</div>
+              <div className="text-white font-bold">{session.chaosDetails.accentuation}</div>
+            </div>
 
             {/* Context Summary (Incident) */}
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
@@ -1188,7 +1186,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               <div className="hidden sm:block">
                   <h2 className="text-sm md:text-md font-black text-white uppercase tracking-tighter italic leading-none">{session.student.name}</h2>
                   <div className="text-[8px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-1 mt-1">
-                      {isAdmin ? session.chaosDetails.accentuation : 'ОБЪЕКТ СИМУЛЯЦИИ'} <Info size={10} className="opacity-50" />
+                      {session.chaosDetails.accentuation} <Info size={10} className="opacity-50" />
                   </div>
               </div>
           </div>
