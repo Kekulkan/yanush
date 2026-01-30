@@ -164,7 +164,25 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   useEffect(() => {
     // Запускаем только если последнее сообщение от ученика и не идёт загрузка
     const lastMsg = messages[messages.length - 1];
-    const shouldTrackInactivity = lastMsg?.role === MessageRole.MODEL && !isLoading && !isAnalyzing && !analysis;
+    
+    // ВАЖНО: НЕ запускаем таймер если:
+    // 1. Последнее сообщение — ошибка API ("Связь прервана", "Ошибка API")
+    // 2. Сессия уже завершена (awaitingContinue)
+    // 3. Последнее сообщение сгенерировано таймером бездействия (содержит типичные фразы)
+    const isErrorMessage = lastMsg?.content?.includes('Связь прервана') || 
+                           lastMsg?.state?.thought?.includes('Ошибка API') ||
+                           lastMsg?.state?.violation_reason?.includes('aborted');
+    const isInactivityMessage = lastMsg?.content === 'Эээ... алло? Вы там?' ||
+                                lastMsg?.content === '*смотрит на учителя с недоумением*' ||
+                                lastMsg?.content === 'Вы меня вообще слышите?';
+    
+    const shouldTrackInactivity = lastMsg?.role === MessageRole.MODEL && 
+                                   !isLoading && 
+                                   !isAnalyzing && 
+                                   !analysis && 
+                                   !awaitingContinue &&
+                                   !isErrorMessage &&
+                                   !isInactivityMessage;
     
     if (!shouldTrackInactivity) {
       // Сбрасываем таймер если учитель ответил или идёт загрузка
@@ -194,7 +212,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         clearInterval(inactivityTimerRef.current);
       }
     };
-  }, [messages, isLoading, isAnalyzing, analysis]);
+  }, [messages, isLoading, isAnalyzing, analysis, awaitingContinue]);
 
   // Сброс таймера при любой активности (ввод текста, голос)
   useEffect(() => {
@@ -209,7 +227,16 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // 1-й тик: удивление/вопрос
   // 2-й тик: испугался и ушёл
   useEffect(() => {
-    if (!isInactive || inactivityCount === 0 || isLoading) return;
+    // Защита от бесконечного цикла: не более 2 тиков
+    if (!isInactive || inactivityCount === 0 || isLoading || awaitingContinue) return;
+    
+    // Защита: если уже больше 2 тиков — что-то пошло не так, просто игнорируем
+    if (inactivityCount > 2) {
+      console.warn('[Inactivity] Count exceeded 2, stopping timer');
+      setIsInactive(false);
+      setInactivityCount(0);
+      return;
+    }
     
     // Первый тик — удивление
     if (inactivityCount === 1) {
@@ -291,6 +318,14 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       if (user?.id) saveToUserArchive(user.id, preliminaryLog);
       saveToGlobalArchive(preliminaryLog);
       
+      // ВАЖНО: Сразу сбрасываем таймер, чтобы предотвратить дальнейшие тики
+      setIsInactive(false);
+      setInactivityCount(0);
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      
       // Устанавливаем паузу перед анализом, сохраняем ID для обновления
       setTimeout(() => {
         setPendingTermination({
@@ -302,7 +337,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         setAwaitingContinue(true);
       }, 500);
     }
-  }, [isInactive, inactivityCount, messages, session, user]);
+  }, [isInactive, inactivityCount, messages, session, user, awaitingContinue]);
 
   const toggleListening = () => {
       if (!recognitionRef.current) return alert('Голосовой ввод не поддерживается вашим браузером.');
