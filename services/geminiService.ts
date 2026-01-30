@@ -165,7 +165,8 @@ function coerceNum(v: any, def: number): number {
 function normalizeChatJson(raw: any): GeminiChatResponse {
   // Поддерживаем новый формат (speech + action) и старый (text / verbal_response)
   let text = "";
-  let action = raw?.action != null ? String(raw.action) : null;
+  // Поддерживаем оба имени поля для гибкости
+  let action = (raw?.non_verbal ?? raw?.action) != null ? String(raw?.non_verbal ?? raw?.action) : null;
   
   if (raw?.speech) {
     // Новый формат: речь отдельно от действий

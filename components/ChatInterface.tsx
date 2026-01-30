@@ -301,6 +301,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       
       // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
       const sessionLogId = crypto.randomUUID();
+      const currentUser = user || authService.getCurrentUser();
       const preliminaryLog: SessionLog = {
         id: sessionLogId,
         timestamp: Date.now(),
@@ -312,10 +313,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         messages: finalMessages,
         result: { overall_score: 0, summary: 'Ожидает анализа (бездействие)', commission: [], timestamp: Date.now() },
         sessionSnapshot: session,
-        userId: user?.id,
-        userEmail: user?.email
+        userId: currentUser?.id,
+        userEmail: currentUser?.email
       };
-      if (user?.id) saveToUserArchive(user.id, preliminaryLog);
+      if (currentUser?.id) saveToUserArchive(currentUser.id, preliminaryLog);
       saveToGlobalArchive(preliminaryLog);
       
       // ВАЖНО: Сразу сбрасываем таймер, чтобы предотвратить дальнейшие тики
@@ -499,6 +500,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
   // Функция сохранения сессии в архив (existingId для обновления предварительной записи)
   const archiveSession = (finalMessages: Message[], analysisResult: AnalysisResult, status: string, existingId?: string) => {
+    // Получаем актуального юзера напрямую из сервиса, чтобы избежать проблем с props
+    const currentUser = user || authService.getCurrentUser();
+    
     const sessionLog: SessionLog = {
       id: existingId || crypto.randomUUID(), // Используем существующий ID если есть
       timestamp: Date.now(),
@@ -510,13 +514,17 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       messages: finalMessages,
       result: analysisResult,
       sessionSnapshot: session,
-      userId: user?.id,
-      userEmail: user?.email
+      userId: currentUser?.id,
+      userEmail: currentUser?.email
     };
 
-    if (user?.id) {
-      saveToUserArchive(user.id, sessionLog);
+    if (currentUser?.id) {
+      console.log('[archiveSession] Saving to user archive for ID:', currentUser.id);
+      saveToUserArchive(currentUser.id, sessionLog);
+    } else {
+      console.warn('[archiveSession] No user ID found, skipping user archive');
     }
+    
     saveToGlobalArchive(sessionLog);
     
     // Отправляем на сервер для глобального архива админа
@@ -708,6 +716,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       if (isReallyGameOver) {
           // Сохраняем сессию СРАЗУ (без анализа) — чтобы не потерять при выходе
           const sessionLogId = crypto.randomUUID();
+          const currentUser = user || authService.getCurrentUser();
           const preliminaryLog: SessionLog = {
             id: sessionLogId,
             timestamp: Date.now(),
@@ -719,10 +728,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             messages: finalMessages,
             result: { overall_score: 0, summary: 'Ожидает анализа', commission: [], timestamp: Date.now() },
             sessionSnapshot: session,
-            userId: user?.id,
-            userEmail: user?.email
+            userId: currentUser?.id,
+            userEmail: currentUser?.email
           };
-          if (user?.id) saveToUserArchive(user.id, preliminaryLog);
+          if (currentUser?.id) saveToUserArchive(currentUser.id, preliminaryLog);
           saveToGlobalArchive(preliminaryLog);
           
           // Даём пользователю прочитать последнюю реплику, сохраняем ID для обновления
