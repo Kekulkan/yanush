@@ -559,12 +559,16 @@ export const buildDynamicPrompt = (
         "trust_delta": 0, // выставляй ПОСЛЕ реакции учителя, не сразу!
         "stress_delta": 0
       },
-      "event_reaction": { // если ПРЕДЫДУЩЕЕ событие требовало реакции — оцени её
-        "teacher_action": "Что сделал учитель",
+      // ⚠️ ВАЖНО: event_reaction генерируется ТОЛЬКО если:
+      // 1. В ПРЕДЫДУЩЕЙ реплике (от тебя) было world_event с requires_response: true
+      // 2. Учитель как-то отреагировал на это событие
+      // НИКОГДА не генерируй event_reaction если world_event НЕ БЫЛО!
+      "event_reaction": { // ТОЛЬКО если было world_event!
+        "teacher_action": "Что сделал учитель В ОТВЕТ НА world_event",
         "evaluation": "Как ученик это воспринял",
-        "trust_change": число, // изменение доверия из-за реакции
+        "trust_change": число,
         "stress_change": число,
-        "ethics_violation": "описание нарушения" // если было грубое поведение — комиссия учтёт
+        "ethics_violation": "описание нарушения (если было)"
       },
       "extreme_outcome": "тип_исхода", // ТОЛЬКО при критических условиях
       "game_over": true/false,

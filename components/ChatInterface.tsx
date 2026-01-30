@@ -608,13 +608,24 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       }
       
       // Дополнительно корректируем если есть event_reaction с дельтами
+      // НО ТОЛЬКО если в предыдущей реплике модели было world_event!
       if (response.event_reaction) {
-        const eventTrustDelta = response.event_reaction.trust_change || 0;
-        const eventStressDelta = response.event_reaction.stress_change || 0;
+        // Проверяем, было ли world_event в предыдущем сообщении модели
+        const prevModelMsg = [...newMessages].reverse().find(m => m.role === MessageRole.MODEL);
+        const hadWorldEvent = prevModelMsg?.state?.world_event != null;
         
-        // Применяем дельты события к текущим значениям
-        finalTrust = Math.max(0, Math.min(100, finalTrust + eventTrustDelta));
-        finalStress = Math.max(0, Math.min(100, finalStress + eventStressDelta));
+        if (hadWorldEvent) {
+          const eventTrustDelta = response.event_reaction.trust_change || 0;
+          const eventStressDelta = response.event_reaction.stress_change || 0;
+          
+          // Применяем дельты события к текущим значениям
+          finalTrust = Math.max(0, Math.min(100, finalTrust + eventTrustDelta));
+          finalStress = Math.max(0, Math.min(100, finalStress + eventStressDelta));
+        } else {
+          // Галлюцинация! event_reaction без world_event
+          console.error(`[Event Reaction] ГАЛЛЮЦИНАЦИЯ: event_reaction без world_event. Игнорируем.`);
+          response.event_reaction = undefined;
+        }
       }
 
       const modelMsg: Message = {
