@@ -51,10 +51,11 @@ type GeminiChatResponse = {
 const AI_PROVIDER: "aitunnel" | "claude" | "gemini" = "aitunnel";
 
 // Модели для AITUNNEL (OpenAI-совместимый формат)
-// ЭКСПЕРИМЕНТ: дорогая модель на ученика, дешёвая на комиссию
-const AITUNNEL_CHAT_MODEL = "gemini-2.5-flash";        // Более стабильная модель
-const AITUNNEL_ANALYSIS_MODEL = "gemini-2.5-flash";   // ~15₽ - дешевле для комиссии
-const AITUNNEL_GHOST_MODEL = "gemini-2.5-flash-lite"; // ~3.5₽ - для суфлёра достаточно
+// Pro = умнее, Flash = быстрее/стабильнее (fallback)
+const AITUNNEL_CHAT_MODEL = "gemini-2.5-pro";          // Умная модель для ученика
+const AITUNNEL_CHAT_FALLBACK = "gemini-2.5-flash";    // Fallback если pro упадёт
+const AITUNNEL_ANALYSIS_MODEL = "gemini-2.5-flash";   // Для комиссии хватит flash
+const AITUNNEL_GHOST_MODEL = "gemini-2.5-flash-lite"; // Для суфлёра достаточно
 
 // Модели для Claude (proxyapi.ru)
 const CLAUDE_CHAT_MODEL = "claude-sonnet-4-20250514";
@@ -249,10 +250,42 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
   };
 }
 
-// --- Proxy call (Vercel function) ---
+// --- Proxy call (Vercel function) with retry & fallback ---
+
+async function postViaProxySingle(
+  action: string,
+  body: any,
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<any> {
+  const res = await fetch(`/api/proxy?url=${encodeURIComponent(action)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  const text = await res.text();
+  let payload: any;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    payload = { raw: text };
+  }
+
+  if (!res.ok) {
+    const msg =
+      payload?.upstream?.error?.message ||
+      payload?.error ||
+      `Proxy request failed (${res.status})`;
+    throw new Error(msg);
+  }
+
+  return payload;
+}
 
 async function postViaProxy(
-  action: string, // e.g. "gemini-2.0-flash:generateContent" or "claude-sonnet-4-..."
+  action: string, // e.g. "aitunnel:gemini-2.5-pro" or "claude-sonnet-4-..."
   body: any,
   timeoutMs = 60_000
 ): Promise<any> {
@@ -260,30 +293,34 @@ async function postViaProxy(
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(`/api/proxy?url=${encodeURIComponent(action)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    const text = await res.text();
-    let payload: any;
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { raw: text };
+    // Первая попытка
+    return await postViaProxySingle(action, body, timeoutMs, controller.signal);
+  } catch (err: any) {
+    // Если это AITUNNEL с pro — пробуем fallback на flash
+    if (AI_PROVIDER === "aitunnel" && action.includes("gemini-2.5-pro")) {
+      console.warn(`[API] Pro failed: ${err.message}, trying flash fallback...`);
+      
+      const fallbackAction = action.replace("gemini-2.5-pro", AITUNNEL_CHAT_FALLBACK);
+      const fallbackBody = { ...body };
+      if (fallbackBody.model) {
+        fallbackBody.model = AITUNNEL_CHAT_FALLBACK;
+      }
+      
+      // Новый контроллер для fallback
+      const fallbackController = new AbortController();
+      const fallbackTimer = window.setTimeout(() => fallbackController.abort(), timeoutMs);
+      
+      try {
+        const result = await postViaProxySingle(fallbackAction, fallbackBody, timeoutMs, fallbackController.signal);
+        console.log("[API] Fallback to flash succeeded");
+        return result;
+      } finally {
+        window.clearTimeout(fallbackTimer);
+      }
     }
-
-    if (!res.ok) {
-      const msg =
-        payload?.upstream?.error?.message ||
-        payload?.error ||
-        `Proxy request failed (${res.status})`;
-      throw new Error(msg);
-    }
-
-    return payload;
+    
+    // Не AITUNNEL или не pro — просто пробрасываем ошибку
+    throw err;
   } finally {
     window.clearTimeout(timer);
   }
