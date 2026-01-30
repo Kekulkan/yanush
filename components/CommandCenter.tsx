@@ -403,6 +403,11 @@ const SessionCard: React.FC<SessionCardProps> = ({
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400">
               {accentuation}
             </span>
+            {session.importedFrom && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono" title={`Imported from ${session.importedFrom}`}>
+                IMPORT
+              </span>
+            )}
           </div>
         </div>
 

@@ -258,6 +258,9 @@ export interface SessionLog {
   // Для архивирования
   userId?: string;
   userEmail?: string;
+  // Для импортированных сессий
+  importedFrom?: string; // ID оригинальной сессии
+  importedAt?: number;   // Timestamp импорта
 }
 
 export interface Scenario {

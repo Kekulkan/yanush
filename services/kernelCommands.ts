@@ -4,7 +4,7 @@
  */
 
 import { UserAccount } from '../types';
-import { getUserArchiveStats, wipeUserArchive, getGlobalArchiveStats } from './archiveService';
+import { getUserArchiveStats, wipeUserArchive, getGlobalArchiveStats, getGlobalArchive, saveToUserArchive, getUserArchive } from './archiveService';
 import { authService } from './authService';
 
 // Версия ядра
@@ -78,6 +78,9 @@ export function executeCommand(
     case 'VERSION':
       return { output: [commandLog, ...cmdVersion()] };
     
+    case 'IMPORT':
+      return { output: [commandLog, ...cmdImport(user, args)] };
+    
     default:
       return {
         output: [
@@ -99,15 +102,16 @@ function cmdHelp(): TerminalOutput[] {
     { type: 'system', text: '═══════════════════════════════════════', timestamp: Date.now() },
     { type: 'system', text: `${KERNEL_NAME} v${KERNEL_VERSION} — COMMAND LIST`, timestamp: Date.now() },
     { type: 'system', text: '═══════════════════════════════════════', timestamp: Date.now() },
-    { type: 'info', text: 'HELP      — Display this help message', timestamp: Date.now() },
-    { type: 'info', text: 'STATUS    — Show kernel status and CPU load', timestamp: Date.now() },
-    { type: 'info', text: 'LOGS      — Session archive statistics', timestamp: Date.now() },
-    { type: 'info', text: 'WIPE      — Clear local session archive', timestamp: Date.now() },
-    { type: 'info', text: 'WHOAMI    — Current operator profile', timestamp: Date.now() },
-    { type: 'info', text: 'CLEAR     — Clear terminal screen', timestamp: Date.now() },
-    { type: 'info', text: 'SAY [msg] — Echo message from system', timestamp: Date.now() },
-    { type: 'info', text: 'UPTIME    — Show system uptime', timestamp: Date.now() },
-    { type: 'info', text: 'VERSION   — Show kernel version', timestamp: Date.now() },
+    { type: 'info', text: 'HELP        — Display this help message', timestamp: Date.now() },
+    { type: 'info', text: 'STATUS      — Show kernel status and CPU load', timestamp: Date.now() },
+    { type: 'info', text: 'LOGS        — Session archive statistics', timestamp: Date.now() },
+    { type: 'info', text: 'IMPORT [id] — Import session from global archive', timestamp: Date.now() },
+    { type: 'info', text: 'WIPE        — Clear local session archive', timestamp: Date.now() },
+    { type: 'info', text: 'WHOAMI      — Current operator profile', timestamp: Date.now() },
+    { type: 'info', text: 'CLEAR       — Clear terminal screen', timestamp: Date.now() },
+    { type: 'info', text: 'SAY [msg]   — Echo message from system', timestamp: Date.now() },
+    { type: 'info', text: 'UPTIME      — Show system uptime', timestamp: Date.now() },
+    { type: 'info', text: 'VERSION     — Show kernel version', timestamp: Date.now() },
     { type: 'system', text: '═══════════════════════════════════════', timestamp: Date.now() }
   ];
 }
@@ -242,6 +246,65 @@ function cmdVersion(): TerminalOutput[] {
     { type: 'system', text: `${KERNEL_NAME} v${KERNEL_VERSION}`, timestamp: Date.now() },
     { type: 'info', text: 'Build: 2026.01.27-stable', timestamp: Date.now() },
     { type: 'info', text: 'Platform: Web/TypeScript', timestamp: Date.now() }
+  ];
+}
+
+function cmdImport(user: UserAccount | null, args: string[]): TerminalOutput[] {
+  if (!user) {
+    return [{ type: 'error', text: 'ERROR: Not authenticated', timestamp: Date.now() }];
+  }
+
+  if (args.length === 0) {
+    return [
+      { type: 'error', text: 'Usage: IMPORT [session_id]', timestamp: Date.now() },
+      { type: 'info', text: 'Example: IMPORT abc123...', timestamp: Date.now() },
+      { type: 'info', text: 'Use global archive in GUI to find session IDs.', timestamp: Date.now() }
+    ];
+  }
+
+  const sessionId = args[0];
+  const globalArchive = getGlobalArchive();
+  const targetSession = globalArchive.find(s => s.id === sessionId || s.id.startsWith(sessionId));
+
+  if (!targetSession) {
+    return [
+      { type: 'error', text: `Session not found: ${sessionId}`, timestamp: Date.now() },
+      { type: 'info', text: 'Check the global archive for available sessions.', timestamp: Date.now() }
+    ];
+  }
+
+  // Проверяем, не импортирована ли уже эта сессия
+  const userArchive = getUserArchive(user.id);
+  const alreadyImported = userArchive.some(s => 
+    s.id === targetSession.id || 
+    (s.timestamp === targetSession.timestamp && s.student_name === targetSession.student_name)
+  );
+
+  if (alreadyImported) {
+    return [
+      { type: 'error', text: 'Session already in your archive.', timestamp: Date.now() },
+      { type: 'info', text: `Student: ${targetSession.student_name}`, timestamp: Date.now() }
+    ];
+  }
+
+  // Создаём копию сессии с новым ID для личного архива
+  const importedSession = {
+    ...targetSession,
+    id: crypto.randomUUID(), // Новый ID, чтобы не было конфликтов
+    userId: user.id,
+    userEmail: user.email,
+    importedFrom: targetSession.id, // Сохраняем ссылку на оригинал
+    importedAt: Date.now()
+  };
+
+  saveToUserArchive(user.id, importedSession);
+
+  return [
+    { type: 'success', text: '✓ Session imported successfully!', timestamp: Date.now() },
+    { type: 'info', text: `Student:  ${targetSession.student_name}`, timestamp: Date.now() },
+    { type: 'info', text: `Score:    ${targetSession.result.overall_score || 0}%`, timestamp: Date.now() },
+    { type: 'info', text: `Duration: ${formatDuration(targetSession.duration_seconds || 0)}`, timestamp: Date.now() },
+    { type: 'system', text: 'Check your personal archive to review.', timestamp: Date.now() }
   ];
 }
 
