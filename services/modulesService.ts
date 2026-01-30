@@ -2,6 +2,48 @@ import { ContextModule, ContextVisibility, SessionContext, Accentuation } from '
 import { DEFAULT_CONTEXT_MODULES, DEFAULT_ACCENTUATIONS } from '../constants';
 
 const STORAGE_KEY = 'custom_modules';
+const RECENT_INCIDENTS_KEY = 'recent_incidents';
+const MAX_RECENT_INCIDENTS = 5; // Запоминаем последние 5 инцидентов
+
+// ==================== COOLDOWN (РАЗНООБРАЗИЕ СЦЕНАРИЕВ) ====================
+
+/**
+ * Получить список недавно использованных инцидентов
+ */
+export function getRecentIncidents(): string[] {
+  try {
+    const stored = localStorage.getItem(RECENT_INCIDENTS_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored) as string[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Добавить инцидент в список недавних
+ */
+export function addRecentIncident(incidentId: string): void {
+  const recent = getRecentIncidents();
+  
+  // Убираем если уже есть (чтобы не дублировать)
+  const filtered = recent.filter(id => id !== incidentId);
+  
+  // Добавляем в начало
+  filtered.unshift(incidentId);
+  
+  // Оставляем только последние N
+  const trimmed = filtered.slice(0, MAX_RECENT_INCIDENTS);
+  
+  localStorage.setItem(RECENT_INCIDENTS_KEY, JSON.stringify(trimmed));
+}
+
+/**
+ * Очистить историю недавних инцидентов
+ */
+export function clearRecentIncidents(): void {
+  localStorage.removeItem(RECENT_INCIDENTS_KEY);
+}
 
 // ==================== CRUD ОПЕРАЦИИ ====================
 
@@ -115,6 +157,7 @@ export function isModuleCompatible(
 
 /**
  * Получить совместимые модули
+ * Для incidents также исключает недавно использованные (cooldown)
  */
 export function getCompatibleModules(
   category: 'incident' | 'background',
@@ -123,9 +166,23 @@ export function getCompatibleModules(
   accentuationId: string,
   selectedModuleIds: string[] = []
 ): ContextModule[] {
-  return getModulesByCategory(category).filter(module =>
+  let modules = getModulesByCategory(category).filter(module =>
     isModuleCompatible(module, gender, age, accentuationId, selectedModuleIds)
   );
+  
+  // Для инцидентов применяем cooldown — исключаем недавние
+  if (category === 'incident') {
+    const recentIncidents = getRecentIncidents();
+    const filtered = modules.filter(m => !recentIncidents.includes(m.id));
+    
+    // Если после фильтрации осталось меньше 3 вариантов — игнорируем cooldown
+    // (чтобы не было ситуации когда вообще нечего выбрать)
+    if (filtered.length >= 3) {
+      modules = filtered;
+    }
+  }
+  
+  return modules;
 }
 
 // ==================== VISIBILITY ====================

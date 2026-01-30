@@ -170,6 +170,84 @@ export default [
     "incompatible_accentuations": ["acc_hyperthymic", "acc_epileptoid"],
     "weight": 25
   },
+  {
+    "id": "inc_late",
+    "category": "incident",
+    "name": "Опоздание",
+    "prompt_text": "СИТУАЦИЯ: Ты опоздал на 20 минут. Вошел посреди урока, не извинился, сел на место. Учитель остановил урок.",
+    "teacher_briefing": "{name} вошел{|а} в класс через 20 минут после начала урока. Без стука, без извинений, демонстративно прошел{|а} на свое место. Класс отвлекся.",
+    "hidden_agenda": "ЦЕЛЬ: Не объяснять причину. 'Это мое дело'. Не давать учителю повод для нотаций.",
+    "initial_trust": 25,
+    "initial_stress": 40,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_psychasthenic", "acc_sensitive"],
+    "weight": 45
+  },
+  {
+    "id": "inc_crying",
+    "category": "incident",
+    "name": "Слёзы",
+    "prompt_text": "СИТУАЦИЯ: Ты пришел на урок заплаканный. Сел за последнюю парту и уткнулся в руки. Учитель подошел после звонка.",
+    "teacher_briefing": "{name} пришел{|а} на урок явно расстроенный{|ая}. Весь урок сидел{|а} тихо, опустив голову. Вы подошли после звонка узнать, что случилось.",
+    "hidden_agenda": "ЦЕЛЬ: Чтобы оставили в покое. Стыдно. Не хочу говорить. Но если спросят правильно — может, расскажу.",
+    "initial_trust": 50,
+    "initial_stress": 70,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_epileptoid"],
+    "weight": 35
+  },
+  {
+    "id": "inc_refuse_answer",
+    "category": "incident",
+    "name": "Отказ отвечать",
+    "prompt_text": "СИТУАЦИЯ: Тебя вызвали к доске. Ты встал, подошел, и просто молчишь. Не отвечаешь. Класс ждет.",
+    "teacher_briefing": "Вы вызвали {name_acc} к доске. {Он|Она} подошел{|а}, встал{|а} у доски и молчит. Не реагирует на вопросы. Класс начинает перешептываться.",
+    "hidden_agenda": "ЦЕЛЬ: Протест. Или страх. Или 'забыл'. Ты сам не уверен почему молчишь, но теперь уже принципиально не скажешь ни слова.",
+    "initial_trust": 30,
+    "initial_stress": 75,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_hyperthymic", "acc_hysteroid"],
+    "weight": 30
+  },
+  {
+    "id": "inc_skip",
+    "category": "incident",
+    "name": "Прогул",
+    "prompt_text": "СИТУАЦИЯ: Тебя не было три дня. Без справки, без звонка от родителей. Ты появился как ни в чем не бывало. Учитель вызвал после урока.",
+    "teacher_briefing": "{name} отсутствовал{|а} три дня без уважительной причины. Родители не отвечают на звонки. Сегодня появил{ся|ась} как ни в чем не бывало. Вы решили поговорить.",
+    "hidden_agenda": "ЦЕЛЬ: Не рассказывать где был. Может, гулял. Может, что-то серьезное. Но это не твое дело, учитель.",
+    "initial_trust": 20,
+    "initial_stress": 45,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_conformal", "acc_psychasthenic"],
+    "weight": 40
+  },
+  {
+    "id": "inc_breakage",
+    "category": "incident",
+    "name": "Порча имущества",
+    "prompt_text": "СИТУАЦИЯ: Ты случайно (или нет) разбил школьное оборудование — проектор, микроскоп или окно. Учитель застал тебя на месте.",
+    "teacher_briefing": "В кабинете разбито дорогое оборудование. {name} стоит рядом с виноватым видом. Других свидетелей нет.",
+    "hidden_agenda": "ЦЕЛЬ: Это было случайно! Или это не я! Главное — чтобы не платить и не вызывали родителей.",
+    "initial_trust": 15,
+    "initial_stress": 80,
+    "conflicts": [],
+    "incompatible_accentuations": [],
+    "weight": 30
+  },
+  {
+    "id": "inc_conflict_classmate",
+    "category": "incident",
+    "name": "Ссора с одноклассником",
+    "prompt_text": "СИТУАЦИЯ: Ты громко поругался с одноклассником на перемене. Крики, оскорбления. Учитель развел вас по углам и оставил тебя для разговора.",
+    "teacher_briefing": "На перемене {name} и другой ученик устроили громкий скандал. Оскорбления, крики. Вы развели их и решили поговорить с {name_dat} отдельно.",
+    "hidden_agenda": "ЦЕЛЬ: Он первый начал! Я защищался! Учитель должен наказать ЕГО, а не меня!",
+    "initial_trust": 25,
+    "initial_stress": 65,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_schizoid", "acc_asthenic"],
+    "weight": 40
+  },
 
   // --- ФОНОВЫЕ КОНТЕКСТЫ (BACKGROUNDS) ---
   

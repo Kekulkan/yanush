@@ -5,7 +5,8 @@ import {
   getAllModules,
   getCompatibleModules, 
   selectRandomModule, 
-  createSessionContext 
+  createSessionContext,
+  addRecentIncident
 } from './modulesService';
 
 const AVATAR_COUNT = {
@@ -222,6 +223,9 @@ export const buildDynamicPrompt = (
     if (!incident) {
         throw new Error('Не найдено подходящих экспозиций');
     }
+    
+    // Запоминаем выбранный инцидент для cooldown (разнообразие сценариев)
+    addRecentIncident(incident.id);
 
     // 5. Выбираем контексты с учётом совместимости
     // Если НЕ премиум — контексты не добавляем (0), только экспозиция
