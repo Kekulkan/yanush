@@ -91,6 +91,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     messages: Message[];
     reason: string;
     source: 'game_over' | 'inactivity';
+    isTriumph?: boolean; // true = триумфальное завершение, false/undefined = провал
     sessionLogId: string; // ID для обновления записи после анализа
   } | null>(null);
   
@@ -655,9 +656,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       setMessages(finalMessages);
       saveSessionBackup(session, finalMessages);
       
-      // ВАЛИДАЦИЯ game_over: только если метрики РЕАЛЬНО критические
-      // GM может выдать game_over без причины — проверяем
-      const isReallyGameOver = response.game_over && (finalTrust <= 5 || finalStress >= 95);
+      // ВАЛИДАЦИЯ game_over: проверяем на критические метрики (провал ИЛИ триумф)
+      const isFailure = finalTrust <= 5 || finalStress >= 95;
+      const isTriumph = finalTrust >= 95 && finalStress <= 10;
+      const isReallyGameOver = response.game_over && (isFailure || isTriumph);
       
       if (response.game_over && !isReallyGameOver) {
         console.error(`[Game Over] GM выдал game_over БЕЗ причины! trust=${finalTrust}, stress=${finalStress}. ИГНОРИРУЕМ game_over!`);
@@ -686,8 +688,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           // Даём пользователю прочитать последнюю реплику, сохраняем ID для обновления
           setPendingTermination({
             messages: finalMessages,
-            reason: response.violation_reason || 'Психологический срыв',
+            reason: response.violation_reason || (isTriumph ? 'УСПЕХ: полное разрешение ситуации' : 'Психологический срыв'),
             source: 'game_over',
+            isTriumph: isTriumph,
             sessionLogId
           });
           setAwaitingContinue(true);
@@ -1382,27 +1385,39 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             {isLoading && <div className="text-blue-500 text-[9px] font-black animate-pulse flex items-center gap-2 uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Обработка...</div>}
             
             {/* Пауза перед комиссией */}
-            {awaitingContinue && (
-              <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
-                <button
-                  onClick={handleContinueAfterTermination}
-                  className="w-full p-6 rounded-3xl border-2 border-dashed border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all group"
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="text-amber-400 text-4xl animate-bounce">⚖️</div>
-                    <p className="text-amber-300 text-sm font-bold uppercase tracking-wider">
-                      Сессия завершена
-                    </p>
-                    <p className="text-slate-400 text-xs">
-                      Нажмите, чтобы перейти к оценке комиссии
-                    </p>
-                    <div className="mt-2 px-6 py-2 bg-amber-500 text-slate-900 rounded-full text-xs font-black uppercase tracking-wider group-hover:scale-105 transition-transform">
-                      Продолжить →
+            {awaitingContinue && (() => {
+              const isTriumph = pendingTermination?.isTriumph;
+              
+              return (
+                <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
+                  <button
+                    onClick={handleContinueAfterTermination}
+                    className={`w-full p-6 rounded-3xl border-2 border-dashed transition-all group ${
+                      isTriumph 
+                        ? 'border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20' 
+                        : 'border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      <div className={`text-4xl animate-bounce ${isTriumph ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {isTriumph ? '🏆' : '⚖️'}
+                      </div>
+                      <p className={`text-sm font-bold uppercase tracking-wider ${isTriumph ? 'text-emerald-300' : 'text-amber-300'}`}>
+                        {isTriumph ? 'Триумфальное завершение!' : 'Сессия завершена'}
+                      </p>
+                      <p className="text-slate-400 text-xs">
+                        Нажмите, чтобы перейти к оценке комиссии
+                      </p>
+                      <div className={`mt-2 px-6 py-2 text-slate-900 rounded-full text-xs font-black uppercase tracking-wider group-hover:scale-105 transition-transform ${
+                        isTriumph ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`}>
+                        Продолжить →
+                      </div>
                     </div>
-                  </div>
-                </button>
-              </div>
-            )}
+                  </button>
+                </div>
+              );
+            })()}
             
             {/* Индикатор бездействия */}
             {isInactive && !isLoading && !autoPlayActive && (
