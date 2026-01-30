@@ -439,7 +439,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           role: MessageRole.MODEL,
           content: response.text,
           state: {
-            thought: response.thought ?? undefined,
+            thought: response.thought ?? '',
             trust: response.trust,
             stress: response.stress,
             world_event: response.world_event ?? undefined
@@ -612,7 +612,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       
       if (filteredWorldEvent && messagesSinceLastEvent < MIN_MESSAGES_BETWEEN_EVENTS) {
         console.log(`[GM Event] Suppressed - only ${messagesSinceLastEvent} messages since last event (need ${MIN_MESSAGES_BETWEEN_EVENTS})`);
-        filteredWorldEvent = undefined;
+        filteredWorldEvent = null;
       } else if (filteredWorldEvent) {
         console.log(`[GM Event] Allowed - ${messagesSinceLastEvent} messages since last event`);
         lastEventIndexRef.current = currentMsgIndex;
@@ -668,7 +668,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         } else {
           // Галлюцинация! event_reaction без world_event
           console.error(`[Event Reaction] ГАЛЛЮЦИНАЦИЯ: event_reaction без world_event. Игнорируем.`);
-          response.event_reaction = undefined;
+          response.event_reaction = null;
         }
       }
 
@@ -683,15 +683,15 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         id: (Date.now() + 2).toString(),
         role: MessageRole.MODEL,
         content: response.text,
-        state: { 
-          thought: response.thought ?? undefined, 
-          trust: finalTrust, 
+        state: {
+          thought: response.thought ?? '',
+          trust: finalTrust,
           stress: finalStress,
-          world_event: filteredWorldEvent,
+          world_event: filteredWorldEvent ?? undefined,
           event_reaction: response.event_reaction ?? undefined,
           active_npc: response.active_npc ?? undefined, // NPC в сцене
           gm_note: response.gm_note ?? undefined, // GM подсказка для админа
-          extreme_outcome: extremeOutcome,
+          extreme_outcome: extremeOutcome as any,
           violation_reason: response.violation_reason ?? undefined // Описание исхода
         },
         timestamp: Date.now()
