@@ -52,7 +52,7 @@ const AI_PROVIDER: "aitunnel" | "claude" | "gemini" = "aitunnel";
 
 // Модели для AITUNNEL (OpenAI-совместимый формат)
 // ЭКСПЕРИМЕНТ: дорогая модель на ученика, дешёвая на комиссию
-const AITUNNEL_CHAT_MODEL = "gemini-2.5-pro";         // ~62₽/сессия - УМНАЯ для ученика
+const AITUNNEL_CHAT_MODEL = "gemini-2.5-flash";        // Более стабильная модель
 const AITUNNEL_ANALYSIS_MODEL = "gemini-2.5-flash";   // ~15₽ - дешевле для комиссии
 const AITUNNEL_GHOST_MODEL = "gemini-2.5-flash-lite"; // ~3.5₽ - для суфлёра достаточно
 
