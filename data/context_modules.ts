@@ -51,6 +51,7 @@ export default [
     "initial_stress": 10,
     "conflicts": ["bg_shy", "bg_orphan"],
     "incompatible_accentuations": ["acc_sensitive", "acc_psychasthenic", "acc_asthenic"],
+    "min_age": 13,
     "weight": 30
   },
   {
@@ -103,6 +104,7 @@ export default [
     "initial_stress": 50,
     "conflicts": [],
     "incompatible_accentuations": ["acc_sensitive", "acc_psychasthenic"],
+    "max_age": 14,
     "weight": 30
   },
   {
@@ -194,7 +196,23 @@ export default [
     "initial_stress": 70,
     "conflicts": [],
     "incompatible_accentuations": ["acc_epileptoid"],
+    "max_age": 14,
     "weight": 35
+  },
+  {
+    "id": "inc_crying_older",
+    "category": "incident",
+    "name": "Слёзы (старший)",
+    "prompt_text": "СИТУАЦИЯ: Ты пришел на урок. Что-то случилось — ты еле держишься. Глаза красные. Учитель заметил и подошел после звонка.",
+    "teacher_briefing": "{name} сегодня явно не в себе. Бледный{|ая}, глаза красные, руки дрожат. Это нехарактерно — {он|она} обычно держит{ся|ся}. Вы решили поговорить после урока.",
+    "hidden_agenda": "ЦЕЛЬ: Не сорваться. Держать лицо. Что-то серьёзное произошло, но говорить об этом — значит признать слабость.",
+    "initial_trust": 40,
+    "initial_stress": 85,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_epileptoid", "acc_hysteroid"],
+    "incompatible_genders": ["male"],
+    "min_age": 15,
+    "weight": 20
   },
   {
     "id": "inc_refuse_answer",
@@ -225,7 +243,7 @@ export default [
   {
     "id": "inc_breakage",
     "category": "incident",
-    "name": "Порча имущества",
+    "name": "Порча имущества (младший)",
     "prompt_text": "СИТУАЦИЯ: Ты случайно (или нет) разбил школьное оборудование — проектор, микроскоп или окно. Учитель застал тебя на месте.",
     "teacher_briefing": "В кабинете разбито дорогое оборудование. {name} стоит рядом с виноватым видом. Других свидетелей нет.",
     "hidden_agenda": "ЦЕЛЬ: Это было случайно! Или это не я! Главное — чтобы не платить и не вызывали родителей.",
@@ -233,7 +251,22 @@ export default [
     "initial_stress": 80,
     "conflicts": [],
     "incompatible_accentuations": [],
+    "max_age": 14,
     "weight": 30
+  },
+  {
+    "id": "inc_breakage_older",
+    "category": "incident",
+    "name": "Порча имущества (старший)",
+    "prompt_text": "СИТУАЦИЯ: Ты разбил дорогое школьное оборудование. Случайно или в порыве злости — неважно. Учитель застал тебя на месте.",
+    "teacher_briefing": "В кабинете разбито дорогое оборудование. {name} стоит рядом. Других свидетелей нет. Нужно выяснить обстоятельства.",
+    "hidden_agenda": "ЦЕЛЬ: Это было случайно. Ты понимаешь, что придётся платить. Но хотя бы без скандала и директора.",
+    "initial_trust": 25,
+    "initial_stress": 70,
+    "conflicts": [],
+    "incompatible_accentuations": ["acc_hysteroid"],
+    "min_age": 15,
+    "weight": 25
   },
   {
     "id": "inc_conflict_classmate",
