@@ -638,6 +638,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           stress: finalStress,
           world_event: filteredWorldEvent,
           event_reaction: response.event_reaction ?? undefined,
+          active_npc: response.active_npc ?? undefined, // NPC в сцене
           gm_note: response.gm_note ?? undefined, // GM подсказка для админа
           extreme_outcome: response.violation_reason?.includes('агресс') ? 'physical_aggression' 
             : response.violation_reason?.includes('побег') ? 'runaway'

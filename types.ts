@@ -34,7 +34,9 @@ export interface WorldEvent {
   trust_delta: number;    // Влияние на доверие (выставляется ПОСЛЕ реакции учителя)
   stress_delta: number;   // Влияние на стресс
   npc_name?: string;      // Имя NPC, если появился
+  npc_role?: string;      // Роль NPC: завуч, психолог, родитель, одноклассник...
   npc_dialogue?: string;  // Реплика/действие NPC
+  npc_stays?: boolean;    // NPC остаётся в сцене (true) или уходит (false)
   requires_response?: boolean; // Событие ждёт реакции учителя
 }
 
@@ -47,6 +49,14 @@ export interface EventReaction {
   ethics_violation?: string; // Если было нарушение этики — комиссия учтёт
 }
 
+// Активный NPC, присутствующий в сцене
+export interface ActiveNPC {
+  name: string;       // Имя NPC
+  role: string;       // Роль: завуч, психолог, родитель...
+  action?: string;    // Что делает NPC прямо сейчас
+  dialogue?: string;  // Что говорит NPC
+}
+
 export interface SimulationState {
   trust: number;
   stress: number;
@@ -55,6 +65,8 @@ export interface SimulationState {
   world_event?: WorldEvent;
   // Оценка реакции на предыдущее событие
   event_reaction?: EventReaction;
+  // Активный NPC в сцене (если есть)
+  active_npc?: ActiveNPC;
   // GM подсказка для админа (не видит учитель!)
   gm_note?: string;
   // Флаг экстремального исхода
