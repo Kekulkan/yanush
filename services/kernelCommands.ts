@@ -367,3 +367,4 @@ export function confirmWipe(userId: string): TerminalOutput[] {
     { type: 'info', text: 'All session records have been deleted.', timestamp: Date.now() }
   ];
 }
+

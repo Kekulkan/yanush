@@ -8,17 +8,19 @@ import DocumentsModal from './DocumentsModal';
 interface Props {
   onStart: () => void;
   onResume?: () => void;
+  onOpenMuseum?: () => void;
   onOpenCommandCenter?: () => void;
   onOpenSubscription?: () => void;
   subscription?: SubscriptionInfo;
 }
 
-const ScenarioSelector: React.FC<Props> = ({ 
-  onStart, 
-  onResume, 
-  onOpenCommandCenter, 
+const ScenarioSelector: React.FC<Props> = ({
+  onStart,
+  onResume,
+  onOpenMuseum,
+  onOpenCommandCenter,
   onOpenSubscription,
-  subscription 
+  subscription
 }) => {
   const [hasBackup, setHasBackup] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -69,9 +71,12 @@ const ScenarioSelector: React.FC<Props> = ({
           <p className="text-lg text-slate-300 font-light leading-relaxed italic">
             «Ещё не патология, но уже не норма»
           </p>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+          <button
+            onClick={onOpenMuseum}
+            className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors uppercase tracking-widest font-bold border-b border-dashed border-slate-700 hover:border-blue-400 pb-1"
+          >
             Выставка акцентуаций им. А. Личко
-          </p>
+          </button>
         </div>
 
         <div className="flex flex-col w-full sm:w-auto gap-4 pt-8">
@@ -184,3 +189,4 @@ const ScenarioSelector: React.FC<Props> = ({
 };
 
 export default ScenarioSelector;
+

@@ -67,3 +67,4 @@ export default [
     "intensity_levels": 5
   }
 ];
+

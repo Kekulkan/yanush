@@ -428,3 +428,4 @@ export function getScoreGradient(score: number): string {
   if (score >= 30) return 'from-orange-500/20 to-orange-900/20';
   return 'from-red-500/20 to-red-900/20';
 }
+

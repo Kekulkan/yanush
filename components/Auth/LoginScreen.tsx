@@ -160,3 +160,4 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
 };
 
 export default LoginScreen;
+

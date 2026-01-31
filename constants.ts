@@ -26,3 +26,4 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
   chat_temperature: 1.0, 
   analysis_temperature: 0.4
 };
+

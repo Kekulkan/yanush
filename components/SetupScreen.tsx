@@ -299,3 +299,4 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
 };
 
 export default SetupScreen;
+

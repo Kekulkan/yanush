@@ -81,3 +81,4 @@ export const formatSubscriptionDate = (timestamp: number | null): string => {
   if (!timestamp) return 'Нет подписки';
   return new Date(timestamp).toLocaleDateString('ru-RU');
 };
+

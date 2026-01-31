@@ -125,3 +125,4 @@ export const authService = {
 
     isAdmin: (): boolean => authService.getCurrentUser()?.role === 'ADMIN'
 };
+

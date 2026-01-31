@@ -36,3 +36,4 @@ export const getSessionBackup = (): SessionBackup | null => {
 export const clearSessionBackup = (): void => {
   localStorage.removeItem(BACKUP_KEY);
 };
+

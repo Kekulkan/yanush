@@ -474,3 +474,4 @@ const SessionCard: React.FC<SessionCardProps> = ({
 };
 
 export default CommandCenter;
+

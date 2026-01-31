@@ -334,3 +334,4 @@ export interface DemoScenario {
     keyInsight: string;       // Главный инсайт
   };
 }
+

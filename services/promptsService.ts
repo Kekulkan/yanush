@@ -177,3 +177,4 @@ export const DEFAULT_PROMPTS = {
 Не упоминай, что ты ИИ. Без JSON. Только текст.
 `
 };
+

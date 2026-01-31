@@ -652,3 +652,4 @@ export default [
     "visibility_weights": { "known": 5, "rumor": 20, "secret": 75 }
   }
 ];
+

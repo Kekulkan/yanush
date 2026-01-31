@@ -523,3 +523,4 @@ const X: React.FC<{ size?: number, className?: string }> = ({ size = 20, classNa
 );
 
 export default MuseumView;
+

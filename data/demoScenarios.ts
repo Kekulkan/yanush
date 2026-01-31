@@ -1935,3 +1935,4 @@ export function getDemoScenario(accentuationId: string): DemoScenario | null {
 export function getAvailableDemoIds(): string[] {
   return Object.keys(DEMO_SCENARIOS);
 }
+

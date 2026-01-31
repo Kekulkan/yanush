@@ -172,3 +172,4 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 };
 
 export default SubscriptionModal;
+

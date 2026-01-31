@@ -107,3 +107,4 @@ export const deleteLog = (id: string): void => {
 export const clearAllHistory = (): void => {
   localStorage.removeItem(HISTORY_KEY);
 };
+

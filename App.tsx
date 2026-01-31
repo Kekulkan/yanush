@@ -80,14 +80,20 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (view === 'auth') return <LoginScreen onLogin={handleLogin} onEnterMuseum={() => setView('museum')} />;
-    if (view === 'museum') return <MuseumView onBack={() => setView('auth')} onOpenSubscription={() => setIsSubModalOpen(true)} />;
+    if (view === 'museum') return (
+      <MuseumView
+        onBack={() => setView(user ? 'landing' : 'auth')}
+        onOpenSubscription={() => setIsSubModalOpen(true)}
+      />
+    );
     
     return (
       <ErrorBoundary>
         {view === 'landing' && (
-          <ScenarioSelector 
-              onStart={() => setView('setup')} 
+          <ScenarioSelector
+              onStart={() => setView('setup')}
               onResume={resumeSession}
+              onOpenMuseum={() => setView('museum')}
               onOpenCommandCenter={() => setView('command_center')}
               onOpenSubscription={() => setIsSubModalOpen(true)}
               subscription={subscription}
@@ -142,3 +148,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

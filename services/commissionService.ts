@@ -955,3 +955,4 @@ export function getAdvisoryCommissionList(): AdvisoryCommissionMember[] {
 export function getAdvisoryMemberById(id: AdvisoryMemberType): AdvisoryCommissionMember | undefined {
   return ADVISORY_COMMISSION.find(m => m.id === id);
 }
+

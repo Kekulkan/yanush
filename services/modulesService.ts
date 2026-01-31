@@ -324,3 +324,4 @@ export function getModuleName(id: string): string {
   const module = getAllModules().find(m => m.id === id);
   return module?.name || id;
 }
+

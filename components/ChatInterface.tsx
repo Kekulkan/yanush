@@ -1551,3 +1551,4 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 };
 
 export default ChatInterface;
+
