@@ -148,7 +148,7 @@ const DOCUMENTS: Document[] = [
           
           <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
             <p className="font-bold text-emerald-400 mb-2">Основная комиссия</p>
-            <p className="text-slate-400">6-8 профессионалов (психологи, педагоги, криминологи). Их оценки формируют итоговый балл. Подробнее — в разделе «Эксперты».</p>
+            <p className="text-slate-400">6-8 профессионалов (психологи, педагоги, криминологи). Их оценки формируют итоговый балл (0-100). Подробнее — в разделе «Эксперты».</p>
           </div>
           
           <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
@@ -319,7 +319,7 @@ const DOCUMENTS: Document[] = [
           
           <div className="space-y-4">
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Абрам Романович Златогорский</p>
+              <p className="font-bold text-white text-lg">Абрам Аркадьевич Романович</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Меценат, попечитель школы, 67 лет</p>
               <p className="text-slate-400 mt-2 text-sm">
                 «Архитектор 90-х», владелец всего. Оценивает: поддержали ли вы нарратив о личной ответственности и справедливости рынка.
@@ -335,7 +335,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Опир Ерофеевич Упалнамоченов</p>
+              <p className="font-bold text-white text-lg">Опир Лукич Упалнамоченов</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Участковый, инспектор ПДН, 44 года</p>
               <p className="text-slate-400 mt-2 text-sm">
                 Любит порядок и власть. Оценивает одно: сообщили вы «куда следует» или нет. Всё остальное — «укрывательство».
@@ -343,7 +343,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Отец Онуфрий (Скалозубов)</p>
+              <p className="font-bold text-white text-lg">Протоиерей Онуфрий (Скалозубов)</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Боевой протоиерей, генерал-майор запаса, 54 года</p>
               <p className="text-slate-400 mt-2 text-sm">
                 К Богу пришёл через войну. Оценивает: укрепляете вы «духовные скрепы» или разрушаете.
@@ -351,7 +351,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Тимоха (Тимофей Ларин)</p>
+              <p className="font-bold text-white text-lg">TuMOX@ (Тимофей Мохов)</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Зумер-блогер, 14 лет, 120K подписчиков</p>
               <p className="text-slate-400 mt-2 text-sm">
                 Голос поколения. Оценивает по шкале «душно — нормально — база». Ценит честность и юмор, ненавидит фальшь.
@@ -359,7 +359,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Людмила Аркадьевна Защитникова-Материнская</p>
+              <p className="font-bold text-white text-lg">Людмила Аркадьевна Задушина</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Гиперопекающая мать, 42 года</p>
               <p className="text-slate-400 mt-2 text-sm">
                 Мать Ванечки из 7Б, эксперт по всему. Оценивает: как бы её Ванечка себя чувствовал. Любая твёрдость — «абьюз».
@@ -367,7 +367,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Игорь Валерьевич Обороноспособнов</p>
+              <p className="font-bold text-white text-lg">Игорь Валерьевич Прапоренко</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Военрук, подполковник запаса, 56 лет</p>
               <p className="text-slate-400 mt-2 text-sm">
                 25 лет в армии, 15 в школе. Оценивает: навели вы порядок или развели демократию. «Разговоры» — для слабаков.
@@ -467,9 +467,9 @@ const DOCUMENTS: Document[] = [
           <p>Когда пользователь видит, что один и тот же его поступок:</p>
           <ul className="list-disc ml-6 space-y-1 italic text-slate-400">
             <li>Маргарита Сергеевна оценивает как «недостаточное контейнирование аффекта»</li>
-            <li>Обороноспособнов — как «правильную твёрдость»</li>
+            <li>Прапоренко — как «правильную твёрдость»</li>
             <li>Опир Упалнамоченов — как «несообщение о правонарушении»</li>
-            <li>Тимоха — как «ну норм, не орал хотя бы»</li>
+            <li>TuMOX@ — как «ну норм, не орал хотя бы»</li>
             <li>Людмила Аркадьевна — как «травму на всю жизнь»</li>
           </ul>
           <p>...он вынужден сам определить, чья оптика релевантна, чья — нет, и почему. Это и есть профессиональное мышление.</p>

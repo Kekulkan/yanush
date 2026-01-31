@@ -276,15 +276,22 @@ export const buildDynamicPrompt = (
     // 6. Формируем промпт
     const contextPrompts = contexts
         .map(ctx => {
-            const visibilityHint = ctx.visibility === 'secret' 
-                ? '[СКРЫТЫЙ КОНТЕКСТ - учитель не знает]' 
+            const visibilityHint = ctx.visibility === 'secret'
+                ? '[СКРЫТЫЙ КОНТЕКСТ - учитель не знает]'
                 : '';
-            return `${visibilityHint}\nКОНТЕКСТ: ${ctx.module.prompt_text}\nСКРЫТАЯ ЦЕЛЬ: ${ctx.module.hidden_agenda}`;
+            const resolvedPrompt = resolveGenderTokens(ctx.module.prompt_text, student);
+            const resolvedAgenda = resolveGenderTokens(ctx.module.hidden_agenda, student);
+            return `${visibilityHint}\nКОНТЕКСТ: ${resolvedPrompt}\nСКРЫТАЯ ЦЕЛЬ: ${resolvedAgenda}`;
         })
         .join('\n\n');
 
     const chaosPrompt = `
     [ЯЗЫКОВОЙ ПРОТОКОЛ: СТРОГО КИРИЛЛИЦА, РУССКИЙ ЯЗЫК]
+    [ГЕНДЕРНЫЙ ПРОТОКОЛ: СТРОГОЕ СОБЛЮДЕНИЕ ГРАММАТИЧЕСКОГО РОДА]
+    - УЧЕНИК (${student.name}, ${student.gender === 'male' ? 'мальчик' : 'девочка'}): ОБЯЗАН говорить о себе СТРОГО в ${student.gender === 'male' ? 'МУЖСКОМ' : 'ЖЕНСКОМ'} роде ("я пошел", "я расстроился" / "я пошла", "я расстроилась").
+    - NPC: Пол NPC должен соответствовать его роли и имени. Речь NPC должна грамматически соответствовать его полу.
+    - Окружающие: Все обращения к ученику и упоминания его в третьем лице должны соответствовать его полу (${student.gender === 'male' ? 'он/его/ему' : 'она/ее/ей'}).
+    
     [SYSTEM ROLE: GM / NARRATOR / STUDENT / NPC]
     
     ═══════════════════════════════════════════════════════════
