@@ -166,11 +166,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     const lastMsg = messages[messages.length - 1];
     
     // ВАЖНО: НЕ запускаем таймер если:
-    // 1. Последнее сообщение — ошибка API ("Связь прервана", "Ошибка API")
+    // 1. Последнее сообщение — ошибка API или критическая развязка
     // 2. Сессия уже завершена (awaitingContinue)
     // 3. Последнее сообщение сгенерировано таймером бездействия (содержит типичные фразы)
-    const isErrorMessage = lastMsg?.content?.includes('Связь прервана') || 
+    const isErrorMessage = lastMsg?.content?.includes('Связь прервана') ||
                            lastMsg?.state?.thought?.includes('Ошибка API') ||
+                           lastMsg?.state?.violation_reason?.includes('CATASTROPHE') ||
                            lastMsg?.state?.violation_reason?.includes('aborted');
     const isInactivityMessage = lastMsg?.content === 'Эээ... алло? Вы там?' ||
                                 lastMsg?.content === '*смотрит на учителя с недоумением*' ||

@@ -546,36 +546,67 @@ export const sendMessageToGemini = async (
 
     // fallback: если внезапно пришёл не-JSON
     return {
-      text: stripCodeFences(modelText) || "Связь прервана.",
-      thought: null,
-      non_verbal: null,
-      non_verbal_valence: 0,
+      text: stripCodeFences(modelText) || "Диалог зашёл в тупик. Подросток больше не может продолжать этот разговор.",
+      thought: "Некорректный формат ответа AI",
+      non_verbal: "*В воздухе повисает тяжёлое, гнетущее молчание*",
+      non_verbal_valence: -1,
       trust: 0,
       stress: 100,
       world_event: null,
       event_reaction: null,
-      game_over: false,
-      violation_reason: null,
-      extreme_outcome: null,
+      game_over: true,
+      violation_reason: "CATASTROPHE: Invalid AI Response Format",
+      extreme_outcome: "breakdown",
       active_npc: null,
-      gm_note: null,
+      gm_note: "Нарративный отыгрыш технической ошибки (Invalid JSON)",
     };
   } catch (error: any) {
     console.error("AI(proxy) Error:", error);
+    
+    // Пул катастрофических развязок от лица GM
+    const catastrophes = [
+      {
+        text: "Всё. Хватит! — голос подростка срывается. Он резко хватает свои вещи и вылетает из кабинета, не желая больше слушать ни единого слова.",
+        thought: "Эмоциональный взрыв и импульсивный побег",
+        non_verbal: "*Грохот упавшего стула эхом отдаётся в тишине класса. Дверь захлопывается с оглушительным звуком.*",
+        extreme_outcome: "runaway"
+      },
+      {
+        text: "Взгляд ученика становится абсолютно стеклянным. Он медленно отворачивается к окну, полностью игнорируя ваше присутствие, как будто вас больше не существует.",
+        thought: "Полное психологическое замыкание (диссоциация)",
+        non_verbal: "*Он замирает в одной позе, переставая реагировать на любые внешние раздражители. Контакт разорван окончательно.*",
+        extreme_outcome: "shutdown"
+      },
+      {
+        text: "В коридоре раздаётся резкий крик и звук бьющегося стекла. 'Там драка! На помощь!' — ученик вздрагивает и, воспользовавшись суматохой, мгновенно исчезает за дверью.",
+        thought: "Внешнее событие прерывает критически напряжённый диалог",
+        non_verbal: "*Вспышка паники в глазах становится последней точкой в вашем разговоре. Сцена тонет в хаосе школьных будней.*",
+        extreme_outcome: "emergency"
+      },
+      {
+        text: "Твои слова становятся последней каплей. Подросток закрывает лицо руками, и его плечи начинают судорожно трястись от беззвучных рыданий. Разговор окончен.",
+        thought: "Нервный срыв и полная потеря самообладания",
+        non_verbal: "*Он сжимается в комок, пытаясь спрятаться от всего мира. Любые попытки продолжить диалог сейчас будут бессмысленны.*",
+        extreme_outcome: "breakdown"
+      }
+    ];
+
+    const catastrophe = catastrophes[Math.floor(Math.random() * catastrophes.length)];
+
     return {
-      text: "Связь прервана.",
-      thought: "Ошибка API",
-      non_verbal: "*Искажение сигнала.*",
-      non_verbal_valence: 0,
+      text: catastrophe.text,
+      thought: catastrophe.thought,
+      non_verbal: catastrophe.non_verbal,
+      non_verbal_valence: -1,
       trust: 0,
       stress: 100,
       world_event: null,
       event_reaction: null,
-      game_over: false,
-      violation_reason: error?.message ? String(error.message) : null,
-      extreme_outcome: null,
+      game_over: true, // Завершаем сессию красиво
+      violation_reason: "GM_CATASTROPHE: " + (error?.message ? String(error.message) : "API Error"),
+      extreme_outcome: catastrophe.extreme_outcome,
       active_npc: null,
-      gm_note: null,
+      gm_note: "Нарративный отыгрыш технического сбоя (Network/API Error)",
     };
   }
 };
