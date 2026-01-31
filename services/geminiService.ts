@@ -323,6 +323,10 @@ async function postViaProxy(
   body: any,
   timeoutMs = 90_000
 ): Promise<any> {
+  // Логгируем начало вызова для отслеживания таймаутов
+  const start = Date.now();
+  console.log(`[Proxy] Start call to ${action}, timeout: ${timeoutMs / 1000}s`);
+  
   // Проверяем лимиты перед каждым вызовом
   checkApiLimits();
   
@@ -389,6 +393,7 @@ async function postViaProxy(
     throw err;
   } finally {
     window.clearTimeout(timer);
+    console.log(`[Proxy] End call to ${action}. Duration: ${Date.now() - start}ms`);
   }
 }
 
