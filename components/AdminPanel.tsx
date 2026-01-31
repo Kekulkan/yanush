@@ -100,18 +100,28 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
       }
       
       if (serverLogs.length > 0) {
-        setGlobalArchive(serverLogs);
+        // Вычисляем статистику для серверных логов
         const withScores = serverLogs.filter(s => s.result?.overall_score);
-        setGlobalStats({
+        const stats = {
           totalSessions: serverLogs.length,
-          averageScore: withScores.length > 0 
+          averageScore: withScores.length > 0
             ? Math.round(withScores.reduce((a, s) => a + (s.result?.overall_score || 0), 0) / withScores.length)
             : 0,
           completedSessions: serverLogs.filter(s => s.status === 'completed').length,
           interruptedSessions: serverLogs.filter(s => s.status !== 'completed').length,
           accentuationStats: {},
           lastSessionDate: serverLogs[0]?.timestamp || null
+        };
+
+        // Пересчитываем статистику акцентуаций
+        const accentuationStats: Record<string, number> = {};
+        serverLogs.forEach(s => {
+          const acc = s.sessionSnapshot?.chaosDetails?.accentuation || 'unknown';
+          accentuationStats[acc] = (accentuationStats[acc] || 0) + 1;
         });
+        
+        setGlobalArchive(serverLogs);
+        setGlobalStats({...stats, accentuationStats});
         setLogsSource('server');
       }
     } catch (e) {
@@ -899,7 +909,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                     </div>
                                                 )}
                                                 <div className="max-h-48 overflow-y-auto custom-scroll">
-                                                    {(log.messages || log.dialogue || [])
+                                                    {(log.messages || [])
                                                         .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
                                                         .slice(0, 20)
                                                         .map((msg, i) => (
