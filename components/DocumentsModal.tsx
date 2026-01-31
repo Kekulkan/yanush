@@ -343,7 +343,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">Протоиерей Онуфрий (Скалозубов) (Скалозубов)</p>
+              <p className="font-bold text-white text-lg">Протоиерей Онуфрий (Скалозубов)</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Боевой протоиерей, генерал-майор запаса, 54 года</p>
               <p className="text-slate-400 mt-2 text-sm">
                 К Богу пришёл через войну. Оценивает: укрепляете вы «духовные скрепы» или разрушаете.
@@ -351,7 +351,7 @@ const DOCUMENTS: Document[] = [
             </div>
 
             <div className="bg-amber-500/5 p-5 rounded-xl border border-amber-500/20">
-              <p className="font-bold text-white text-lg">TuMOX@ (Тимофей Мохов) (Тимофей Мохов)</p>
+              <p className="font-bold text-white text-lg">TuMOX@ (Тимофей Мохов)</p>
               <p className="text-amber-400 text-sm font-bold uppercase tracking-wider">Зумер-блогер, 14 лет, 120K подписчиков</p>
               <p className="text-slate-400 mt-2 text-sm">
                 Голос поколения. Оценивает по шкале «душно — нормально — база». Ценит честность и юмор, ненавидит фальшь.
