@@ -170,24 +170,7 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
   
   if (raw?.speech) {
     // Новый формат: речь отдельно от действий
-    const speech = String(raw.speech).trim();
-    
-    // Если речь пустая или "..." — показываем только action (невербалику)
-    const isSilent = speech === "" || speech === "..." || speech === "…";
-    
-    if (isSilent && action) {
-      // Молчание с невербаликой — показываем только action
-      text = action;
-    } else if (action) {
-      // Есть и action, и речь — объединяем
-      text = `${action}\n\n${speech}`;
-    } else if (isSilent) {
-      // Молчание БЕЗ невербалики — показываем визуальный индикатор
-      text = "*молчит*";
-    } else {
-      // Только речь
-      text = speech;
-    }
+    text = String(raw.speech).trim();
   } else {
     // Старый формат: всё в одном поле
     text = String(raw?.text ?? raw?.verbal_response ?? "");
@@ -237,7 +220,7 @@ function normalizeChatJson(raw: any): GeminiChatResponse {
   return {
     text: text || "...",
     thought,
-    non_verbal: raw?.non_verbal != null ? String(raw.non_verbal) : null,
+    non_verbal: action,
     non_verbal_valence: coerceNum(raw?.non_verbal_valence, 0),
     trust: coerceNum(raw?.trust, 50),
     stress: coerceNum(raw?.stress, 50),

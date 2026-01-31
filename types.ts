@@ -78,8 +78,10 @@ export interface SimulationState {
 export interface Message {
   id: string;
   role: MessageRole;
-  content: string; 
-  state?: SimulationState; 
+  content: string;
+  non_verbal?: string; // Невербальные действия
+  non_verbal_valence?: number; // Окраска невербалики (-1..1)
+  state?: SimulationState;
   timestamp: number;
 }
 

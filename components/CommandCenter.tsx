@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Terminal, Archive, Trash2, Download, Upload, Eye, X, ChevronDown, ChevronUp, Globe, User } from 'lucide-react';
+import { ArrowLeft, Terminal, Archive, Trash2, Download, Upload, Eye, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { UserAccount, SessionLog, Message, MessageRole } from '../types';
 import { 
   getUserArchive, 
@@ -9,9 +9,6 @@ import {
   formatSessionDate,
   formatDuration,
   getScoreColor,
-  getScoreGradient,
-  getGlobalArchive,
-  getGlobalArchiveStats,
   importFromJSON
 } from '../services/archiveService';
 import { 
@@ -38,12 +35,8 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
 
   // Archive state
   const [sessions, setSessions] = useState<SessionLog[]>([]);
-  const [globalSessions, setGlobalSessions] = useState<SessionLog[]>([]);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [wipeConfirmPending, setWipeConfirmPending] = useState(false);
-  const [archiveTab, setArchiveTab] = useState<'personal' | 'global'>('personal');
-  
-  const isAdmin = user.role === 'ADMIN';
 
   // Initialize
   useEffect(() => {
@@ -57,11 +50,10 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
   }, [terminalHistory]);
 
   const loadSessions = useCallback(() => {
-    setSessions(getUserArchive(user.id));
-    if (isAdmin) {
-      setGlobalSessions(getGlobalArchive());
-    }
-  }, [user.id, isAdmin]);
+    console.log('[CommandCenter] Loading sessions for user:', user.id);
+    const userArchive = getUserArchive(user.id);
+    setSessions(userArchive);
+  }, [user.id]);
 
   // Handle command input
   const handleCommand = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -210,7 +202,7 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
         className="hidden"
       />
       {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-800/50 bg-slate-900/30">
+      <header className="shrink-0 h-16 md:h-20 flex items-center justify-between px-6 border-b border-slate-800/50 bg-slate-900/30">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
@@ -219,21 +211,21 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
           <span className="text-sm font-medium">Назад</span>
         </button>
         
-        <h1 className="text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400">
-          УЧИТЕЛЬСКАЯ
+        <h1 className="text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-400 uppercase italic">
+          Учительская
         </h1>
         
         <div className="w-20" /> {/* Spacer */}
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex gap-4 p-4 min-h-0 overflow-hidden">
+      <main className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0 overflow-hidden">
         {/* Left panel - Terminal */}
-        <div className="w-1/2 flex flex-col bg-black rounded-xl border border-green-500/30 overflow-hidden shadow-[0_0_30px_rgba(34,197,94,0.1)]">
+        <div className="flex-1 md:w-1/2 flex flex-col bg-black rounded-3xl border border-green-500/30 overflow-hidden shadow-[0_0_30px_rgba(34,197,94,0.1)]">
           {/* Terminal header */}
           <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-green-500/10 border-b border-green-500/30">
             <Terminal size={14} className="text-green-400" />
-            <span className="text-[10px] font-black text-green-400 tracking-widest">KERNEL TERMINAL</span>
+            <span className="text-[10px] font-black text-green-400 tracking-widest uppercase">Kernel Terminal</span>
           </div>
 
           {/* Terminal output */}
@@ -242,7 +234,7 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
             onClick={() => inputRef.current?.focus()}
           >
             {terminalHistory.map((line, i) => (
-              <div key={i} className={`${getLineColor(line.type)} whitespace-pre-wrap leading-relaxed`}>
+              <div key={i} className={`${getLineColor(line.type)} whitespace-pre-wrap leading-relaxed mb-1`}>
                 {line.text}
               </div>
             ))}
@@ -258,74 +250,37 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleCommand}
-              className="flex-1 bg-transparent text-green-400 font-mono text-sm outline-none placeholder-green-700"
-              placeholder="Enter command..."
+              className="flex-1 bg-transparent text-green-400 font-mono text-sm outline-none placeholder-green-900"
+              placeholder="Введите команду..."
               autoFocus
             />
           </div>
         </div>
 
         {/* Right panel - Archive */}
-        <div className="w-1/2 flex flex-col bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden">
-          {/* Archive header with tabs for admin */}
+        <div className="flex-1 md:w-1/2 flex flex-col bg-slate-900/50 rounded-3xl border border-slate-700/50 overflow-hidden">
           <div className="shrink-0 flex flex-col bg-slate-800/50 border-b border-slate-700/50">
-            {/* Tabs for admin */}
-            {isAdmin && (
-              <div className="flex border-b border-slate-700/30">
-                <button
-                  onClick={() => setArchiveTab('personal')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-[10px] font-bold tracking-wider transition-colors ${
-                    archiveTab === 'personal'
-                      ? 'text-violet-400 bg-violet-500/10 border-b-2 border-violet-400'
-                      : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  <User size={12} />
-                  МОИ СЕССИИ
-                  <span className="text-slate-600">({sessions.length})</span>
-                </button>
-                <button
-                  onClick={() => setArchiveTab('global')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-[10px] font-bold tracking-wider transition-colors ${
-                    archiveTab === 'global'
-                      ? 'text-amber-400 bg-amber-500/10 border-b-2 border-amber-400'
-                      : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  <Globe size={12} />
-                  ВСЕ ЮЗЕРЫ
-                  <span className="text-slate-600">({globalSessions.length})</span>
-                </button>
-              </div>
-            )}
-            
             {/* Header row */}
-            <div className="flex items-center justify-between px-4 py-2">
+            <div className="flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-2">
-                <Archive size={14} className={archiveTab === 'global' ? 'text-amber-400' : 'text-violet-400'} />
-                <span className={`text-[10px] font-black tracking-widest ${archiveTab === 'global' ? 'text-amber-400' : 'text-violet-400'}`}>
-                  {archiveTab === 'global' ? 'ГЛОБАЛЬНЫЙ АРХИВ' : 'АРХИВ СЕССИЙ'}
+                <Archive size={16} className="text-violet-400" />
+                <span className="text-[11px] font-black tracking-widest text-violet-400 uppercase">
+                  Личный архив сессий
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors"
+                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-emerald-400 transition-colors uppercase font-bold"
                 >
                   <Upload size={12} />
                   Импорт
                 </button>
                 
-                {(archiveTab === 'personal' ? sessions : globalSessions).length > 0 && (
+                {sessions.length > 0 && (
                   <button
-                    onClick={() => {
-                      const data = archiveTab === 'personal' ? sessions : globalSessions;
-                      const filename = archiveTab === 'personal'
-                        ? `archive_${user.email}_${new Date().toISOString().split('T')[0]}.json`
-                        : `global_archive_${new Date().toISOString().split('T')[0]}.json`;
-                      exportToJSON(data, filename);
-                    }}
-                    className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-cyan-400 transition-colors"
+                    onClick={handleExportAll}
+                    className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-cyan-400 transition-colors uppercase font-bold"
                   >
                     <Download size={12} />
                     Экспорт всех
@@ -336,25 +291,15 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
           </div>
 
           {/* Sessions list */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scroll">
-            {(() => {
-              const displaySessions = archiveTab === 'global' ? globalSessions : sessions;
-              
-              if (displaySessions.length === 0) {
-                return (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                    <Archive size={48} className="mb-4 opacity-30" />
-                    <p className="text-sm">Архив пуст</p>
-                    <p className="text-xs mt-1">
-                      {archiveTab === 'global' 
-                        ? 'Сессии всех пользователей появятся здесь' 
-                        : 'Завершённые сессии появятся здесь'}
-                    </p>
-                  </div>
-                );
-              }
-              
-              return displaySessions.map((session) => (
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
+            {sessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-600">
+                <Archive size={48} className="mb-4 opacity-20" />
+                <p className="text-sm font-bold uppercase tracking-wider">Архив пуст</p>
+                <p className="text-[10px] mt-1 opacity-50 uppercase">Завершённые сессии появятся здесь</p>
+              </div>
+            ) : (
+              sessions.map((session) => (
                 <SessionCard
                   key={session.id}
                   session={session}
@@ -362,35 +307,34 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
                   onToggle={() => setExpandedSession(
                     expandedSession === session.id ? null : session.id
                   )}
-                  onDelete={archiveTab === 'personal' ? () => handleDeleteSession(session.id) : undefined}
+                  onDelete={() => handleDeleteSession(session.id)}
                   onExport={() => handleExportSession(session)}
-                  showUserInfo={archiveTab === 'global'}
                 />
-              ));
-            })()}
+              ))
+            )}
           </div>
         </div>
       </main>
 
       {/* Wipe confirmation modal */}
       {wipeConfirmPending && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-slate-900 border border-red-500/50 rounded-xl p-6 max-w-md mx-4 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
-            <h3 className="text-lg font-bold text-red-400 mb-2">Подтверждение удаления</h3>
-            <p className="text-slate-300 text-sm mb-4">
-              Вы уверены, что хотите удалить все сессии из архива? 
-              Это действие необратимо.
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-sm">
+          <div className="bg-slate-900 border border-red-500/50 rounded-3xl p-8 max-w-md mx-4 shadow-[0_0_100px_rgba(239,68,68,0.2)]">
+            <h3 className="text-xl font-black text-red-400 mb-2 uppercase italic tracking-tighter">Подтверждение удаления</h3>
+            <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+              Вы уверены, что хотите полностью очистить личный архив? 
+              Это действие необратимо и приведет к удалению всех ваших сессий.
             </p>
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-4 justify-end">
               <button
                 onClick={handleWipeCancel}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+                className="px-6 py-3 text-xs font-black uppercase text-slate-500 hover:text-white transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleWipeConfirm}
-                className="px-4 py-2 text-sm bg-red-500/20 text-red-400 border border-red-500/50 rounded-lg hover:bg-red-500/30 transition-colors"
+                className="px-8 py-3 text-xs font-black uppercase bg-red-600 text-white rounded-xl hover:bg-red-500 transition-all shadow-lg shadow-red-900/20"
               >
                 Удалить всё
               </button>
@@ -407,9 +351,8 @@ interface SessionCardProps {
   session: SessionLog;
   isExpanded: boolean;
   onToggle: () => void;
-  onDelete?: () => void;
+  onDelete: () => void;
   onExport: () => void;
-  showUserInfo?: boolean;
 }
 
 const SessionCard: React.FC<SessionCardProps> = ({
@@ -417,121 +360,112 @@ const SessionCard: React.FC<SessionCardProps> = ({
   isExpanded,
   onToggle,
   onDelete,
-  onExport,
-  showUserInfo = false
+  onExport
 }) => {
   const score = session.result?.overall_score ?? 0;
   const accentuation = session.sessionSnapshot?.chaosDetails?.accentuation || 'N/A';
-  const userId = (session as any).userId || 'unknown';
   
   return (
-    <div className={`rounded-xl border transition-all ${
+    <div className={`rounded-2xl border transition-all duration-300 ${
       isExpanded 
-        ? 'border-violet-500/50 bg-gradient-to-br from-violet-500/10 to-slate-900/50' 
-        : 'border-slate-700/50 bg-slate-800/30 hover:border-slate-600/50'
+        ? 'border-violet-500/50 bg-gradient-to-br from-violet-500/10 to-slate-900/80 shadow-xl' 
+        : 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-800/60'
     }`}>
       {/* Card header */}
       <div 
-        className="flex items-center justify-between p-3 cursor-pointer"
+        className="flex items-center justify-between p-4 cursor-pointer"
         onClick={onToggle}
       >
         <div className="flex-1 min-w-0">
-          {/* User info for global view */}
-          {showUserInfo && (
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-mono">
-                {userId.slice(0, 8)}...
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-slate-500">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {formatSessionDate(session.timestamp)}
             </span>
-            <span className="text-xs text-slate-600">•</span>
-            <span className="text-xs text-slate-400">
+            <span className="text-slate-700">•</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {formatDuration(session.duration_seconds)}
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white truncate">
-              {session.student_name}
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400">
-              {accentuation}
-            </span>
             {session.importedFrom && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono" title={`Imported from ${session.importedFrom}`}>
-                IMPORT
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-black uppercase tracking-tighter ml-1 border border-blue-500/20">
+                ИМПОРТ
               </span>
             )}
           </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-black text-white uppercase italic tracking-tight truncate">
+              {session.student_name}
+            </span>
+            <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-bold uppercase tracking-widest border border-white/5">
+              {accentuation}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className={`text-lg font-bold ${getScoreColor(score)}`}>
-            {score}
-          </span>
-          {isExpanded ? (
-            <ChevronUp size={16} className="text-slate-400" />
-          ) : (
-            <ChevronDown size={16} className="text-slate-400" />
-          )}
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className={`text-xl font-black italic leading-none ${getScoreColor(score)}`}>
+              {score}
+            </div>
+            <div className="text-[8px] font-black text-slate-600 uppercase mt-1">Рейтинг</div>
+          </div>
+          <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-violet-500/20 text-violet-400' : 'text-slate-600'}`}>
+            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
         </div>
       </div>
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="border-t border-slate-700/50">
+        <div className="border-t border-slate-800/50 animate-in fade-in slide-in-from-top-2 duration-300">
           {/* Summary */}
           {session.result?.summary && (
-            <div className="px-3 py-2 bg-slate-800/30">
-              <p className="text-xs text-slate-400 italic">
+            <div className="px-4 py-3 bg-black/20">
+              <p className="text-[11px] text-slate-400 italic leading-relaxed border-l-2 border-violet-500/30 pl-3">
                 {session.result.summary}
               </p>
             </div>
           )}
 
           {/* Transcript */}
-          <div className="max-h-60 overflow-y-auto custom-scroll">
+          <div className="max-h-64 overflow-y-auto custom-scroll p-1">
             {session.messages
               .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
               .map((msg, i) => (
                 <div 
                   key={i}
-                  className={`px-3 py-2 text-xs ${
+                  className={`px-4 py-2.5 text-[11px] mb-1 rounded-xl ${
                     msg.role === MessageRole.USER 
-                      ? 'bg-cyan-500/5 text-cyan-300' 
-                      : 'bg-slate-800/20 text-slate-300'
+                      ? 'bg-cyan-500/5 text-cyan-200/90' 
+                      : 'bg-slate-800/30 text-slate-300'
                   }`}
                 >
-                  <span className="font-bold text-[10px] uppercase tracking-wider opacity-50 mr-2">
-                    {msg.role === MessageRole.USER ? 'Учитель' : 'Ученик'}:
-                  </span>
-                  {msg.content}
+                  <div className="flex justify-between items-start mb-1">
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${msg.role === MessageRole.USER ? 'text-cyan-500' : 'text-slate-500'}`}>
+                      {msg.role === MessageRole.USER ? 'Педагог' : 'Ученик'}
+                    </span>
+                  </div>
+                  <div className="leading-relaxed">{msg.content}</div>
                 </div>
               ))
             }
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-2 p-2 border-t border-slate-700/50 bg-slate-800/20">
+          <div className="flex items-center justify-end gap-2 p-3 border-t border-slate-800/50 bg-black/20">
             <button
               onClick={(e) => { e.stopPropagation(); onExport(); }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-cyan-400 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase text-slate-500 hover:text-cyan-400 transition-colors"
             >
               <Download size={12} />
-              Экспорт
+              Экспорт JSON
             </button>
-            {onDelete && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] text-slate-400 hover:text-red-400 transition-colors"
-              >
-                <Trash2 size={12} />
-                Удалить
-              </button>
-            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase text-slate-500 hover:text-red-400 transition-colors"
+            >
+              <Trash2 size={12} />
+              Удалить
+            </button>
           </div>
         </div>
       )}

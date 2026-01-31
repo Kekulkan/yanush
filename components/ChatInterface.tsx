@@ -446,8 +446,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           },
           timestamp: Date.now()
         };
-        (modelMsg as any).non_verbal = response.non_verbal;
-        (modelMsg as any).non_verbal_valence = response.non_verbal_valence;
+        modelMsg.non_verbal = response.non_verbal ?? undefined;
+        modelMsg.non_verbal_valence = response.non_verbal_valence;
         
         currentMessages = [...currentMessages, modelMsg];
         setMessages(currentMessages);
@@ -697,8 +697,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         timestamp: Date.now()
       };
 
-      (modelMsg as any).non_verbal = response.non_verbal;
-      (modelMsg as any).non_verbal_valence = response.non_verbal_valence;
+      modelMsg.non_verbal = response.non_verbal ?? undefined;
+      modelMsg.non_verbal_valence = response.non_verbal_valence;
 
       const finalMessages = [...newMessages, modelMsg];
       setMessages(finalMessages);
@@ -1251,9 +1251,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                         </div>
                     ) : (
                         <div className="flex flex-col space-y-2 max-w-[90%] md:max-w-[85%]">
-                            {msg.role === MessageRole.MODEL && (msg as any).non_verbal && (
-                                <div className={`px-4 py-3 rounded-2xl border-l-4 italic text-[10px] md:text-xs shadow-md ${getNVStyle((msg as any).non_verbal_valence || 0)}`}>
-                                   {(msg as any).non_verbal}
+                            {msg.role === MessageRole.MODEL && msg.non_verbal && (
+                                <div className={`px-4 py-3 rounded-2xl border-l-4 italic text-[10px] md:text-xs shadow-md ${getNVStyle(msg.non_verbal_valence || 0)}`}>
+                                   {msg.non_verbal}
                                 </div>
                             )}
                             {/* Мысли ребёнка (только для админа) */}
