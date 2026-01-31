@@ -321,7 +321,7 @@ async function postViaProxySingle(
 async function postViaProxy(
   action: string, // e.g. "aitunnel:gemini-2.5-pro" or "claude-sonnet-4-..."
   body: any,
-  timeoutMs = 60_000
+  timeoutMs = 90_000
 ): Promise<any> {
   // Проверяем лимиты перед каждым вызовом
   checkApiLimits();
@@ -473,7 +473,7 @@ export const sendMessageToGemini = async (
         temperature: settings.chat_temperature,
       };
 
-      data = await postViaProxy(`aitunnel:${CHAT_MODEL}`, body, 60_000);
+      data = await postViaProxy(`aitunnel:${CHAT_MODEL}`, body, 90_000);
       
     } else if (AI_PROVIDER === "claude") {
       // Claude API format
@@ -495,7 +495,7 @@ export const sendMessageToGemini = async (
         max_tokens: 4096,
       };
 
-      data = await postViaProxy(CHAT_MODEL, body, 60_000);
+      data = await postViaProxy(CHAT_MODEL, body, 90_000);
     
     } else {
     // Gemini API format
@@ -528,7 +528,7 @@ export const sendMessageToGemini = async (
       },
     };
 
-    data = await postViaProxy(`${CHAT_MODEL}:generateContent`, body, 60_000);
+    data = await postViaProxy(`${CHAT_MODEL}:generateContent`, body, 90_000);
   }
 
     const modelText = extractModelText(data);
