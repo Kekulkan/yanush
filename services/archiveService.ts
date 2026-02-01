@@ -429,22 +429,6 @@ export function getArchiveStats(archive: SessionLog[]): ArchiveStats {
   };
 }
 
-/**
- * Получить статистику личного архива
- */
-export async function getUserArchiveStats(userId: string): Promise<ArchiveStats> {
-  const logs = await getUserArchive(userId);
-  return getArchiveStats(logs);
-}
-
-/**
- * Получить статистику глобального архива
- */
-export async function getGlobalArchiveStats(): Promise<ArchiveStats> {
-  const logs = await getGlobalArchive();
-  return getArchiveStats(logs);
-}
-
 // ============ УТИЛИТЫ ============
 
 /**
