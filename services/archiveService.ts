@@ -131,13 +131,16 @@ import { dbService } from './dbService';
 
 // ============ MIGRATION ============
 export async function migrateToIDB(): Promise<void> {
-  const hasMigrated = await dbService.get<boolean>('migrated_to_idb_v1');
+  const hasMigrated = await dbService.get<boolean>('migrated_to_idb_v2');
   if (hasMigrated) return;
 
-  console.log('Starting migration to IndexedDB...');
+  console.log('Starting migration to IndexedDB (v2 - cleanup)...');
 
   // 1. User Archives
   // We need to find all keys starting with USER_ARCHIVE_PREFIX
+  // Note: looping forwards while removing items can be tricky if using index, so we collect keys first
+  const keysToRemove: string[] = [];
+
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.startsWith(USER_ARCHIVE_PREFIX)) {
@@ -149,11 +152,18 @@ export async function migrateToIDB(): Promise<void> {
           for (const log of logs) {
              await dbService.saveLog({ ...log, userId });
           }
+          keysToRemove.push(key);
         }
       } catch (e) {
         console.error('Migration error for key', key, e);
       }
     }
+  }
+
+  // Remove migrated user archives
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  if (keysToRemove.length > 0) {
+      console.log(`Cleaned up ${keysToRemove.length} user archive keys from localStorage.`);
   }
 
   // 2. Global Archive
@@ -164,12 +174,30 @@ export async function migrateToIDB(): Promise<void> {
       for (const log of logs) {
          await dbService.saveLog(log);
       }
+      localStorage.removeItem(GLOBAL_ARCHIVE_KEY);
+      console.log('Cleaned up global archive from localStorage.');
     }
   } catch (e) {
     console.error('Migration error for global archive', e);
   }
 
-  await dbService.set('migrated_to_idb_v1', true);
+  // 3. Legacy History (logService)
+  try {
+      const historyKey = 'pedagogical_trainer_history';
+      const historyData = localStorage.getItem(historyKey);
+      if (historyData) {
+          const logs: SessionLog[] = JSON.parse(historyData);
+          for (const log of logs) {
+              await dbService.saveLog(log);
+          }
+          localStorage.removeItem(historyKey);
+          console.log('Cleaned up legacy history from localStorage.');
+      }
+  } catch (e) {
+      console.error('Migration error for legacy history', e);
+  }
+
+  await dbService.set('migrated_to_idb_v2', true);
   console.log('Migration to IndexedDB completed.');
 }
 
