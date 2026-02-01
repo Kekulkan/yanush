@@ -75,6 +75,25 @@ export interface SimulationState {
   violation_reason?: string;
 }
 
+// === ГЛОБАЛЬНЫЕ СОБЫТИЯ (НОВАЯ МЕХАНИКА) ===
+
+export interface EventTarget {
+  id: string;
+  name: string;
+  description?: string; // Например "Завуч (ждет ответа)"
+}
+
+export interface GlobalEventState {
+  isActive: boolean;
+  title: string;          // Название события (например "Кража")
+  description: string;    // Текущее описание ситуации от ГМ
+  bonuses: number;        // Накопленные бонусы
+  penalties: number;      // Накопленные штрафы
+  availableTargets: EventTarget[]; // Кому можно ответить (макс 6)
+  history: Message[];     // История переписки внутри события (изолирована от ученика)
+  isCompleted: boolean;   // Событие завершено?
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -244,6 +263,8 @@ export interface ActiveSession {
     contexts?: SessionContext[];
     incident?: ContextModule;
   };
+  // Активное глобальное событие (если есть)
+  activeGlobalEvent?: GlobalEventState;
 }
 
 export interface SessionLog {

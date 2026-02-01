@@ -130,6 +130,114 @@ function extractModelText(data: any): string {
   return extractGeminiText(data);
 }
 
+    if (text) return text;
+  }
+  return "";
+}
+
+// ============ ГЛОБАЛЬНЫЕ СОБЫТИЯ (GM) ============
+
+const GLOBAL_EVENT_GM_PROMPT = `
+Ты — Гейммастер (GM), ведущий интерактивное глобальное событие в школе.
+Твоя задача — провести игрока (педагога) через кризисную ситуацию, реагируя на его решения.
+
+МЕХАНИКА:
+1. Игрок выбирает АДРЕСАТА (к кому обращается) и пишет РЕПЛИКУ.
+2. Ты описываешь последствия: что ответил персонаж, как изменилась обстановка.
+3. Ты начисляешь БОНУСЫ (за грамотные, профессиональные, смелые действия) или ШТРАФЫ (за ошибки, трусость, игнорирование, агрессию).
+4. Ты определяешь, кто доступен для обращения в СЛЕДУЮЩИЙ ход (availableTargets).
+5. Ты решаешь, когда событие завершено (isCompleted).
+
+КОНТЕКСТ СИТУАЦИИ:
+{situation_context}
+
+ТЕКУЩЕЕ СОСТОЯНИЕ:
+Бонусы: {bonuses} | Штрафы: {penalties}
+
+ИСТОРИЯ СОБЫТИЯ:
+{history}
+
+ПОСЛЕДНЕЕ ДЕЙСТВИЕ ИГРОКА:
+Адресат: {target_name}
+Реплика: "{user_message}"
+
+ЗАДАЧА:
+1. Проанализируй действие игрока. Было ли оно адекватным? Решило ли проблему или усугубило?
+2. Опиши развитие ситуации (2-3 предложения). Сделай это живо, драматично.
+3. Начисли бонусы (0-10) или штрафы (0-10).
+4. Обнови список целей (кого сейчас можно выбрать). Максимум 6 целей.
+   - Если NPC ушел — убери его.
+   - Если появился новый — добавь.
+   - Всегда можно оставить "Класс" или "Ученик" если они рядом.
+
+ФОРМАТ ОТВЕТА (JSON):
+{
+  "description": "Описание реакции мира и изменения ситуации",
+  "bonuses_delta": число (0-10),
+  "penalties_delta": число (0-10),
+  "available_targets": [
+    { "id": "id_персонажа", "name": "Имя (Роль)", "description": "статус (напр. 'ждет ответа')" }
+  ],
+  "is_completed": true/false (true если ситуация логически завершилась или игрок провалился)
+}
+`;
+
+export const sendGlobalEventTurn = async (
+  history: Message[],
+  situationContext: string,
+  userMessage: string,
+  targetName: string,
+  currentBonuses: number,
+  currentPenalties: number
+): Promise<{
+  description: string;
+  bonuses_delta: number;
+  penalties_delta: number;
+  available_targets: { id: string; name: string; description?: string }[];
+  is_completed: boolean;
+}> => {
+  // Формируем историю для промпта
+  const historyText = history.map(m => `${m.role === MessageRole.USER ? 'ИГРОК' : 'GM'}: ${m.content}`).join('\n');
+
+  const prompt = GLOBAL_EVENT_GM_PROMPT
+    .replace('{situation_context}', situationContext)
+    .replace('{bonuses}', String(currentBonuses))
+    .replace('{penalties}', String(currentPenalties))
+    .replace('{history}', historyText)
+    .replace('{target_name}', targetName)
+    .replace('{user_message}', userMessage);
+
+  // Используем ту же модель, что и для чата (она достаточно умная)
+  const model = CHAT_MODEL; 
+  
+  try {
+    const responseText = await queryAI(model, prompt, 0.7, 60_000);
+    const jsonStr = extractFirstJsonObject(responseText);
+    
+    if (jsonStr) {
+      const parsed = JSON.parse(jsonStr);
+      return {
+        description: parsed.description || "Ситуация изменилась...",
+        bonuses_delta: coerceNum(parsed.bonuses_delta, 0),
+        penalties_delta: coerceNum(parsed.penalties_delta, 0),
+        available_targets: Array.isArray(parsed.available_targets) ? parsed.available_targets : [],
+        is_completed: Boolean(parsed.is_completed)
+      };
+    }
+  } catch (e) {
+    console.error("Global Event AI Error:", e);
+  }
+
+  // Fallback
+  return {
+    description: "Произошла заминка, но ситуация развивается. Продолжайте.",
+    bonuses_delta: 0,
+    penalties_delta: 0,
+    available_targets: [],
+    is_completed: false
+  };
+};
+
 function stripCodeFences(s: string): string {
   return s
     .replace(/```(?:json)?/gi, "```")
@@ -619,7 +727,8 @@ export const analyzeChatSession = async (
 ): Promise<AnalysisResult> => {
   const transcript = history.map((m) => {
     let line = `${m.role}: ${m.content}`;
-    if (m.state?.thought) line += `\n[МЫСЛЬ: ${m.state.thought}]`;
+    // ВАЖНО: Мысли ученика СКРЫТЫ от комиссии! Они оценивают только внешнее поведение.
+    // if (m.state?.thought) line += `\n[МЫСЛЬ: ${m.state.thought}]`; 
     return line;
   }).join("\n\n");
 
@@ -825,6 +934,10 @@ ${additionalContext.previousAdvice.slice(-3).map(a => `- "${a}"`).join('\n')}
    - КОРОТКО (1-2 предложения).
    - ЕСТЕСТВЕННО (без "психологического жаргона").
    - В ТОЧКУ (бьёт в скрытый мотив).
+
+   ТЫ МОЖЕШЬ ИСПОЛЬЗОВАТЬ НЕВЕРБАЛИКУ!
+   Если нужно действие, используй формат *действие*.
+   Пример: "Помолчите и *медленно придвиньте стул*, показывая готовность слушать."
 
 ФОРМАТ ОТВЕТА (JSON):
 {

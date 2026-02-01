@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog } from '../types';
-import { sendMessageToGemini, analyzeChatSession, generateGhostResponse } from '../services/geminiService';
+import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
@@ -10,6 +10,7 @@ import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, 
 import SubscriptionModal from './SubscriptionModal';
 import SecurityShield from './SecurityShield';
 import HelpOverlay, { CHAT_HELP_ITEMS } from './HelpOverlay';
+import { GlobalEventModal } from './GlobalEventModal'; // Импорт нового компонента
 
 interface Props {
   session: ActiveSession;
@@ -116,6 +117,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   
   const [expandedProfessional, setExpandedProfessional] = useState<number | null>(null);
   const [expandedAdvisory, setExpandedAdvisory] = useState<number | null>(null);
+  // Состояния для глобального события
+  const [activeGlobalEvent, setActiveGlobalEvent] = useState<any | null>(null); // Используем any временно, пока TS не подхватит типы
+  const [isGlobalEventLoading, setIsGlobalEventLoading] = useState(false);
+  const [accumulatedEventResults, setAccumulatedEventResults] = useState<{bonuses: number, penalties: number}>({ bonuses: 0, penalties: 0 });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -586,6 +592,81 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       }
   };
 
+  // Обработка хода в глобальном событии
+  const handleGlobalEventTurn = async (targetId: string, message: string) => {
+    if (!activeGlobalEvent) return;
+    
+    setIsGlobalEventLoading(true);
+    try {
+      // Добавляем сообщение игрока в историю события
+      const targetName = activeGlobalEvent.availableTargets.find((t: any) => t.id === targetId)?.name || targetId;
+      const userMsg = { 
+        id: Date.now().toString(), 
+        role: MessageRole.USER, 
+        content: `[Обращаясь к: ${targetName}] ${message}`,
+        timestamp: Date.now() 
+      };
+      
+      const newHistory = [...activeGlobalEvent.history, userMsg];
+      
+      // Отправляем ход ГМ-у
+      const response = await sendGlobalEventTurn(
+        newHistory,
+        activeGlobalEvent.description, // Контекст
+        message,
+        targetName,
+        activeGlobalEvent.bonuses,
+        activeGlobalEvent.penalties
+      );
+      
+      // Добавляем ответ ГМ-а
+      const gmMsg = {
+        id: (Date.now() + 1).toString(),
+        role: MessageRole.MODEL,
+        content: response.description,
+        timestamp: Date.now()
+      };
+      
+      // Обновляем состояние события
+      setActiveGlobalEvent((prev: any) => ({
+        ...prev,
+        history: [...newHistory, gmMsg],
+        bonuses: prev.bonuses + response.bonuses_delta,
+        penalties: prev.penalties + response.penalties_delta,
+        availableTargets: response.available_targets.length > 0 ? response.available_targets : prev.availableTargets,
+        isCompleted: response.is_completed,
+        description: response.description // Обновляем текущее описание ситуации
+      }));
+      
+    } catch (e) {
+      console.error("Global Event Turn Error:", e);
+    } finally {
+      setIsGlobalEventLoading(false);
+    }
+  };
+
+  // Завершение глобального события
+  const completeGlobalEvent = () => {
+    if (!activeGlobalEvent) return;
+    
+    // Сохраняем результаты
+    setAccumulatedEventResults(prev => ({
+      bonuses: prev.bonuses + activeGlobalEvent.bonuses,
+      penalties: prev.penalties + activeGlobalEvent.penalties
+    }));
+    
+    // Добавляем системное сообщение в основной чат
+    const summaryMsg: Message = {
+      id: `event-end-${Date.now()}`,
+      role: MessageRole.SYSTEM,
+      content: `ГЛОБАЛЬНОЕ СОБЫТИЕ ЗАВЕРШЕНО.\nИтог: Бонусы +${activeGlobalEvent.bonuses}, Штрафы -${activeGlobalEvent.penalties}.\nВозвращаемся к уроку.`,
+      timestamp: Date.now()
+    };
+    
+    setMessages(prev => [...prev, summaryMsg]);
+    setActiveGlobalEvent(null);
+  };
+
   const handleSend = async (textOverride?: string) => {
     const text = textOverride || input;
     if (!text.trim() || isLoading || isAnalyzing) return;
@@ -612,11 +693,56 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       let filteredWorldEvent = response.world_event;
       
       if (filteredWorldEvent && messagesSinceLastEvent < MIN_MESSAGES_BETWEEN_EVENTS) {
-        console.log(`[GM Event] Suppressed - only ${messagesSinceLastEvent} messages since last event (need ${MIN_MESSAGES_BETWEEN_EVENTS})`);
+        // ... (код пропуска)
         filteredWorldEvent = null;
       } else if (filteredWorldEvent) {
-        console.log(`[GM Event] Allowed - ${messagesSinceLastEvent} messages since last event`);
         lastEventIndexRef.current = currentMsgIndex;
+        
+        // !!! ПЕРЕХВАТ: Если событие требует реакции — запускаем ИНТЕРАКТИВНЫЙ РЕЖИМ !!!
+        if (filteredWorldEvent.requires_response) {
+          console.log('[GM Event] Starting Interactive Mode for:', filteredWorldEvent.type);
+          
+          setIsGlobalEventLoading(true);
+          
+          // Инициализируем событие через запрос к ГМ
+          // Первый запрос — установочный, без реплики игрока
+          try {
+            const initResponse = await sendGlobalEventTurn(
+              [{ role: MessageRole.SYSTEM, content: filteredWorldEvent.description, id: 'init', timestamp: Date.now() }],
+              filteredWorldEvent.description,
+              "Начало события", // Системный триггер
+              "GM",
+              0, 0
+            );
+            
+            setActiveGlobalEvent({
+              isActive: true,
+              title: filteredWorldEvent.type?.toUpperCase().replace(/_/g, ' ') || 'КРИЗИСНАЯ СИТУАЦИЯ',
+              description: filteredWorldEvent.description,
+              bonuses: 0,
+              penalties: 0,
+              availableTargets: initResponse.available_targets.length > 0 
+                ? initResponse.available_targets 
+                : [
+                    { id: 'head_teacher', name: 'Завуч' }, 
+                    { id: 'class', name: 'Класс' },
+                    { id: 'student', name: 'Ученик' }
+                  ], // Fallback цели
+              history: [{ 
+                id: 'ev-init', 
+                role: MessageRole.MODEL, 
+                content: initResponse.description || filteredWorldEvent.description,
+                timestamp: Date.now()
+              }],
+              isCompleted: false
+            });
+          } catch (e) {
+            console.error("Failed to init global event:", e);
+            // Fallback если API упал — просто показываем как обычное сообщение
+          } finally {
+            setIsGlobalEventLoading(false);
+          }
+        }
       }
 
       // Получаем предыдущие значения trust/stress
@@ -1039,6 +1165,17 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200">
+      
+      {/* ГЛОБАЛЬНОЕ СОБЫТИЕ (МОДАЛКА) */}
+      {activeGlobalEvent && (
+        <GlobalEventModal
+          eventState={activeGlobalEvent}
+          onTurn={handleGlobalEventTurn}
+          onComplete={completeGlobalEvent}
+          isLoading={isGlobalEventLoading}
+        />
+      )}
+
       {isAnalyzing && (
           <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-3xl px-8 text-center animate-in fade-in duration-500">
               <div className="relative mb-12">
