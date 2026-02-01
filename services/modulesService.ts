@@ -147,9 +147,19 @@ export function isModuleCompatible(
     return false;
   }
   
-  // Проверка конфликтов с уже выбранными модулями
+  // Проверка конфликтов с уже выбранными модулями (двусторонняя!)
+  // 1. Проверяем: есть ли в conflicts текущего модуля ID уже выбранных
   if (module.conflicts.some(conflictId => selectedModuleIds.includes(conflictId))) {
     return false;
+  }
+  
+  // 2. Проверяем обратно: есть ли у уже выбранных модулей в conflicts ID текущего
+  const allModules = getAllModules();
+  for (const selectedId of selectedModuleIds) {
+    const selectedModule = allModules.find(m => m.id === selectedId);
+    if (selectedModule?.conflicts?.includes(module.id)) {
+      return false;
+    }
   }
   
   return true;
