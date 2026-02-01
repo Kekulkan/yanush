@@ -130,11 +130,6 @@ function extractModelText(data: any): string {
   return extractGeminiText(data);
 }
 
-    if (text) return text;
-  }
-  return "";
-}
-
 // ============ ГЛОБАЛЬНЫЕ СОБЫТИЯ (GM) ============
 
 const GLOBAL_EVENT_GM_PROMPT = `
