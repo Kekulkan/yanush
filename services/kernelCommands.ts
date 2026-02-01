@@ -28,11 +28,11 @@ export interface CommandResult {
 /**
  * Парсинг и выполнение команды
  */
-export function executeCommand(
+export async function executeCommand(
   input: string,
   user: UserAccount | null,
   onWipeConfirm?: () => void
-): CommandResult {
+): Promise<CommandResult> {
   const trimmed = input.trim();
   if (!trimmed) {
     return { output: [] };
@@ -58,10 +58,10 @@ export function executeCommand(
       return { output: [commandLog, ...cmdStatus()] };
     
     case 'LOGS':
-      return { output: [commandLog, ...cmdLogs(user)] };
+      return { output: [commandLog, ...await cmdLogs(user)] };
     
     case 'WIPE':
-      return { output: [commandLog, ...cmdWipe(user, onWipeConfirm)] };
+      return { output: [commandLog, ...await cmdWipe(user, onWipeConfirm)] };
     
     case 'WHOAMI':
       return { output: [commandLog, ...cmdWhoami(user)] };
@@ -79,7 +79,7 @@ export function executeCommand(
       return { output: [commandLog, ...cmdVersion()] };
     
     case 'IMPORT':
-      return { output: [commandLog, ...cmdImport(user, args)] };
+      return { output: [commandLog, ...await cmdImport(user, args)] };
     
     default:
       return {
@@ -135,12 +135,12 @@ function cmdStatus(): TerminalOutput[] {
   ];
 }
 
-function cmdLogs(user: UserAccount | null): TerminalOutput[] {
+async function cmdLogs(user: UserAccount | null): Promise<TerminalOutput[]> {
   if (!user) {
     return [{ type: 'error', text: 'ERROR: Not authenticated', timestamp: Date.now() }];
   }
 
-  const stats = getUserArchiveStats(user.id);
+  const stats = await getUserArchiveStats(user.id);
   const isAdmin = user.role === 'ADMIN';
   
   const output: TerminalOutput[] = [
@@ -161,7 +161,7 @@ function cmdLogs(user: UserAccount | null): TerminalOutput[] {
 
   // Для админа показываем глобальную статистику
   if (isAdmin) {
-    const globalStats = getGlobalArchiveStats();
+    const globalStats = await getGlobalArchiveStats();
     output.push(
       { type: 'system', text: '', timestamp: Date.now() },
       { type: 'system', text: '┌─ GLOBAL ARCHIVE (ADMIN) ────────────┐', timestamp: Date.now() },
@@ -174,12 +174,12 @@ function cmdLogs(user: UserAccount | null): TerminalOutput[] {
   return output;
 }
 
-function cmdWipe(user: UserAccount | null, onConfirm?: () => void): TerminalOutput[] {
+async function cmdWipe(user: UserAccount | null, onConfirm?: () => void): Promise<TerminalOutput[]> {
   if (!user) {
     return [{ type: 'error', text: 'ERROR: Not authenticated', timestamp: Date.now() }];
   }
 
-  const stats = getUserArchiveStats(user.id);
+  const stats = await getUserArchiveStats(user.id);
   
   if (stats.totalSessions === 0) {
     return [{ type: 'info', text: 'Archive is already empty.', timestamp: Date.now() }];
@@ -249,7 +249,7 @@ function cmdVersion(): TerminalOutput[] {
   ];
 }
 
-function cmdImport(user: UserAccount | null, args: string[]): TerminalOutput[] {
+async function cmdImport(user: UserAccount | null, args: string[]): Promise<TerminalOutput[]> {
   if (!user) {
     return [{ type: 'error', text: 'ERROR: Not authenticated', timestamp: Date.now() }];
   }
@@ -263,7 +263,7 @@ function cmdImport(user: UserAccount | null, args: string[]): TerminalOutput[] {
   }
 
   const sessionId = args[0];
-  const globalArchive = getGlobalArchive();
+  const globalArchive = await getGlobalArchive();
   const targetSession = globalArchive.find(s => s.id === sessionId || s.id.startsWith(sessionId));
 
   if (!targetSession) {
@@ -274,7 +274,7 @@ function cmdImport(user: UserAccount | null, args: string[]): TerminalOutput[] {
   }
 
   // Проверяем, не импортирована ли уже эта сессия
-  const userArchive = getUserArchive(user.id);
+  const userArchive = await getUserArchive(user.id);
   const alreadyImported = userArchive.some(s => 
     s.id === targetSession.id || 
     (s.timestamp === targetSession.timestamp && s.student_name === targetSession.student_name)
@@ -297,12 +297,12 @@ function cmdImport(user: UserAccount | null, args: string[]): TerminalOutput[] {
     importedAt: Date.now()
   };
 
-  saveToUserArchive(user.id, importedSession);
+  await saveToUserArchive(user.id, importedSession);
 
   return [
     { type: 'success', text: '✓ Session imported successfully!', timestamp: Date.now() },
     { type: 'info', text: `Student:  ${targetSession.student_name}`, timestamp: Date.now() },
-    { type: 'info', text: `Score:    ${targetSession.result.overall_score || 0}%`, timestamp: Date.now() },
+    { type: 'info', text: `Score:    ${targetSession.result?.overall_score || 0}%`, timestamp: Date.now() },
     { type: 'info', text: `Duration: ${formatDuration(targetSession.duration_seconds || 0)}`, timestamp: Date.now() },
     { type: 'system', text: 'Check your personal archive to review.', timestamp: Date.now() }
   ];

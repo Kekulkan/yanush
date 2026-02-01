@@ -375,7 +375,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               currentTrust,
               currentStress,
               studentThought: lastThought,
-              previousAdvice
+              previousAdvice,
+              teacherName: session.teacher.name,
+              teacherGender: session.teacher.gender
             }
           );
           setGhostAdvice(advice);
@@ -416,7 +418,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             currentTrust: trust,
             currentStress: stress,
             studentThought: thought,
-            previousAdvice
+            previousAdvice,
+            teacherName: session.teacher.name,
+            teacherGender: session.teacher.gender
           }
         );
         

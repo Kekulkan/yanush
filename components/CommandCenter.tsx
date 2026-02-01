@@ -49,9 +49,9 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [terminalHistory]);
 
-  const loadSessions = useCallback(() => {
+  const loadSessions = useCallback(async () => {
     console.log('[CommandCenter] Loading sessions for user:', user.id);
-    const userArchive = getUserArchive(user.id);
+    const userArchive = await getUserArchive(user.id);
     setSessions(userArchive);
   }, [user.id]);
 
@@ -148,11 +148,11 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       if (!content) return;
 
-      const result = importFromJSON(content, user.id);
+      const result = await importFromJSON(content, user.id);
       if (result.success) {
         setTerminalHistory(prev => [...prev, {
           type: 'success' as const,

@@ -125,30 +125,66 @@ export async function wipeServerLogs(adminKey: string): Promise<boolean> {
   }
 }
 
+import { dbService } from './dbService';
+
+// ... (existing imports)
+
+// ============ MIGRATION ============
+export async function migrateToIDB(): Promise<void> {
+  const hasMigrated = await dbService.get<boolean>('migrated_to_idb_v1');
+  if (hasMigrated) return;
+
+  console.log('Starting migration to IndexedDB...');
+
+  // 1. User Archives
+  // We need to find all keys starting with USER_ARCHIVE_PREFIX
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(USER_ARCHIVE_PREFIX)) {
+      try {
+        const data = localStorage.getItem(key);
+        if (data) {
+          const logs: SessionLog[] = JSON.parse(data);
+          const userId = key.replace(USER_ARCHIVE_PREFIX, '');
+          for (const log of logs) {
+             await dbService.saveLog({ ...log, userId });
+          }
+        }
+      } catch (e) {
+        console.error('Migration error for key', key, e);
+      }
+    }
+  }
+
+  // 2. Global Archive
+  try {
+    const globalData = localStorage.getItem(GLOBAL_ARCHIVE_KEY);
+    if (globalData) {
+      const logs: SessionLog[] = JSON.parse(globalData);
+      for (const log of logs) {
+         await dbService.saveLog(log);
+      }
+    }
+  } catch (e) {
+    console.error('Migration error for global archive', e);
+  }
+
+  await dbService.set('migrated_to_idb_v1', true);
+  console.log('Migration to IndexedDB completed.');
+}
+
+// ... (existing code)
+
 // ============ ЛИЧНЫЙ АРХИВ ЮЗЕРА ============
 
 /**
  * Сохранить сессию в личный архив пользователя
  */
-export function saveToUserArchive(userId: string, sessionLog: SessionLog): void {
+export async function saveToUserArchive(userId: string, sessionLog: SessionLog): Promise<void> {
   try {
-    const key = `${USER_ARCHIVE_PREFIX}${userId}`;
-    const archive = getUserArchive(userId);
-    
     // Добавляем userId если его нет
     const logWithUser = { ...sessionLog, userId };
-    
-    // Проверяем, есть ли уже запись с таким ID (обновление)
-    const existingIndex = archive.findIndex(log => log.id === sessionLog.id);
-    if (existingIndex !== -1) {
-      // Обновляем существующую запись
-      archive[existingIndex] = logWithUser;
-    } else {
-      // Добавляем в начало (новые сверху)
-      archive.unshift(logWithUser);
-    }
-    
-    localStorage.setItem(key, JSON.stringify(archive));
+    await dbService.saveLog(logWithUser);
   } catch (e) {
     console.error('Failed to save to user archive:', e);
   }
@@ -157,11 +193,9 @@ export function saveToUserArchive(userId: string, sessionLog: SessionLog): void 
 /**
  * Получить личный архив пользователя
  */
-export function getUserArchive(userId: string): SessionLog[] {
+export async function getUserArchive(userId: string): Promise<SessionLog[]> {
   try {
-    const key = `${USER_ARCHIVE_PREFIX}${userId}`;
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
+    return await dbService.getUserLogs(userId);
   } catch (e) {
     console.error('Failed to get user archive:', e);
     return [];
@@ -171,15 +205,9 @@ export function getUserArchive(userId: string): SessionLog[] {
 /**
  * Удалить сессию из личного архива
  */
-export function deleteFromUserArchive(userId: string, sessionId: string): boolean {
+export async function deleteFromUserArchive(userId: string, sessionId: string): Promise<boolean> {
   try {
-    const key = `${USER_ARCHIVE_PREFIX}${userId}`;
-    const archive = getUserArchive(userId);
-    const filtered = archive.filter(s => s.id !== sessionId);
-    
-    if (filtered.length === archive.length) return false;
-    
-    localStorage.setItem(key, JSON.stringify(filtered));
+    await dbService.deleteLog(sessionId);
     return true;
   } catch (e) {
     console.error('Failed to delete from user archive:', e);
@@ -190,10 +218,9 @@ export function deleteFromUserArchive(userId: string, sessionId: string): boolea
 /**
  * Полная очистка личного архива пользователя
  */
-export function wipeUserArchive(userId: string): void {
+export async function wipeUserArchive(userId: string): Promise<void> {
   try {
-    const key = `${USER_ARCHIVE_PREFIX}${userId}`;
-    localStorage.removeItem(key);
+    await dbService.clearUserLogs(userId);
   } catch (e) {
     console.error('Failed to wipe user archive:', e);
   }
@@ -204,21 +231,9 @@ export function wipeUserArchive(userId: string): void {
 /**
  * Сохранить сессию в глобальный архив
  */
-export function saveToGlobalArchive(sessionLog: SessionLog): void {
+export async function saveToGlobalArchive(sessionLog: SessionLog): Promise<void> {
   try {
-    const archive = getGlobalArchive();
-    
-    // Проверяем, есть ли уже запись с таким ID (обновление)
-    const existingIndex = archive.findIndex(log => log.id === sessionLog.id);
-    if (existingIndex !== -1) {
-      // Обновляем существующую запись
-      archive[existingIndex] = sessionLog;
-    } else {
-      // Добавляем в начало
-      archive.unshift(sessionLog);
-    }
-    
-    localStorage.setItem(GLOBAL_ARCHIVE_KEY, JSON.stringify(archive));
+    await dbService.saveLog(sessionLog);
   } catch (e) {
     console.error('Failed to save to global archive:', e);
   }
@@ -227,10 +242,9 @@ export function saveToGlobalArchive(sessionLog: SessionLog): void {
 /**
  * Получить глобальный архив (все сессии всех юзеров)
  */
-export function getGlobalArchive(): SessionLog[] {
+export async function getGlobalArchive(): Promise<SessionLog[]> {
   try {
-    const data = localStorage.getItem(GLOBAL_ARCHIVE_KEY);
-    return data ? JSON.parse(data) : [];
+    return await dbService.getAllLogs();
   } catch (e) {
     console.error('Failed to get global archive:', e);
     return [];
@@ -240,15 +254,32 @@ export function getGlobalArchive(): SessionLog[] {
 /**
  * Очистить глобальный архив (только для админа)
  */
-export function wipeGlobalArchive(): void {
+export async function wipeGlobalArchive(): Promise<void> {
   try {
-    localStorage.removeItem(GLOBAL_ARCHIVE_KEY);
+    await dbService.clearAllLogs();
   } catch (e) {
     console.error('Failed to wipe global archive:', e);
   }
 }
 
-// ============ ЭКСПОРТ ============
+// ... (stats functions need to accept Promise or be awaited)
+
+/**
+ * Получить статистику личного архива
+ */
+export async function getUserArchiveStats(userId: string): Promise<ArchiveStats> {
+  const logs = await getUserArchive(userId);
+  return getArchiveStats(logs);
+}
+
+/**
+ * Получить статистику глобального архива
+ */
+export async function getGlobalArchiveStats(): Promise<ArchiveStats> {
+  const logs = await getGlobalArchive();
+  return getArchiveStats(logs);
+}
+
 
 /**
  * Экспортировать архив в JSON файл
@@ -283,7 +314,7 @@ export function exportSessionToJSON(session: SessionLog): void {
 /**
  * Импортировать логи из JSON строки в архив пользователя
  */
-export function importFromJSON(jsonStr: string, userId: string): { success: boolean; count: number; error?: string } {
+export async function importFromJSON(jsonStr: string, userId: string): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     const data = JSON.parse(jsonStr);
     const logsToImport: SessionLog[] = Array.isArray(data) ? data : [data];
@@ -301,7 +332,7 @@ export function importFromJSON(jsonStr: string, userId: string): { success: bool
     }
 
     let importedCount = 0;
-    validLogs.forEach(log => {
+    for (const log of validLogs) {
       // Помечаем что это импорт
       const importedLog: SessionLog = {
         ...log,
@@ -309,9 +340,9 @@ export function importFromJSON(jsonStr: string, userId: string): { success: bool
         importedAt: Date.now(),
         userId // Привязываем к текущему юзеру
       };
-      saveToUserArchive(userId, importedLog);
+      await saveToUserArchive(userId, importedLog);
       importedCount++;
-    });
+    }
 
     return { success: true, count: importedCount };
   } catch (e) {
@@ -373,15 +404,17 @@ export function getArchiveStats(archive: SessionLog[]): ArchiveStats {
 /**
  * Получить статистику личного архива
  */
-export function getUserArchiveStats(userId: string): ArchiveStats {
-  return getArchiveStats(getUserArchive(userId));
+export async function getUserArchiveStats(userId: string): Promise<ArchiveStats> {
+  const logs = await getUserArchive(userId);
+  return getArchiveStats(logs);
 }
 
 /**
  * Получить статистику глобального архива
  */
-export function getGlobalArchiveStats(): ArchiveStats {
-  return getArchiveStats(getGlobalArchive());
+export async function getGlobalArchiveStats(): Promise<ArchiveStats> {
+  const logs = await getGlobalArchive();
+  return getArchiveStats(logs);
 }
 
 // ============ УТИЛИТЫ ============

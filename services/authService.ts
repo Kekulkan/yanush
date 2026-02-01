@@ -79,7 +79,13 @@ export const authService = {
                 role: user.role,
                 subscriptionActiveUntil: user.subscriptionActiveUntil
             };
-            localStorage.setItem(AUTH_KEY, JSON.stringify(sessionData));
+            try {
+                localStorage.setItem(AUTH_KEY, JSON.stringify(sessionData));
+            } catch (e) {
+                console.error('Storage quota exceeded!');
+                alert('ВНИМАНИЕ: Память браузера переполнена! Автоматическое удаление ОТКЛЮЧЕНО, чтобы не потерять логи. Пожалуйста, зайдите в настройки и скачайте архив сессий вручную, затем очистите кэш.');
+                return null;
+            }
             return sessionData;
         }
         return null;

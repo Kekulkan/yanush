@@ -859,6 +859,8 @@ export const generateGhostResponse = async (
     currentStress?: number;
     studentThought?: string;
     previousAdvice?: string[];
+    teacherName?: string;
+    teacherGender?: 'male' | 'female';
   }
 ): Promise<string> => {
   // Форматируем историю с эмоциональным контекстом
@@ -878,6 +880,17 @@ export const generateGhostResponse = async (
     teacherMessages.slice(-3).some((msg, i, arr) => 
       i > 0 && msg.toLowerCase().includes(arr[i-1].toLowerCase().slice(0, 20))
     );
+    
+  // Определяем обращение к учителю и его пол для промпта
+  const teacherIdentity = additionalContext?.teacherName 
+    ? `ПЕДАГОГ: ${additionalContext.teacherName} (${additionalContext.teacherGender === 'male' ? 'МУЖЧИНА' : 'ЖЕНЩИНА'})` 
+    : 'ПЕДАГОГ: Пол не указан (по умолчанию используй нейтральный или женский)';
+    
+  const genderInstruction = additionalContext?.teacherGender === 'male'
+    ? `⚠️ ВАЖНО: Учитель — МУЖЧИНА. Используй мужской род в глаголах ("я сказал", "я решил", "я заметил"). НЕ используй женский род!`
+    : additionalContext?.teacherGender === 'female'
+    ? `⚠️ ВАЖНО: Учитель — ЖЕНЩИНА. Используй женский род в глаголах ("я сказала", "я решила").`
+    : '';
 
   const prompt = `[СИСТЕМА: СУФЛЁР-ПСИХОЛОГ ЭКСПЕРТНОГО УРОВНЯ]
    
@@ -888,6 +901,9 @@ export const generateGhostResponse = async (
 ГЛУБИННЫЙ КОНТЕКСТ:
 ═══════════════════════════════════════════════════════════════════════════════
 ${context}
+
+${teacherIdentity}
+${genderInstruction}
 
 ${additionalContext?.accentuation ? `ПСИХОТИП: ${additionalContext.accentuation}` : ''}
 ${additionalContext?.intensity ? `ВЫРАЖЕННОСТЬ: ${additionalContext.intensity}/5 (чем выше, тем меньше работают стандартные методы)` : ''}

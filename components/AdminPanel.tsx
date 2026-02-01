@@ -77,8 +77,13 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
       setModules(getAllModules());
       
       // Сначала показываем локальные логи
-      setGlobalArchive(getGlobalArchive());
-      setGlobalStats(getGlobalArchiveStats());
+      const loadLocalLogs = async () => {
+        const logs = await getGlobalArchive();
+        setGlobalArchive(logs);
+        const stats = await getGlobalArchiveStats();
+        setGlobalStats(stats);
+      };
+      loadLocalLogs();
       setLogsSource('local');
       
       // Затем пытаемся загрузить с сервера

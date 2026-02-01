@@ -17,6 +17,7 @@ import { authService } from './services/authService';
 import { preloadPrompts } from './services/promptsService';
 import { getSubscriptionInfo, SubscriptionInfo } from './services/billingService';
 import { resetApiLimits } from './services/geminiService';
+import { migrateToIDB } from './services/archiveService';
 
 type ViewState = 'landing' | 'setup' | 'chat' | 'admin' | 'auth' | 'museum' | 'command_center';
 
@@ -36,9 +37,10 @@ const App: React.FC = () => {
     if (user) Object.freeze(user);
   }, [user]);
 
-  // Предзагрузка промптов при старте приложения
+  // Предзагрузка промптов при старте приложения и миграция БД
   useEffect(() => {
     preloadPrompts().catch(console.warn);
+    migrateToIDB().catch(console.error);
     refreshSubscription();
   }, []);
 
