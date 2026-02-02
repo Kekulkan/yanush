@@ -4,7 +4,7 @@
  * Вызывается ОТДЕЛЬНО от ученика
  */
 
-import { Message, SessionContext, ContextModule } from '../types';
+import { SessionContext } from '../types';
 
 interface GMPromptParams {
   // Контекст сцены

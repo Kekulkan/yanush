@@ -366,7 +366,7 @@ export default [
     "hidden_agenda": "МОТИВАЦИЯ: Срывать злость на взрослых. 'Вам всем на меня плевать, мне тоже'.",
     "initial_trust": 20,
     "initial_stress": 60,
-    "conflicts": [],
+    "conflicts": ["bg_orphan"],
     "incompatible_accentuations": [],
     "weight": 30
   },
@@ -392,7 +392,7 @@ export default [
     "hidden_agenda": "МОТИВАЦИЯ: Замкнутость. Недоверие к взрослым. 'Вы мне никто'.",
     "initial_trust": 15,
     "initial_stress": 40,
-    "conflicts": ["bg_golden", "bg_abuse"],
+    "conflicts": ["bg_golden", "bg_abuse", "bg_divorce"],
     "incompatible_accentuations": [],
     "weight": 20
   },
