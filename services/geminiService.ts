@@ -616,12 +616,43 @@ export const queryGM = async (params: {
 
 // --- Public API ---
 
+export interface GMEventContext {
+  description: string;
+  type?: string;
+  dilemma?: string;
+  npc_name?: string;
+  npc_role?: string;
+  npc_dialogue?: string;
+  npc_stays?: boolean;
+}
+
 export const sendMessageToGemini = async (
   history: Message[],
   systemPrompt: string,
-  lastUserMessage: string
+  lastUserMessage: string,
+  gmEvent?: GMEventContext | null  // Событие от GM (опционально)
 ): Promise<GeminiChatResponse> => {
   const settings = getSettings();
+
+  // Если есть событие от GM — добавляем его в промпт для ученика
+  let finalPrompt = systemPrompt;
+  if (gmEvent) {
+    const eventSection = `
+═══════════════════════════════════════════════════════════
+⚡ ВНЕШНЕЕ СОБЫТИЕ (от GM) — РЕАГИРУЙ НА НЕГО!
+═══════════════════════════════════════════════════════════
+ТИП: ${gmEvent.type || 'событие'}
+ОПИСАНИЕ: ${gmEvent.description}
+${gmEvent.dilemma ? `ДИЛЕММА: ${gmEvent.dilemma}` : ''}
+${gmEvent.npc_name ? `NPC: ${gmEvent.npc_name} (${gmEvent.npc_role || 'неизвестно'})` : ''}
+${gmEvent.npc_dialogue ? `РЕПЛИКА NPC: "${gmEvent.npc_dialogue}"` : ''}
+${gmEvent.npc_stays ? `→ NPC ОСТАЁТСЯ в сцене — учти его присутствие в ответе!` : ''}
+
+⚠️ ТЫ ОБЯЗАН отреагировать на это событие в своём ответе!
+═══════════════════════════════════════════════════════════
+`;
+    finalPrompt = systemPrompt + "\n" + eventSection;
+  }
 
   try {
     let data: any;
@@ -629,7 +660,7 @@ export const sendMessageToGemini = async (
     if (AI_PROVIDER === "aitunnel") {
       // AITUNNEL (OpenAI-совместимый формат, российский сервер)
       const messages: {role: string; content: string}[] = [
-        { role: "system", content: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON." }
+        { role: "system", content: finalPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON." }
       ];
       
       // ВАЖНО: history уже содержит последнее сообщение пользователя!
@@ -670,7 +701,7 @@ export const sendMessageToGemini = async (
       // lastUserMessage НЕ добавляем — он уже в history!
 
       const body = {
-        system: systemPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON.",
+        system: finalPrompt + "\n\nОТВЕЧАЙ СТРОГО В ФОРМАТЕ JSON. Никакого текста вне JSON.",
         messages,
         max_tokens: 4096,
       };
@@ -699,7 +730,7 @@ export const sendMessageToGemini = async (
     const body = {
       systemInstruction: {
         role: "system",
-        parts: [{ text: systemPrompt }],
+        parts: [{ text: finalPrompt }],
       },
       contents,
       generationConfig: {

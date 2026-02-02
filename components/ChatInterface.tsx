@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog } from '../types';
-import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn } from '../services/geminiService';
+import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
@@ -697,18 +697,71 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setGhostAdvice(null);
 
     try {
-      const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text);
-
-      // Контроль частоты GM событий
+      // === НОВАЯ АРХИТЕКТУРА: GM вызывается ОТДЕЛЬНО от ученика ===
       const currentMsgIndex = newMessages.length;
       const messagesSinceLastEvent = currentMsgIndex - lastEventIndexRef.current;
-      let filteredWorldEvent = response.world_event;
+      const turnCount = Math.floor(currentMsgIndex / 2) + 1; // Примерный номер хода
       
-      if (filteredWorldEvent && messagesSinceLastEvent < MIN_MESSAGES_BETWEEN_EVENTS) {
-        // ... (код пропуска)
-        filteredWorldEvent = null;
-      } else if (filteredWorldEvent) {
-        lastEventIndexRef.current = currentMsgIndex;
+      let gmEvent: GMEventContext | null = null;
+      
+      // Проверяем, нужно ли спросить GM о событии
+      if (messagesSinceLastEvent >= MIN_MESSAGES_BETWEEN_EVENTS && turnCount >= 5) {
+        console.log(`[GM] Checking for event (turn ${turnCount}, ${messagesSinceLastEvent} msgs since last event)...`);
+        
+        // Собираем последние 6 сообщений для GM
+        const recentMsgs = newMessages.slice(-6).map(m => ({
+          role: m.role === MessageRole.USER ? 'teacher' as const : 'student' as const,
+          content: m.content
+        }));
+        
+        // Получаем последний активный NPC (если есть)
+        const lastModelMsg = [...newMessages].reverse().find(m => m.role === MessageRole.MODEL);
+        const activeNpc = lastModelMsg?.state?.active_npc;
+        
+        try {
+          const gmDecision = await queryGM({
+            scenarioDescription: session.chaosDetails?.contextSummary || 'Разговор учителя с учеником',
+            studentName: session.student?.name || 'Ученик',
+            studentAge: session.student?.age || 14,
+            teacherName: session.teacher?.name || 'Учитель',
+            contexts: session.chaosDetails?.contexts || [],
+            turnCount,
+            currentTrust: lastModelMsg?.state?.trust ?? session.chaosDetails?.starting_trust ?? 50,
+            currentStress: lastModelMsg?.state?.stress ?? session.chaosDetails?.starting_stress ?? 50,
+            recentMessages: recentMsgs,
+            activeNpc: activeNpc ? { name: activeNpc.name, role: activeNpc.role } : undefined,
+            lastEventType: lastModelMsg?.state?.world_event?.type
+          });
+          
+          if (gmDecision.should_generate && gmDecision.event) {
+            console.log(`[GM] Generated event: ${gmDecision.event.type} - ${gmDecision.reasoning}`);
+            gmEvent = gmDecision.event as GMEventContext;
+            lastEventIndexRef.current = currentMsgIndex; // Обновляем счётчик
+          }
+        } catch (gmError) {
+          console.error('[GM] Error:', gmError);
+          // GM упал — не критично, продолжаем без события
+        }
+      }
+      
+      // Вызываем ученика, передавая событие от GM (если есть)
+      const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text, gmEvent);
+
+      // Если GM сгенерировал событие — добавляем его в ответ ученика
+      let filteredWorldEvent = gmEvent ? {
+        type: gmEvent.type || 'dilemma',
+        description: gmEvent.description,
+        dilemma: gmEvent.dilemma,
+        npc_name: gmEvent.npc_name,
+        npc_role: gmEvent.npc_role,
+        npc_dialogue: gmEvent.npc_dialogue,
+        npc_stays: gmEvent.npc_stays,
+        requires_response: true,
+        trust_delta: 0,
+        stress_delta: 0
+      } : response.world_event; // Fallback на старую логику если GM не вызывался
+
+      if (filteredWorldEvent) {
         
         // !!! ПЕРЕХВАТ: Если событие требует реакции — запускаем ИНТЕРАКТИВНЫЙ РЕЖИМ !!!
         if (filteredWorldEvent.requires_response) {
