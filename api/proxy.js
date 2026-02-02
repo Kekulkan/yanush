@@ -15,6 +15,9 @@ export default async function handler(req, res) {
     // ============ OPENROUTER (DeepSeek, Claude, Gemini и др.) ============
     if (action.startsWith("openrouter:")) {
       const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
+      if (!OPENROUTER_KEY) {
+        return res.status(500).json({ error: "OPENROUTER_KEY not configured" });
+      }
       const model = action.replace("openrouter:", "");
       targetUrl = "https://openrouter.ai/api/v1/chat/completions";
       
@@ -25,24 +28,33 @@ export default async function handler(req, res) {
         temperature: req.body?.temperature || 0.7,
       };
       
+      console.log("[OpenRouter Proxy] Model:", model, "Messages:", body.messages?.length);
+      
       const upstream = await fetch(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${OPENROUTER_KEY}`,
-          "HTTP-Referer": "https://yanush.vercel.app", // Для статистики OpenRouter
+          "HTTP-Referer": "https://yanush.vercel.app",
           "X-Title": "Yanush AI Teacher Trainer",
         },
         body: JSON.stringify(body),
       });
 
       const text = await upstream.text();
+      console.log("[OpenRouter Proxy] Status:", upstream.status, "Response length:", text?.length);
+      
       let data;
       try {
         data = JSON.parse(text);
       } catch {
         data = { raw: text };
       }
+      
+      if (!upstream.ok) {
+        console.error("[OpenRouter Proxy] Error:", JSON.stringify(data));
+      }
+      
       return res.status(upstream.status).json(data);
     }
     
