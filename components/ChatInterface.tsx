@@ -492,8 +492,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setAutoPlayActive(false);
     setAutoPlayStep(0);
     
+    console.log('[AutoPlay] Loop ended. step:', step, 'stopRef:', autoPlayStopRef.current, 'messages:', currentMessages.length);
+    
     // Даём пользователю прочитать последнюю реплику перед комиссией
     if (!autoPlayStopRef.current && currentMessages.length > 3) {
+      console.log('[AutoPlay] Setting awaitingContinue = true');
       const lastModel = [...currentMessages].reverse().find(m => m.role === MessageRole.MODEL);
       const finalTrust = lastModel?.state?.trust ?? 50;
       const finalStress = lastModel?.state?.stress ?? 50;
@@ -525,9 +528,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         isTriumph,
         sessionLogId
       });
+      console.log('[AutoPlay] Awaiting user continue...');
       setAwaitingContinue(true);
       return; // Ждём нажатия кнопки
     }
+    
+    console.log('[AutoPlay] NOT setting awaitingContinue. stopRef:', autoPlayStopRef.current, 'msgLen:', currentMessages.length);
     
     // Fallback если пользователь остановил autoplay
     if (autoPlayStopRef.current && currentMessages.length > 3) {

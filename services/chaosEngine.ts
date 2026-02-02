@@ -44,11 +44,17 @@ const declineName = (name: string, gender: 'male' | 'female', caseType: 'gen' | 
             if (caseType === 'pre') return 'Матвее';
             return 'Матвеем';
         }
-        if (n === 'Илья' || n === 'Никита') {
-            if (caseType === 'gen') return n.slice(0, -1) + 'и';
-            if (caseType === 'dat' || caseType === 'pre') return n.slice(0, -1) + 'е';
-            if (caseType === 'acc') return n.slice(0, -1) + 'у';
-            return n.slice(0, -1) + 'ой';
+        if (n === 'Илья') {
+            if (caseType === 'gen') return 'Ильи';
+            if (caseType === 'dat' || caseType === 'pre') return 'Илье';
+            if (caseType === 'acc') return 'Илью';
+            return 'Ильёй'; // творительный
+        }
+        if (n === 'Никита') {
+            if (caseType === 'gen') return 'Никиты';
+            if (caseType === 'dat' || caseType === 'pre') return 'Никите';
+            if (caseType === 'acc') return 'Никиту';
+            return 'Никитой'; // творительный
         }
 
         // Стандартные мужские имена на согласную (Глеб, Артем)
