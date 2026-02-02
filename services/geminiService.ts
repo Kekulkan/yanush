@@ -53,11 +53,11 @@ type GeminiChatResponse = {
 const AI_PROVIDER: "openrouter" | "aitunnel" | "claude" | "gemini" = "openrouter";
 
 // Модели для OPENROUTER (OpenAI-совместимый формат)
-const OPENROUTER_CHAT_MODEL = "deepseek/deepseek-chat";     // DeepSeek V3 для ученика
-const OPENROUTER_CHAT_FALLBACK = "deepseek/deepseek-chat"; // Тот же (DeepSeek стабильный)
-const OPENROUTER_ANALYSIS_MODEL = "deepseek/deepseek-chat"; // Для комиссии
-const OPENROUTER_GHOST_MODEL = "deepseek/deepseek-chat";    // Для суфлёра
-const OPENROUTER_GM_MODEL = "deepseek/deepseek-chat";       // Для GM
+const OPENROUTER_CHAT_MODEL = "deepseek/deepseek-v3.2";     // DeepSeek V3.2 для ученика
+const OPENROUTER_CHAT_FALLBACK = "deepseek/deepseek-v3.2"; // Тот же
+const OPENROUTER_ANALYSIS_MODEL = "deepseek/deepseek-v3.2"; // Для комиссии
+const OPENROUTER_GHOST_MODEL = "deepseek/deepseek-v3.2";    // Для суфлёра
+const OPENROUTER_GM_MODEL = "deepseek/deepseek-v3.2";       // Для GM
 
 // Модели для AITUNNEL (OpenAI-совместимый формат)
 // Pro = умнее, Flash = быстрее/стабильнее (fallback)
