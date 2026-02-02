@@ -120,10 +120,7 @@ const getStudentAvatar = (gender: 'male' | 'female', age: number): string => {
     const max = AVATAR_COUNT[gender][ageGroup];
     const randomId = Math.floor(Math.random() * max) + 1;
     
-    // Определяем расширение: kids обычно .jpg, остальные часто .png
-    const ext = (ageGroup === 'kids') ? 'jpg' : 'png';
-    
-    return `/avatars/${gender}/${ageGroup}/${randomId}.${ext}`;
+    return `/avatars/${gender}/${ageGroup}/${randomId}.png`;
 };
 
 export const generateStudentName = (gender: 'male' | 'female'): string => {
