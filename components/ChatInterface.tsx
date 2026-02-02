@@ -492,14 +492,51 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setAutoPlayActive(false);
     setAutoPlayStep(0);
     
-    // Автоматически запускаем анализ по окончании
+    // Даём пользователю прочитать последнюю реплику перед комиссией
     if (!autoPlayStopRef.current && currentMessages.length > 3) {
+      const lastModel = [...currentMessages].reverse().find(m => m.role === MessageRole.MODEL);
+      const finalTrust = lastModel?.state?.trust ?? 50;
+      const finalStress = lastModel?.state?.stress ?? 50;
+      const isTriumph = finalTrust >= 95 && finalStress <= 10;
+      
+      const sessionLogId = crypto.randomUUID();
+      const currentUser = user || authService.getCurrentUser();
+      const preliminaryLog: SessionLog = {
+        id: sessionLogId,
+        timestamp: Date.now(),
+        duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
+        teacher: session.teacher,
+        student_name: session.student.name,
+        scenario_description: session.chaosDetails.contextSummary,
+        status: 'autoplay',
+        messages: currentMessages,
+        result: { overall_score: 0, summary: 'Ожидает анализа', commission: [], timestamp: Date.now() },
+        sessionSnapshot: session,
+        userId: currentUser?.id,
+        userEmail: currentUser?.email
+      };
+      if (currentUser?.id) saveToUserArchive(currentUser.id, preliminaryLog);
+      saveToGlobalArchive(preliminaryLog);
+      
+      setPendingTermination({
+        messages: currentMessages,
+        reason: 'Автоматический диалог (отладка)',
+        source: 'game_over',
+        isTriumph,
+        sessionLogId
+      });
+      setAwaitingContinue(true);
+      return; // Ждём нажатия кнопки
+    }
+    
+    // Fallback если пользователь остановил autoplay
+    if (autoPlayStopRef.current && currentMessages.length > 3) {
       setIsAnalyzing(true);
       try {
         const result = await analyzeChatSession(
           currentMessages,
           session.chaosDetails.accentuation,
-          'Автоматический диалог (отладка)',
+          'Автоматический диалог (остановлен)',
           { includeAdvisory: true, includeAquarium: true }
         );
         setAnalysis(result);
