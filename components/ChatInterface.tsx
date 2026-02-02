@@ -366,6 +366,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       setIsPrompterLoading(true);
       try {
           const lastThought = lastModelMsg?.state?.thought;
+          const worldEvent = lastModelMsg?.state?.world_event;
+          const activeNpc = lastModelMsg?.state?.active_npc;
           const advice = await generateGhostResponse(
             messages, 
             session.chaosDetails.contextSummary,
@@ -377,7 +379,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               studentThought: lastThought,
               previousAdvice,
               teacherName: session.teacher.name,
-              teacherGender: session.teacher.gender
+              teacherGender: session.teacher.gender,
+              worldEvent,
+              activeNpc
             }
           );
           setGhostAdvice(advice);
@@ -408,6 +412,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         const trust = lastModel?.state?.trust ?? session.chaosDetails.starting_trust;
         const stress = lastModel?.state?.stress ?? session.chaosDetails.starting_stress;
         const thought = lastModel?.state?.thought;
+        const worldEvent = lastModel?.state?.world_event;
+        const activeNpc = lastModel?.state?.active_npc;
         
         const advice = await generateGhostResponse(
           currentMessages,
@@ -420,7 +426,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             studentThought: thought,
             previousAdvice,
             teacherName: session.teacher.name,
-            teacherGender: session.teacher.gender
+            teacherGender: session.teacher.gender,
+            worldEvent,
+            activeNpc
           }
         );
         
