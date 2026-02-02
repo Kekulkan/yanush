@@ -533,26 +533,15 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       return; // Ждём нажатия кнопки
     }
     
-    console.log('[AutoPlay] NOT setting awaitingContinue. stopRef:', autoPlayStopRef.current, 'msgLen:', currentMessages.length);
-    
-    // Fallback если пользователь остановил autoplay
-    if (autoPlayStopRef.current && currentMessages.length > 3) {
-      setIsAnalyzing(true);
-      try {
-        const result = await analyzeChatSession(
-          currentMessages,
-          session.chaosDetails.accentuation,
-          'Автоматический диалог (остановлен)',
-          { includeAdvisory: true, includeAquarium: true }
-        );
-        setAnalysis(result);
-        archiveSession(currentMessages, result, 'autoplay');
-      } catch (e) {
-        console.error('[AutoPlay] Analysis error:', e);
-      } finally {
-        setIsAnalyzing(false);
-      }
+    // Если пользователь остановил autoplay — просто останавливаем, НЕ запускаем анализ
+    // Пользователь может продолжить вручную или снова запустить autoplay
+    if (autoPlayStopRef.current) {
+      console.log('[AutoPlay] User stopped - pausing for manual input. Messages:', currentMessages.length);
+      // НЕ запускаем анализ — просто возвращаем управление пользователю
+      return;
     }
+    
+    console.log('[AutoPlay] No pause needed - messages:', currentMessages.length);
   };
   
   const stopAutoPlay = () => {
