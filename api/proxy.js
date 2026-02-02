@@ -12,6 +12,40 @@ export default async function handler(req, res) {
     const action = String(req.query.url || "").trim();
     let targetUrl;
     
+    // ============ OPENROUTER (DeepSeek, Claude, Gemini и др.) ============
+    if (action.startsWith("openrouter:")) {
+      const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
+      const model = action.replace("openrouter:", "");
+      targetUrl = "https://openrouter.ai/api/v1/chat/completions";
+      
+      const body = {
+        model: model,
+        messages: req.body?.messages || [],
+        max_tokens: req.body?.max_tokens || 4096,
+        temperature: req.body?.temperature || 0.7,
+      };
+      
+      const upstream = await fetch(targetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENROUTER_KEY}`,
+          "HTTP-Referer": "https://yanush.vercel.app", // Для статистики OpenRouter
+          "X-Title": "Yanush AI Teacher Trainer",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const text = await upstream.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+      return res.status(upstream.status).json(data);
+    }
+    
     // ============ AITUNNEL (OpenAI-совместимый, российский сервер) ============
     if (action.startsWith("aitunnel:")) {
       const AITUNNEL_KEY = process.env.AITUNNEL_KEY;
