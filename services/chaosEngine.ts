@@ -13,11 +13,11 @@ const AVATAR_COUNT = {
     male: {
         kids: 20,
         teens: 20,
-        seniors: 24
+        seniors: 30
     },
     female: {
         kids: 20,
-        teens: 25,
+        teens: 40,
         seniors: 25
     }
 };
