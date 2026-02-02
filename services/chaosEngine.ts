@@ -8,6 +8,7 @@ import {
   createSessionContext,
   addRecentIncident
 } from './modulesService';
+import { buildStudentPrompt } from '../prompts/studentPrompt';
 
 const AVATAR_COUNT = {
     male: {
@@ -282,31 +283,25 @@ export const buildDynamicPrompt = (
         })
         .join('\n\n');
 
-    const chaosPrompt = `
+    // Используем новый компактный промпт для ученика
+    // GM теперь вызывается ОТДЕЛЬНО через queryGM()
+    const chaosPrompt = buildStudentPrompt({
+        student,
+        teacher,
+        accentuation: randomAcc,
+        intensity,
+        incident,
+        contexts,
+        contextPrompts,
+        turnCount: 1, // Начальный ход, будет обновляться в runtime
+    });
+
+    // === LEGACY PROMPT (закомментирован) ===
+    // Старый монолитный промпт оставлен для справки
+    /*
+    const oldChaosPrompt = `
     [ЯЗЫКОВОЙ ПРОТОКОЛ: СТРОГО КИРИЛЛИЦА, РУССКИЙ ЯЗЫК]
-    [ГЕНДЕРНЫЙ ПРОТОКОЛ: СТРОГОЕ СОБЛЮДЕНИЕ ГРАММАТИЧЕСКОГО РОДА]
-    - УЧЕНИК (${student.name}, ${student.gender === 'male' ? 'мальчик' : 'девочка'}): ОБЯЗАН говорить о себе СТРОГО в ${student.gender === 'male' ? 'МУЖСКОМ' : 'ЖЕНСКОМ'} роде ("я пошел", "я расстроился" / "я пошла", "я расстроилась").
-    - NPC: Пол NPC должен соответствовать его роли и имени. Речь NPC должна грамматически соответствовать его полу.
-    - Окружающие: Все обращения к ученику и упоминания его в третьем лице должны соответствовать его полу (${student.gender === 'male' ? 'он/его/ему' : 'она/ее/ей'}).
-    
-    [SYSTEM ROLE: GM / NARRATOR / STUDENT / NPC]
-    
-    ═══════════════════════════════════════════════════════════
-    РОЛИ:
-    1. STUDENT — Основная роль. Ты отыгрываешь подростка.
-    2. GM (Гейммастер) — Следишь за лором, генерируешь внешние события.
-    3. NPC — При необходимости озвучиваешь других персонажей (завуч, родитель по телефону и т.д.)
-    ═══════════════════════════════════════════════════════════
-    
-    ПЕРСОНАЖ: ${student.name.trim()}, ${student.age} лет.
-    ПСИХОТИП: ${randomAcc.name}. Интенсивность ${intensity}/5.
-    ${randomAcc.description_template.replace('{intensity}', String(intensity))}
-    
-    СИТУАЦИЯ: ${incident.prompt_text}
-    ${incident.hidden_agenda ? `СКРЫТАЯ ЦЕЛЬ СИТУАЦИИ: ${incident.hidden_agenda}` : ''}
-    
-    ${contextPrompts}
-    
+    ...
     УЧИТЕЛЬ: ${teacher.name} (${teacher.gender === 'male' ? 'Мужчина' : 'Женщина'}).
 
     ═══════════════════════════════════════════════════════════
@@ -731,11 +726,8 @@ export const buildDynamicPrompt = (
         "stress_change": число,
         "ethics_violation": "описание нарушения (если было)"
       },
-      "extreme_outcome": "тип_исхода", // ТОЛЬКО при критических условиях
-      "game_over": true/false,
-      "violation_reason": "причина завершения" // если game_over
-    }
-    `;
+    // END LEGACY PROMPT
+    */
 
     // 7. Рассчитываем начальные метрики
     // Incident задаёт базу, контексты модифицируют
