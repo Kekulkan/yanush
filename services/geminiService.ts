@@ -53,11 +53,11 @@ type GeminiChatResponse = {
 const AI_PROVIDER: "openrouter" | "aitunnel" | "claude" | "gemini" = "openrouter";
 
 // Модели для OPENROUTER (OpenAI-совместимый формат)
-const OPENROUTER_CHAT_MODEL = "anthropic/claude-3.7-sonnet:thinking";     // Claude 3.7 Sonnet для ученика
-const OPENROUTER_CHAT_FALLBACK = "anthropic/claude-3.7-sonnet";           // Fallback без thinking
-const OPENROUTER_ANALYSIS_MODEL = "anthropic/claude-3.7-sonnet:thinking"; // Для комиссии
-const OPENROUTER_GHOST_MODEL = "anthropic/claude-3.7-sonnet";             // Для суфлёра (без thinking — быстрее)
-const OPENROUTER_GM_MODEL = "anthropic/claude-3.7-sonnet";                // Для GM
+const OPENROUTER_CHAT_MODEL = "x-ai/grok-4.1-fast";     // Grok 4.1 Fast для ученика
+const OPENROUTER_CHAT_FALLBACK = "x-ai/grok-4.1-fast";  // Тот же
+const OPENROUTER_ANALYSIS_MODEL = "x-ai/grok-4.1-fast"; // Для комиссии
+const OPENROUTER_GHOST_MODEL = "x-ai/grok-4.1-fast";    // Для суфлёра
+const OPENROUTER_GM_MODEL = "x-ai/grok-4.1-fast";       // Для GM
 
 // Модели для AITUNNEL (OpenAI-совместимый формат)
 // Pro = умнее, Flash = быстрее/стабильнее (fallback)
