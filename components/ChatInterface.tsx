@@ -105,10 +105,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // История советов суфлёра (для избежания повторов)
   const [previousAdvice, setPreviousAdvice] = useState<string[]>([]);
   
-  // Контроль частоты GM событий (минимум 15 реплик между событиями)
-  // Начинаем с 0 — первое событие не раньше 15-й реплики
+  // Контроль частоты GM-событий
   const lastEventIndexRef = useRef<number>(0);
-  const MIN_MESSAGES_BETWEEN_EVENTS = 5; // GM события чаще — создают дилеммы
+  // Хотим, чтобы первые события появлялись раньше и не пропадали надолго
+  const MIN_MESSAGES_BETWEEN_EVENTS = 3;
   
   // БЭКДОР: Автоматический диалог для отладки комиссии (только админ)
   const [autoPlayActive, setAutoPlayActive] = useState(false);
@@ -464,7 +464,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             thought: response.thought ?? '',
             trust: response.trust,
             stress: response.stress,
-            world_event: response.world_event ?? undefined
+            world_event: response.world_event ?? undefined,
+            safeguard_applied: response.safeguard_applied ?? undefined
           },
           timestamp: Date.now()
         };
@@ -914,7 +915,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           active_npc: response.active_npc ?? undefined, // NPC в сцене
           gm_note: response.gm_note ?? undefined, // GM подсказка для админа
           extreme_outcome: extremeOutcome as any,
-          violation_reason: response.violation_reason ?? undefined // Описание исхода
+          violation_reason: response.violation_reason ?? undefined, // Описание исхода
+          safeguard_applied: response.safeguard_applied ?? undefined // Диагностика: почему сработала защита от обрыва
         },
         timestamp: Date.now()
       };
@@ -1664,6 +1666,23 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                         </span>
                                       </div>
                                       <p className="text-sm text-purple-200 italic">{msg.state.gm_note}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Диагностика: сработала защита от резкого обрыва */}
+                                  {isAdmin && msg.state?.safeguard_applied && (
+                                    <div className="w-full mb-4 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <AlertOctagon size={16} className="text-amber-400" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                                          ЗАЩИТА ОТ РЕЗКОГО ОБРЫВА (диагностика)
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-amber-200/90">
+                                        Предыдущее состояние: trust {msg.state.safeguard_applied.previous_trust}%, stress {msg.state.safeguard_applied.previous_stress}%. 
+                                        Модель запросила trust=0, stress=100 и завершение сессии. Причина от модели: «{msg.state.safeguard_applied.model_violation_reason ?? 'не указана'}». 
+                                        Сессия продолжена (trust 25%, stress 90%), чтобы дать учителю ещё один ход.
+                                      </p>
                                     </div>
                                   )}
                                   

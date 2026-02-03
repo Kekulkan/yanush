@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, ArrowLeft, Terminal, Layers, AlertTriangle, Plus, X, Save, Trash2, Activity as ActivityIcon, Target, Download, Upload, Edit2, Eye, EyeOff, Archive, Database, BarChart3 } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Terminal, Layers, AlertTriangle, Plus, X, Save, Trash2, Activity as ActivityIcon, Target, Download, Upload, Edit2, Eye, EyeOff, Archive, Database, BarChart3, Gavel, Users, MessageSquare, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { getSessionHistory } from '../services/logService';
 import { SessionLog, ContextModule, VisibilityWeights, MessageRole } from '../types';
 import { DEFAULT_ACCENTUATIONS } from '../constants';
@@ -67,6 +67,9 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [globalArchive, setGlobalArchive] = useState<SessionLog[]>([]);
   const [globalStats, setGlobalStats] = useState<ArchiveStats | null>(null);
   const [expandedGlobalSession, setExpandedGlobalSession] = useState<string | null>(null);
+  const [detailSessionLog, setDetailSessionLog] = useState<SessionLog | null>(null);
+  const [detailExpandedAdvisory, setDetailExpandedAdvisory] = useState<boolean>(true);
+  const [detailExpandedAquarium, setDetailExpandedAquarium] = useState<boolean>(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [logsSource, setLogsSource] = useState<'server' | 'local'>('local');
   
@@ -886,8 +889,11 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                         </span>
                                                     </div>
                                                     <div className="text-[9px] text-slate-500 mt-0.5">
-                                                        {formatSessionDate(log.timestamp)} • {formatDuration(log.duration_seconds)} • 
-                                                        <span className="text-amber-400 ml-1">{(log as any).userId?.slice(0, 8) || 'anon'}...</span>
+                                                        {formatSessionDate(log.timestamp)} • {formatDuration(log.duration_seconds)}
+                                                        {' • '}
+                                                        <span className="text-amber-400" title={log.userEmail || log.userId || ''}>
+                                                            {log.userEmail || (log.userId ? `ID: ${log.userId}` : 'Гость')}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -908,6 +914,13 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                         {/* Expanded content */}
                                         {expandedGlobalSession === log.id && (
                                             <div className="border-t border-white/5">
+                                                <div className="px-4 py-2 bg-slate-800/50 text-[10px] border-b border-white/5">
+                                                    <span className="text-slate-500 uppercase tracking-wider">Кто проходил: </span>
+                                                    {log.userId && <span className="text-amber-400 font-mono">ID {log.userId}</span>}
+                                                    {log.userId && log.userEmail && <span className="text-slate-500 mx-1">•</span>}
+                                                    {log.userEmail && <span className="text-cyan-400">{log.userEmail}</span>}
+                                                    {!log.userId && !log.userEmail && <span className="text-slate-500">Гость (нет входа)</span>}
+                                                </div>
                                                 {log.result?.summary && (
                                                     <div className="px-4 py-3 bg-slate-800/30 text-xs text-slate-400 italic">
                                                         {log.result.summary}
@@ -934,8 +947,19 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                         ))
                                                     }
                                                 </div>
-                                                {/* Кнопка скачивания отдельной сессии */}
-                                                <div className="px-4 py-3 border-t border-white/5 flex justify-end">
+                                                {/* Кнопки: подробный просмотр и скачивание */}
+                                                <div className="px-4 py-3 border-t border-white/5 flex justify-end gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDetailSessionLog(log);
+                                                            setDetailExpandedAdvisory(true);
+                                                            setDetailExpandedAquarium(false);
+                                                        }}
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[10px] font-bold uppercase hover:bg-blue-500/20 transition-all"
+                                                    >
+                                                        <Eye size={12} /> Подробно
+                                                    </button>
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -949,7 +973,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                         }}
                                                         className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 text-violet-400 rounded-lg text-[10px] font-bold uppercase hover:bg-violet-500/20 transition-all"
                                                     >
-                                                        <Download size={12} /> Скачать сессию
+                                                        <Download size={12} /> Скачать
                                                     </button>
                                                 </div>
                                             </div>
@@ -962,6 +986,225 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                 )}
             </div>
         </div>
+
+        {/* Модальное окно: полный просмотр сессии */}
+        {detailSessionLog && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setDetailSessionLog(null)}
+          >
+            <div 
+              className="bg-slate-900 border border-white/10 rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <FileText size={20} className="text-violet-400" />
+                  <div>
+                    <h2 className="text-lg font-black text-white">
+                      {detailSessionLog.student_name} • {formatSessionDate(detailSessionLog.timestamp)}
+                    </h2>
+                    <p className="text-[10px] text-slate-500">
+                      {formatDuration(detailSessionLog.duration_seconds)} • 
+                      <span className={`ml-2 font-bold ${getScoreColor(detailSessionLog.result?.overall_score ?? 0)}`}>
+                        {detailSessionLog.result?.overall_score ?? 0} баллов
+                      </span>
+                    </p>
+                    {(detailSessionLog.userId || detailSessionLog.userEmail) && (
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        <span className="text-slate-600">Кто проходил: </span>
+                        {detailSessionLog.userId && <span className="text-amber-400 font-mono">{detailSessionLog.userId}</span>}
+                        {detailSessionLog.userId && detailSessionLog.userEmail && <span className="text-slate-600 mx-1">•</span>}
+                        {detailSessionLog.userEmail && <span className="text-cyan-400">{detailSessionLog.userEmail}</span>}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDetailSessionLog(null)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
+                {/* Кто проходил сессию — явный блок для админа */}
+                <div className="glass p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5">
+                  <div className="text-[10px] font-black text-amber-500/80 uppercase tracking-widest mb-2">Кто проходил сессию</div>
+                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+                    {detailSessionLog.userId ? (
+                      <div>
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider">ID: </span>
+                        <span className="text-amber-400 font-mono break-all">{detailSessionLog.userId}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">ID не указан</span>
+                    )}
+                    {detailSessionLog.userEmail ? (
+                      <div>
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider">Email: </span>
+                        <span className="text-cyan-400 break-all">{detailSessionLog.userEmail}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500">Email не указан</span>
+                    )}
+                    {!detailSessionLog.userId && !detailSessionLog.userEmail && (
+                      <span className="text-slate-500 italic">Гость (вход не выполнен)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Сценарий */}
+                {detailSessionLog.scenario_description && (
+                  <div className="glass p-4 rounded-2xl border border-white/5">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Сценарий</div>
+                    <p className="text-sm text-slate-300">{detailSessionLog.scenario_description}</p>
+                  </div>
+                )}
+
+                {/* Диалог — все сообщения полностью */}
+                <div className="space-y-2">
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <MessageSquare size={12} /> Диалог ({detailSessionLog.messages?.length ?? 0} сообщений)
+                  </div>
+                  <div className="space-y-2 max-h-[320px] overflow-y-auto custom-scroll">
+                    {(detailSessionLog.messages || [])
+                      .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
+                      .map((msg, i) => (
+                        <div
+                          key={i}
+                          className={`p-4 rounded-xl text-sm ${
+                            msg.role === MessageRole.USER
+                              ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-100'
+                              : 'bg-slate-800/50 border border-white/5 text-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[9px] font-black uppercase tracking-wider opacity-70">
+                              {msg.role === MessageRole.USER ? 'Учитель' : 'Ученик'}
+                            </span>
+                            {msg.role === MessageRole.MODEL && msg.state && (
+                              <span className="text-[9px] text-slate-500">
+                                доверие {msg.state.trust}% • стресс {msg.state.stress}%
+                              </span>
+                            )}
+                          </div>
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          {msg.role === MessageRole.MODEL && msg.state?.thought && (
+                            <p className="mt-2 pt-2 border-t border-white/5 text-[11px] text-slate-500 italic">
+                              [мысль] {msg.state.thought}
+                            </p>
+                          )}
+                          {msg.role === MessageRole.MODEL && msg.state?.safeguard_applied && (
+                            <div className="mt-2 pt-2 border-t border-amber-500/30 text-[10px] text-amber-400/90 bg-amber-500/10 rounded-lg p-2">
+                              Защита от обрыва: было {msg.state.safeguard_applied.previous_trust}/{msg.state.safeguard_applied.previous_stress}%, модель запросила 0/100. {msg.state.safeguard_applied.model_violation_reason || ''}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Вердикт комиссии */}
+                {detailSessionLog.result?.summary && (
+                  <div className="glass p-5 rounded-2xl border border-blue-500/20">
+                    <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Вердикт комиссии</div>
+                    <p className="text-slate-300 text-sm italic">"{detailSessionLog.result.summary}"</p>
+                  </div>
+                )}
+
+                {/* Основная комиссия — все эксперты */}
+                {detailSessionLog.result?.commission && detailSessionLog.result.commission.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <Gavel size={12} /> Основная комиссия
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {detailSessionLog.result.commission.map((member: { name: string; role: string; score: number; verdict: string }, idx: number) => (
+                        <div key={idx} className="glass p-4 rounded-xl border border-white/5">
+                          <div className="flex justify-between items-start gap-2 mb-2">
+                            <span className="font-bold text-blue-400 text-sm">{member.name}</span>
+                            <span className={`font-black text-lg ${getScoreColor(member.score)}`}>{member.score}</span>
+                          </div>
+                          <p className="text-[9px] text-slate-500 uppercase tracking-wider">{member.role}</p>
+                          <p className="text-xs text-slate-300 mt-2 italic leading-relaxed">"{member.verdict}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Совещательная комиссия */}
+                {detailSessionLog.result?.advisory && detailSessionLog.result.advisory.length > 0 && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setDetailExpandedAdvisory(!detailExpandedAdvisory)}
+                      className="w-full flex items-center justify-between text-[10px] font-black text-amber-500 uppercase tracking-widest"
+                    >
+                      <span className="flex items-center gap-2"><Users size={12} /> Совещательная комиссия</span>
+                      {detailExpandedAdvisory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    {detailExpandedAdvisory && (
+                      <div className="space-y-2">
+                        {detailSessionLog.result.advisory.map((adv: { member: { name: string; title: string }; verdict: string; score?: number }, idx: number) => (
+                          <div key={idx} className="glass p-3 rounded-xl border-l-4 border-amber-500/30 bg-amber-500/5">
+                            <div className="flex justify-between items-start">
+                              <span className="font-bold text-amber-400 text-xs">{adv.member.name}</span>
+                              {adv.score != null && <span className="text-amber-400/80 text-xs">{adv.score}/10</span>}
+                            </div>
+                            <p className="text-[9px] text-slate-500">{adv.member.title}</p>
+                            <p className="text-[11px] text-amber-200/90 mt-1 italic">"{adv.verdict}"</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Аквариум */}
+                {detailSessionLog.result?.aquarium && detailSessionLog.result.aquarium.length > 0 && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setDetailExpandedAquarium(!detailExpandedAquarium)}
+                      className="w-full flex items-center justify-between text-[10px] font-black text-violet-500 uppercase tracking-widest"
+                    >
+                      <span className="flex items-center gap-2"><MessageSquare size={12} /> Аквариум</span>
+                      {detailExpandedAquarium ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    {detailExpandedAquarium && (
+                      <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll">
+                        {detailSessionLog.result.aquarium.map((d: { speakerName: string; text: string }, idx: number) => (
+                          <div key={idx} className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/20">
+                            <span className="text-violet-400 font-bold text-xs">{d.speakerName}:</span>
+                            <p className="text-[11px] text-violet-200/90 mt-1">{d.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-white/10 flex justify-end">
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(detailSessionLog, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `session_${detailSessionLog.student_name}_${new Date(detailSessionLog.timestamp).toISOString().split('T')[0]}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-violet-500/20 text-violet-400 rounded-xl text-xs font-bold uppercase hover:bg-violet-500/30 transition-all"
+                  >
+                    <Download size={14} /> Скачать JSON
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

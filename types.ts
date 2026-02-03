@@ -73,6 +73,15 @@ export interface SimulationState {
   extreme_outcome?: ExtremeOutcome;
   game_over?: boolean;
   violation_reason?: string;
+  /** Сработала защита от резкого обрыва (модель запросила trust=0, stress=100 из «нормальной» зоны) — для диагностики сессии */
+  safeguard_applied?: {
+    reason: 'abrupt_end_prevented';
+    previous_trust: number;
+    previous_stress: number;
+    model_returned_trust: number;
+    model_returned_stress: number;
+    model_violation_reason?: string | null;
+  };
 }
 
 // === ГЛОБАЛЬНЫЕ СОБЫТИЯ (НОВАЯ МЕХАНИКА) ===
