@@ -118,9 +118,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [expandedProfessional, setExpandedProfessional] = useState<number | null>(null);
   const [expandedAdvisory, setExpandedAdvisory] = useState<number | null>(null);
   // Состояния для глобального события
-  const [activeGlobalEvent, setActiveGlobalEvent] = useState<any | null>(null); // Используем any временно, пока TS не подхватит типы
+  const [activeGlobalEvent, setActiveGlobalEvent] = useState<any | null>(null);
   const [isGlobalEventLoading, setIsGlobalEventLoading] = useState(false);
   const [accumulatedEventResults, setAccumulatedEventResults] = useState<{bonuses: number, penalties: number}>({ bonuses: 0, penalties: 0 });
+  // Пауза «прочитайте реплики» перед показом события и отложенные данные события
+  const [awaitingEventOpen, setAwaitingEventOpen] = useState<boolean>(false);
+  const pendingEventDataRef = useRef<{ event: any } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -376,7 +379,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               intensity: session.chaosDetails.intensity,
               currentTrust,
               currentStress,
-              studentThought: lastThought,
+              studentThought: undefined, // Суфлёр не видит мысли ученика — только реплики и метрики
               previousAdvice,
               teacherName: session.teacher.name,
               teacherGender: session.teacher.gender,
@@ -423,7 +426,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             intensity: session.chaosDetails.intensity,
             currentTrust: trust,
             currentStress: stress,
-            studentThought: thought,
+            studentThought: undefined, // Суфлёр не видит мысли ученика
             previousAdvice,
             teacherName: session.teacher.name,
             teacherGender: session.teacher.gender,
@@ -689,17 +692,15 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     }
   };
 
-  // Завершение глобального события
+  // Завершение глобального события (возврат в диалог — по любой клавише/клику)
   const completeGlobalEvent = () => {
     if (!activeGlobalEvent) return;
     
-    // Сохраняем результаты
     setAccumulatedEventResults(prev => ({
       bonuses: prev.bonuses + activeGlobalEvent.bonuses,
       penalties: prev.penalties + activeGlobalEvent.penalties
     }));
     
-    // Добавляем системное сообщение в основной чат
     const summaryMsg: Message = {
       id: `event-end-${Date.now()}`,
       role: MessageRole.SYSTEM,
@@ -709,6 +710,43 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     
     setMessages(prev => [...prev, summaryMsg]);
     setActiveGlobalEvent(null);
+  };
+
+  // Открыть отложенное глобальное событие (после паузы «прочитайте реплики»)
+  const openPendingGlobalEvent = async () => {
+    const pending = pendingEventDataRef.current?.event;
+    if (!pending) {
+      setAwaitingEventOpen(false);
+      return;
+    }
+    setAwaitingEventOpen(false);
+    pendingEventDataRef.current = null;
+    setIsGlobalEventLoading(true);
+    try {
+      const initResponse = await sendGlobalEventTurn(
+        [{ role: MessageRole.SYSTEM, content: pending.description, id: 'init', timestamp: Date.now() }],
+        pending.description,
+        "Начало события",
+        "GM",
+        0, 0
+      );
+      setActiveGlobalEvent({
+        isActive: true,
+        title: pending.type?.toUpperCase().replace(/_/g, ' ') || 'КРИЗИСНАЯ СИТУАЦИЯ',
+        description: pending.description,
+        bonuses: 0,
+        penalties: 0,
+        availableTargets: initResponse.available_targets?.length > 0
+          ? initResponse.available_targets
+          : [{ id: 'head_teacher', name: 'Завуч' }, { id: 'class', name: 'Класс' }, { id: 'student', name: 'Ученик' }],
+        history: [{ id: 'ev-init', role: MessageRole.MODEL, content: initResponse.description || pending.description, timestamp: Date.now() }],
+        isCompleted: false
+      });
+    } catch (e) {
+      console.error("Failed to init global event:", e);
+    } finally {
+      setIsGlobalEventLoading(false);
+    }
   };
 
   const handleSend = async (textOverride?: string) => {
@@ -794,51 +832,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       } : response.world_event; // Fallback на старую логику если GM не вызывался
 
       if (filteredWorldEvent) {
-        
-        // !!! ПЕРЕХВАТ: Если событие требует реакции — запускаем ИНТЕРАКТИВНЫЙ РЕЖИМ !!!
+        // Событие требует реакции — сначала пауза «прочитайте реплики», потом переход к событию
         if (filteredWorldEvent.requires_response) {
-          console.log('[GM Event] Starting Interactive Mode for:', filteredWorldEvent.type);
-          
-          setIsGlobalEventLoading(true);
-          
-          // Инициализируем событие через запрос к ГМ
-          // Первый запрос — установочный, без реплики игрока
-          try {
-            const initResponse = await sendGlobalEventTurn(
-              [{ role: MessageRole.SYSTEM, content: filteredWorldEvent.description, id: 'init', timestamp: Date.now() }],
-              filteredWorldEvent.description,
-              "Начало события", // Системный триггер
-              "GM",
-              0, 0
-            );
-            
-            setActiveGlobalEvent({
-              isActive: true,
-              title: filteredWorldEvent.type?.toUpperCase().replace(/_/g, ' ') || 'КРИЗИСНАЯ СИТУАЦИЯ',
-              description: filteredWorldEvent.description,
-              bonuses: 0,
-              penalties: 0,
-              availableTargets: initResponse.available_targets.length > 0 
-                ? initResponse.available_targets 
-                : [
-                    { id: 'head_teacher', name: 'Завуч' }, 
-                    { id: 'class', name: 'Класс' },
-                    { id: 'student', name: 'Ученик' }
-                  ], // Fallback цели
-              history: [{ 
-                id: 'ev-init', 
-                role: MessageRole.MODEL, 
-                content: initResponse.description || filteredWorldEvent.description,
-                timestamp: Date.now()
-              }],
-              isCompleted: false
-            });
-          } catch (e) {
-            console.error("Failed to init global event:", e);
-            // Fallback если API упал — просто показываем как обычное сообщение
-          } finally {
-            setIsGlobalEventLoading(false);
-          }
+          console.log('[GM Event] Pausing for user to read, then opening:', filteredWorldEvent.type);
+          pendingEventDataRef.current = { event: filteredWorldEvent };
+          setAwaitingEventOpen(true);
         }
       }
 
@@ -1260,9 +1258,41 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       );
   }
 
+  // Любая клавиша — возврат из завершённого события в диалог
+  useEffect(() => {
+    if (!activeGlobalEvent?.isCompleted) return;
+    const onKey = () => completeGlobalEvent();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeGlobalEvent?.isCompleted]);
+
+  // Любая клавиша — переход к событию после паузы «прочитайте реплики»
+  useEffect(() => {
+    if (!awaitingEventOpen) return;
+    const onKey = () => openPendingGlobalEvent();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [awaitingEventOpen]);
+
   return (
     <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200">
       
+      {/* Пауза «прочитайте последние реплики» перед переходом к событию */}
+      {awaitingEventOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
+          onClick={openPendingGlobalEvent}
+          role="button"
+          tabIndex={0}
+          aria-label="Перейти к событию"
+        >
+          <div className="text-center p-8 rounded-2xl border border-amber-500/40 bg-slate-900/95 max-w-md">
+            <p className="text-amber-200 font-bold mb-2">Прочитайте последние реплики выше.</p>
+            <p className="text-slate-400 text-sm">Нажмите любую клавишу или клик — переход к событию</p>
+          </div>
+        </div>
+      )}
+
       {/* ГЛОБАЛЬНОЕ СОБЫТИЕ (МОДАЛКА) */}
       {activeGlobalEvent && (
         <GlobalEventModal

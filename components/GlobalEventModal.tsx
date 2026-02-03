@@ -60,7 +60,7 @@ export const GlobalEventModal: React.FC<GlobalEventModalProps> = ({
             </div>
 
             <p className="text-slate-400">
-              Результаты учтены. Возвращаемся к диалогу с учеником...
+              Результаты учтены. Нажмите любую клавишу или кнопку — возврат к диалогу с учеником.
             </p>
 
             <button

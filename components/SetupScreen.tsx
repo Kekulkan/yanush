@@ -201,12 +201,21 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
                             <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest ml-1">Возраст</label>
                             <span className="text-3xl font-black text-white italic">{studentAge}</span>
                         </div>
-                        <input 
-                            type="range" min="12" max="17" step="1"
-                            value={studentAge}
-                            onChange={e => setStudentAge(parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-slate-900 rounded-full appearance-none accent-purple-500"
-                        />
+                        <p className="text-[9px] text-slate-500 uppercase tracking-wider mb-2">Двигайте ползунок влево/вправо — от 12 до 17 лет</p>
+                        <div className="relative w-full px-1">
+                            <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 h-2 bg-slate-700 rounded-full" aria-hidden />
+                            <div className="absolute left-1 right-1 top-1/2 -translate-y-1/2 flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
+                                <span>12</span>
+                                <span>17</span>
+                            </div>
+                            <input 
+                                type="range" min="12" max="17" step="1"
+                                value={studentAge}
+                                onChange={e => setStudentAge(parseInt(e.target.value))}
+                                className="relative w-full h-6 appearance-none bg-transparent cursor-grab active:cursor-grabbing [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-violet-500 [&::-webkit-slider-thumb]:shadow-[0_0_12px_rgba(139,92,246,0.6)] [&::-webkit-slider-thumb]:cursor-grab [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-violet-500 [&::-moz-range-thumb]:border-0"
+                                title="Выберите возраст от 12 до 17"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
