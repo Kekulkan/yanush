@@ -53,11 +53,15 @@ type GeminiChatResponse = {
 const AI_PROVIDER: "openrouter" | "aitunnel" | "claude" | "gemini" = "openrouter";
 
 // Модели для OPENROUTER (OpenAI-совместимый формат)
-const OPENROUTER_CHAT_MODEL = "x-ai/grok-4.1-fast";     // Grok 4.1 Fast для ученика
-const OPENROUTER_CHAT_FALLBACK = "x-ai/grok-4.1-fast";  // Тот же
-const OPENROUTER_ANALYSIS_MODEL = "x-ai/grok-4.1-fast"; // Для комиссии
-const OPENROUTER_GHOST_MODEL = "x-ai/grok-4.1-fast";    // Для суфлёра
-const OPENROUTER_GM_MODEL = "x-ai/grok-4.1-fast";       // Для GM
+// Ученик — Meta Llama 3.3 70B Instruct (лучше держит русскую речь и психотип)
+const OPENROUTER_CHAT_MODEL = "meta-llama/llama-3.3-70b-instruct";
+const OPENROUTER_CHAT_FALLBACK = "meta-llama/llama-3.3-70b-instruct";
+// Комиссия/анализ оставляем на более дешёвой/быстрой модели при необходимости (пока тот же Llama)
+const OPENROUTER_ANALYSIS_MODEL = "meta-llama/llama-3.3-70b-instruct";
+// Суфлёр — можно оставить на Llama, он уже не видит мысли ученика
+const OPENROUTER_GHOST_MODEL = "meta-llama/llama-3.3-70b-instruct";
+// GM — отдельная модель Mistral Large 2411 для генерации событий и проверки развязки
+const OPENROUTER_GM_MODEL = "mistralai/mistral-large-2411";
 
 // Модели для AITUNNEL (OpenAI-совместимый формат)
 // Pro = умнее, Flash = быстрее/стабильнее (fallback)
