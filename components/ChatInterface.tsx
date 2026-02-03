@@ -1041,6 +1041,22 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     return 'text-rose-400';
   };
 
+  // Любая клавиша — возврат из завершённого события в диалог
+  useEffect(() => {
+    if (!activeGlobalEvent?.isCompleted) return;
+    const onKey = () => completeGlobalEvent();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeGlobalEvent?.isCompleted]);
+
+  // Любая клавиша — переход к событию после паузы «прочитайте реплики»
+  useEffect(() => {
+    if (!awaitingEventOpen) return;
+    const onKey = () => openPendingGlobalEvent();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [awaitingEventOpen]);
+  
   if (analysis) {
       return (
           <div className="flex flex-col h-[100dvh] bg-[#0A0B1A]">
@@ -1257,22 +1273,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
           </div>
       );
   }
-
-  // Любая клавиша — возврат из завершённого события в диалог
-  useEffect(() => {
-    if (!activeGlobalEvent?.isCompleted) return;
-    const onKey = () => completeGlobalEvent();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [activeGlobalEvent?.isCompleted]);
-
-  // Любая клавиша — переход к событию после паузы «прочитайте реплики»
-  useEffect(() => {
-    if (!awaitingEventOpen) return;
-    const onKey = () => openPendingGlobalEvent();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [awaitingEventOpen]);
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200">

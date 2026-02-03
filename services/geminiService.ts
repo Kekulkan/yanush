@@ -53,13 +53,13 @@ type GeminiChatResponse = {
 const AI_PROVIDER: "openrouter" | "aitunnel" | "claude" | "gemini" = "openrouter";
 
 // Модели для OPENROUTER (OpenAI-совместимый формат)
-// Ученик — Meta Llama 3.3 70B Instruct (лучше держит русскую речь и психотип)
-const OPENROUTER_CHAT_MODEL = "meta-llama/llama-3.3-70b-instruct";
-const OPENROUTER_CHAT_FALLBACK = "meta-llama/llama-3.3-70b-instruct";
-// Комиссия/анализ оставляем на более дешёвой/быстрой модели при необходимости (пока тот же Llama)
-const OPENROUTER_ANALYSIS_MODEL = "meta-llama/llama-3.3-70b-instruct";
-// Суфлёр — можно оставить на Llama, он уже не видит мысли ученика
-const OPENROUTER_GHOST_MODEL = "meta-llama/llama-3.3-70b-instruct";
+// Ученик — Claude 3.7 Sonnet (лучше всего держит русский и психотип)
+const OPENROUTER_CHAT_MODEL = "anthropic/claude-3.7-sonnet:thinking";
+const OPENROUTER_CHAT_FALLBACK = "anthropic/claude-3.7-sonnet";
+// Комиссия/анализ — тоже Claude, чтобы вердикты были внятные по‑русски
+const OPENROUTER_ANALYSIS_MODEL = "anthropic/claude-3.7-sonnet:thinking";
+// Суфлёр — Claude без thinking (быстрее), мыслей ученика всё равно не видит
+const OPENROUTER_GHOST_MODEL = "anthropic/claude-3.7-sonnet";
 // GM — отдельная модель Mistral Large 2411 для генерации событий и проверки развязки
 const OPENROUTER_GM_MODEL = "mistralai/mistral-large-2411";
 
