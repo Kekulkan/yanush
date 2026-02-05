@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Terminal, Archive, Trash2, Download, Upload, Eye, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { UserAccount, SessionLog, Message, MessageRole } from '../types';
+import { UserAccount, SessionLog, Message, MessageRole, CompletedGlobalEventSnapshot } from '../types';
 import { 
   getUserArchive, 
   deleteFromUserArchive, 
@@ -355,6 +355,13 @@ interface SessionCardProps {
   onExport: () => void;
 }
 
+// Диалог может приходить как messages (архив) или dialogue (экспорт/сервер)
+function getSessionDialogue(session: SessionLog): Message[] {
+  const raw = session.messages ?? (session as { dialogue?: Message[] }).dialogue ?? [];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((m): m is Message => Boolean(m && typeof m === 'object' && (m.role === MessageRole.USER || m.role === MessageRole.MODEL || (m as any).role === 'user' || (m as any).role === 'model')));
+}
+
 const SessionCard: React.FC<SessionCardProps> = ({
   session,
   isExpanded,
@@ -364,6 +371,8 @@ const SessionCard: React.FC<SessionCardProps> = ({
 }) => {
   const score = session.result?.overall_score ?? 0;
   const accentuation = session.sessionSnapshot?.chaosDetails?.accentuation || 'N/A';
+  const dialogueMessages = getSessionDialogue(session);
+  const isUserRole = (m: Message | { role?: string }) => (m.role === MessageRole.USER || (m as any).role === 'user');
   
   return (
     <div className={`rounded-2xl border transition-all duration-300 ${
@@ -417,6 +426,16 @@ const SessionCard: React.FC<SessionCardProps> = ({
       {/* Expanded content */}
       {isExpanded && (
         <div className="border-t border-slate-800/50 animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* Экспозиция (сценарий) */}
+          {(session.scenario_description ?? (session as any).scenario_description) && (
+            <div className="px-4 py-3 bg-amber-500/5 border-b border-slate-800/50">
+              <div className="text-[9px] font-black uppercase tracking-widest text-amber-500/90 mb-1.5">Экспозиция</div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                {session.scenario_description ?? (session as any).scenario_description}
+              </p>
+            </div>
+          )}
+
           {/* Summary */}
           {session.result?.summary && (
             <div className="px-4 py-3 bg-black/20">
@@ -426,29 +445,98 @@ const SessionCard: React.FC<SessionCardProps> = ({
             </div>
           )}
 
-          {/* Transcript */}
-          <div className="max-h-64 overflow-y-auto custom-scroll p-1">
-            {(session.messages || [])
-              .filter((m): m is Message => Boolean(m && (m.role === MessageRole.USER || m.role === MessageRole.MODEL)))
-              .map((msg, i) => (
-                <div 
-                  key={i}
-                  className={`px-4 py-2.5 text-[11px] mb-1 rounded-xl ${
-                    msg.role === MessageRole.USER 
-                      ? 'bg-cyan-500/5 text-cyan-200/90' 
-                      : 'bg-slate-800/30 text-slate-300'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className={`text-[8px] font-black uppercase tracking-widest ${msg.role === MessageRole.USER ? 'text-cyan-500' : 'text-slate-500'}`}>
-                      {msg.role === MessageRole.USER ? 'Педагог' : 'Ученик'}
-                    </span>
+          {/* Диалог */}
+          <div className="px-4 pt-2 pb-1">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Диалог</div>
+            <div className="max-h-64 overflow-y-auto custom-scroll p-1">
+              {dialogueMessages.length === 0 ? (
+                <p className="text-[11px] text-slate-600 italic">Нет записей диалога.</p>
+              ) : (
+                dialogueMessages.map((msg, i) => (
+                  <div 
+                    key={i}
+                    className={`px-4 py-2.5 text-[11px] mb-1 rounded-xl ${
+                      isUserRole(msg) ? 'bg-cyan-500/5 text-cyan-200/90' : 'bg-slate-800/30 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className={`text-[8px] font-black uppercase tracking-widest ${isUserRole(msg) ? 'text-cyan-500' : 'text-slate-500'}`}>
+                        {isUserRole(msg) ? 'Педагог' : 'Ученик'}
+                      </span>
+                    </div>
+                    <div className="leading-relaxed">{msg.content ?? ''}</div>
                   </div>
-                  <div className="leading-relaxed">{msg.content ?? ''}</div>
-                </div>
-              ))
-            }
+                ))
+              )}
+            </div>
           </div>
+
+          {/* Вердикты основной комиссии */}
+          {(session.result?.commission?.length ?? 0) > 0 && (
+            <div className="px-4 py-3 border-t border-slate-800/50">
+              <div className="text-[9px] font-black uppercase tracking-widest text-violet-400 mb-2">Вердикты основной комиссии</div>
+              <div className="space-y-3 max-h-48 overflow-y-auto custom-scroll">
+                {(session.result!.commission!).map((c, i) => (
+                  <div key={i} className="bg-slate-800/30 rounded-xl p-3 text-[11px]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-slate-200">{c.name}</span>
+                      <span className="text-slate-500">({c.role})</span>
+                      <span className="text-violet-400 font-black">{c.score}</span>
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">{c.verdict}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Совещательная комиссия */}
+          {(session.result?.advisory?.length ?? 0) > 0 && (
+            <div className="px-4 py-3 border-t border-slate-800/50">
+              <div className="text-[9px] font-black uppercase tracking-widest text-cyan-500 mb-2">Совещательная комиссия</div>
+              <div className="space-y-3 max-h-40 overflow-y-auto custom-scroll">
+                {(session.result!.advisory!).map((a, i) => (
+                  <div key={i} className="bg-cyan-500/5 rounded-xl p-3 text-[11px]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-cyan-200">{(a as any).member?.name ?? (a as any).name}</span>
+                      <span className="text-slate-500">({(a as any).member?.title ?? (a as any).role ?? ''})</span>
+                      {a.score != null && <span className="text-cyan-400 font-black">{a.score}</span>}
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">{a.verdict}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Глобальные события */}
+          {(session.completedGlobalEvents?.length ?? 0) > 0 && (
+            <div className="px-4 py-3 border-t border-slate-800/50">
+              <div className="text-[9px] font-black uppercase tracking-widest text-amber-400 mb-2">Глобальные события</div>
+              <div className="space-y-3 max-h-40 overflow-y-auto custom-scroll">
+                {(session.completedGlobalEvents!).map((ev: CompletedGlobalEventSnapshot, i) => (
+                  <div key={i} className="bg-amber-500/5 rounded-xl p-3 text-[11px] border border-amber-500/20">
+                    <div className="font-bold text-amber-200">{ev.title}</div>
+                    {ev.description && <p className="text-slate-400 mt-1">{ev.description}</p>}
+                    <div className="flex gap-3 mt-1.5 text-[10px]">
+                      {ev.bonuses != null && <span className="text-emerald-400">+{ev.bonuses}</span>}
+                      {ev.penalties != null && <span className="text-red-400">−{ev.penalties}</span>}
+                    </div>
+                    {ev.history?.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-700/50">
+                        <div className="text-[9px] text-slate-500 uppercase mb-1">Диалог в событии</div>
+                        {ev.history.map((h, j) => (
+                          <div key={j} className="py-1 text-slate-400">
+                            <span className={h.role === MessageRole.USER ? 'text-cyan-400' : 'text-slate-500'}>{h.role === MessageRole.USER ? 'Педагог' : 'Участник'}:</span> {h.content ?? ''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-2 p-3 border-t border-slate-800/50 bg-black/20">

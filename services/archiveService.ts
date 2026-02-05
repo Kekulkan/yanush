@@ -347,10 +347,13 @@ export async function importFromJSON(jsonStr: string, userId: string): Promise<{
     const data = JSON.parse(jsonStr);
     const logsToImport: SessionLog[] = Array.isArray(data) ? data : [data];
     
-    // Минимальная валидация структуры
-    const validLogs = logsToImport.filter(log =>
-      log && typeof log === 'object' && log.id && log.messages && Array.isArray(log.messages)
-    );
+    // Минимальная валидация: id + диалог в messages или dialogue
+    const validLogs = logsToImport.filter(log => {
+      if (!log || typeof log !== 'object' || !log.id) return false;
+      const hasMessages = log.messages && Array.isArray(log.messages);
+      const hasDialogue = (log as { dialogue?: unknown }).dialogue && Array.isArray((log as { dialogue: unknown[] }).dialogue);
+      return hasMessages || hasDialogue;
+    });
 
     if (validLogs.length === 0 && logsToImport.length > 0) {
       // Попробуем еще раз, вдруг там вложенный объект logs (как от сервера)
@@ -361,9 +364,12 @@ export async function importFromJSON(jsonStr: string, userId: string): Promise<{
 
     let importedCount = 0;
     for (const log of validLogs) {
-      // Помечаем что это импорт
+      // Нормализация: если в файле dialogue вместо messages — подставляем messages
+      const raw = log as SessionLog & { dialogue?: unknown[] };
+      const messages = Array.isArray(raw.messages) ? raw.messages : (Array.isArray(raw.dialogue) ? raw.dialogue : []);
       const importedLog: SessionLog = {
         ...log,
+        messages,
         importedFrom: log.importedFrom || 'file',
         importedAt: Date.now(),
         userId // Привязываем к текущему юзеру
