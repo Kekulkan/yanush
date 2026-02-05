@@ -1,5 +1,5 @@
 // services/geminiService.ts
-import { Message, MessageRole, GlobalSettings, AnalysisResult, AdvisoryFeedback, SessionContext, WorldEvent } from "../types";
+import { Message, MessageRole, GlobalSettings, AnalysisResult, AdvisoryFeedback, SessionContext, WorldEvent, DialogueSummary } from "../types";
 import { DEFAULT_SETTINGS } from "../constants";
 import { 
   buildMainCommissionPrompt, 
@@ -102,6 +102,9 @@ const GHOST_MODEL = AI_PROVIDER === "openrouter" ? OPENROUTER_GHOST_MODEL
 const GM_MODEL = AI_PROVIDER === "openrouter" ? OPENROUTER_GM_MODEL
   : AI_PROVIDER === "aitunnel" ? AITUNNEL_GM_MODEL
   : AI_PROVIDER === "claude" ? CLAUDE_ANALYSIS_MODEL : GEMINI_ANALYSIS_MODEL;
+
+// Для суммаризации используем более дешёвую/быструю модель (по умолчанию ANALYSIS_MODEL)
+const SUMMARY_MODEL = ANALYSIS_MODEL;
 
 const getSettings = (): GlobalSettings => {
   const stored = localStorage.getItem("global_settings");
@@ -579,6 +582,103 @@ async function queryAI(
     };
     data = await postViaProxy(`${model}:generateContent`, body, timeoutMs);
     return extractGeminiText(data);
+  }
+}
+
+// Суммаризация диалога для сокращения контекста
+export async function summarizeDialogue(
+  history: Message[],
+  previous?: DialogueSummary | null
+): Promise<DialogueSummary> {
+  const total = history.length;
+  if (total === 0) {
+    return {
+      summary: "Диалог ещё не начался.",
+      keyPoints: [],
+      upToIndex: 0,
+    };
+  }
+
+  const prevUpTo = previous?.upToIndex ?? 0;
+  // Если новых сообщений нет — возвращаем прошлое резюме как есть
+  if (previous && total <= prevUpTo) {
+    return previous;
+  }
+
+  // Берём только "новую" часть диалога для обновления резюме
+  const newSlice = history.slice(prevUpTo);
+
+  const transcript = newSlice
+    .map((m, idx) => {
+      const speaker = m.role === MessageRole.USER ? "Учитель" :
+        m.role === MessageRole.MODEL ? "Ученик" : "Система";
+      return `${prevUpTo + idx + 1}. ${speaker}: ${m.content}`;
+    })
+    .join("\n");
+
+  const prevSummary = previous?.summary ?? "";
+  const prevKeyPoints = (previous?.keyPoints ?? []).join("\n- ");
+
+  const prompt = `
+Ты помогаешь вести краткое резюме сложного диалога между учителем и подростком.
+Твоя задача — ОБНОВИТЬ уже существующее резюме, добавив в него новую информацию из последних реплик.
+
+ВСЕГДА отвечай СТРОГО в формате JSON одного объекта:
+{
+  "summary": "краткое связное резюме всей истории",
+  "key_points": ["важный факт 1", "важный факт 2"],
+  "up_to_index": ЧИСЛО
+}
+
+Где:
+- "summary" — 3–6 предложений, описывающих весь диалог ДО СЕЙЧАС, без дословных цитат.
+- "key_points" — список самых важных поворотных моментов (признания, угрозы, попытки уйти, резкие скачки доверия/стресса и т.п.).
+- "up_to_index" — СКОЛЬКО сообщений из истории уже учтено в этом резюме (index в исходном массиве messages, начиная с 1). Для текущего вызова выставь ${total}.
+
+Если предыдущего резюме нет — просто создай его с нуля.
+Если оно есть — аккуратно ДОРАБОТАЙ его, не переписывая всё заново без необходимости.
+
+ТЕКУЩАЯ ОБЩАЯ ИНТЕРПРЕТАЦИЯ (МОЖНО ИСПОЛЬЗОВАТЬ КАК БАЗУ):
+${prevSummary || "(пока нет)"}
+
+УЖЕ ЗАФИКСИРОВАННЫЕ КЛЮЧЕВЫЕ МОМЕНТЫ:
+- ${prevKeyPoints || "(ещё нет)"} 
+
+НОВЫЕ РЕПЛИКИ (учти их в резюме):
+${transcript}
+
+Сформируй обновлённый JSON-объект с полями summary, key_points, up_to_index.
+`;
+
+  try {
+    const text = await queryAI(SUMMARY_MODEL, prompt, 0.3, 45_000);
+    const jsonStr = extractFirstJsonObject(text) ?? stripCodeFences(text);
+    const parsed = JSON.parse(jsonStr);
+
+    return {
+      summary: String(parsed.summary || prevSummary || "Диалог продолжается."),
+      keyPoints: Array.isArray(parsed.key_points)
+        ? parsed.key_points.map((p: any) => String(p)).filter(Boolean)
+        : previous?.keyPoints ?? [],
+      upToIndex: typeof parsed.up_to_index === "number" && parsed.up_to_index > 0
+        ? Math.min(parsed.up_to_index, total)
+        : total,
+    };
+  } catch (e) {
+    console.error("[Summary] Failed to update dialogue summary:", e);
+    // Фоллбек: если не смогли обновить — хотя бы вернём предыдущее или простое резюме
+    if (previous) return previous;
+
+    const simple = history
+      .slice(-6)
+      .map((m) => (m.role === MessageRole.USER ? "Учитель" : m.role === MessageRole.MODEL ? "Ученик" : "Система") + ": " + m.content)
+      .join(" ");
+
+    return {
+      summary: simple || "Диалог продолжается.",
+      keyPoints: [],
+      upToIndex: total,
+    };
   }
 }
 

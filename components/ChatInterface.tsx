@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog, CompletedGlobalEventSnapshot } from '../types';
-import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext } from '../services/geminiService';
+import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog, CompletedGlobalEventSnapshot, DialogueSummary } from '../types';
+import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext, summarizeDialogue } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
@@ -114,6 +114,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [autoPlayActive, setAutoPlayActive] = useState(false);
   const [autoPlayStep, setAutoPlayStep] = useState(0);
   const autoPlayStopRef = useRef(false);
+  // Сжатое резюме диалога для сокращения контекста LLM
+  const [dialogueSummary, setDialogueSummary] = useState<DialogueSummary | null>(null);
   
   const [expandedProfessional, setExpandedProfessional] = useState<number | null>(null);
   const [expandedAdvisory, setExpandedAdvisory] = useState<number | null>(null);
@@ -168,6 +170,35 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     }, 150);
     return () => clearTimeout(timeoutId);
   }, [messages, isLoading, ghostAdvice]);
+
+  // Обновление сжатого резюме диалога (каждые несколько ходов ученика)
+  useEffect(() => {
+    // Нужен хоть какой‑то диалог и последняя реплика от ученика
+    if (messages.length < 10) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== MessageRole.MODEL) return;
+
+    // Если уже недавно суммировали почти всю историю — подождём ещё ходов
+    if (dialogueSummary && messages.length - dialogueSummary.upToIndex < 6) {
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const updated = await summarizeDialogue(messages, dialogueSummary ?? undefined);
+        if (!cancelled) {
+          setDialogueSummary(updated);
+        }
+      } catch (e) {
+        console.error('[Summary] Failed to summarize dialogue:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, dialogueSummary]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ЗАЩИТА ОТ ХИТРЕЦА: Таймер бездействия учителя
@@ -456,8 +487,23 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         
         if (autoPlayStopRef.current) break;
         
-        // 3. Получаем ответ ученика
-        const response = await sendMessageToGemini(currentMessages, session.constructedPrompt, advice);
+        // 3. Получаем ответ ученика (с учётом сжатого резюме и только последних реплик)
+        const recentForStudent = currentMessages.slice(-8);
+        let studentPrompt = session.constructedPrompt;
+        if (dialogueSummary) {
+          studentPrompt += `
+
+════════════════ СЖАТОЕ РЕЗЮМЕ ДИАЛОГА ДО СЕЙЧАС ════════════════
+[КРАТКОЕ РЕЗЮМЕ]:
+${dialogueSummary.summary}
+
+[КЛЮЧЕВЫЕ МОМЕНТЫ]:
+${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
+════════════════ КОНЕЦ РЕЗЮМЕ ════════════════
+`;
+        }
+
+        const response = await sendMessageToGemini(recentForStudent, studentPrompt, advice);
         
         const modelMsg: Message = {
           id: `auto-model-${Date.now()}`,
@@ -822,8 +868,23 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         }
       }
       
-      // Вызываем ученика, передавая событие от GM (если есть)
-      const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text, gmEvent);
+      // Вызываем ученика, передавая событие от GM (если есть) и сокращённый контекст
+      const recentForStudent = newMessages.slice(-8);
+      let studentPrompt = session.constructedPrompt;
+      if (dialogueSummary) {
+        studentPrompt += `
+
+════════════════ СЖАТОЕ РЕЗЮМЕ ДИАЛОГА ДО СЕЙЧАС ════════════════
+[КРАТКОЕ РЕЗЮМЕ]:
+${dialogueSummary.summary}
+
+[КЛЮЧЕВЫЕ МОМЕНТЫ]:
+${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
+════════════════ КОНЕЦ РЕЗЮМЕ ════════════════
+`;
+      }
+
+      const response = await sendMessageToGemini(recentForStudent, studentPrompt, text, gmEvent);
 
       // Если GM сгенерировал событие — добавляем его в ответ ученика
       let filteredWorldEvent = gmEvent ? {

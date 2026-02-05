@@ -113,6 +113,16 @@ export interface Message {
   timestamp: number;
 }
 
+// Сжатое резюме диалога для уменьшения контекста LLM
+export interface DialogueSummary {
+  /** Краткое резюме всей истории до upToIndex */
+  summary: string;
+  /** Ключевые поворотные моменты (для напоминания модели) */
+  keyPoints: string[];
+  /** Сколько сообщений исходной истории уже учтено в этом резюме (index в messages[]) */
+  upToIndex: number;
+}
+
 export interface TeacherProfile {
   name: string;
   gender: 'male' | 'female';
