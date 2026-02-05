@@ -77,7 +77,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const sanitizeSessionLogForDetail = (log: SessionLog): SessionLog => {
     const result = log.result;
     if (!result) return log;
-    const safeCommission = (result.commission || []).filter((m): m is NonNullable<typeof m> & { name: string } => Boolean(m && typeof (m as any)?.name === 'string');
+    const safeCommission = (result.commission || []).filter((m): m is NonNullable<typeof m> & { name: string } => Boolean(m && typeof (m as any)?.name === 'string'));
     const safeAdvisory = (result.advisory || []).filter((a): a is NonNullable<typeof a> & { member: { name?: string; title?: string } } => Boolean(a && a.member != null));
     const safeAquarium = (result.aquarium || []).filter((d): d is NonNullable<typeof d> => Boolean(d));
     return {
