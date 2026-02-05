@@ -276,6 +276,15 @@ export interface ActiveSession {
   activeGlobalEvent?: GlobalEventState;
 }
 
+/** Снимок завершённого глобального события для лога (диалог внутри модалки) */
+export interface CompletedGlobalEventSnapshot {
+  title: string;
+  description: string;
+  bonuses: number;
+  penalties: number;
+  history: Message[];
+}
+
 export interface SessionLog {
   id: string;
   timestamp: number;
@@ -287,6 +296,8 @@ export interface SessionLog {
   messages: Message[];
   result?: AnalysisResult; 
   sessionSnapshot?: ActiveSession;
+  /** История завершённых глобальных событий (диалог в модалке «Кража» и т.п.) */
+  completedGlobalEvents?: CompletedGlobalEventSnapshot[];
   // Для архивирования
   userId?: string;
   userEmail?: string;

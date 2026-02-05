@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog } from '../types';
+import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog, CompletedGlobalEventSnapshot } from '../types';
 import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
@@ -124,6 +124,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // Пауза «прочитайте реплики» перед показом события и отложенные данные события
   const [awaitingEventOpen, setAwaitingEventOpen] = useState<boolean>(false);
   const pendingEventDataRef = useRef<{ event: any } | null>(null);
+  /** Накапливаем завершённые глобальные события для записи в лог (диалог внутри модалки) */
+  const completedGlobalEventsRef = useRef<CompletedGlobalEventSnapshot[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -323,6 +325,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         messages: finalMessages,
         result: { overall_score: 0, summary: 'Ожидает анализа (бездействие)', commission: [], timestamp: Date.now() },
         sessionSnapshot: session,
+        completedGlobalEvents: completedGlobalEventsRef.current.length > 0 ? [...completedGlobalEventsRef.current] : undefined,
         userId: currentUser?.id,
         userEmail: currentUser?.email
       };
@@ -519,6 +522,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         messages: currentMessages,
         result: { overall_score: 0, summary: 'Ожидает анализа', commission: [], timestamp: Date.now() },
         sessionSnapshot: session,
+        completedGlobalEvents: completedGlobalEventsRef.current.length > 0 ? [...completedGlobalEventsRef.current] : undefined,
         userId: currentUser?.id,
         userEmail: currentUser?.email
       };
@@ -559,7 +563,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     const currentUser = user || authService.getCurrentUser();
     
     const sessionLog: SessionLog = {
-      id: existingId || crypto.randomUUID(), // Используем существующий ID если есть
+      id: existingId || crypto.randomUUID(),
       timestamp: Date.now(),
       duration_seconds: Math.floor((Date.now() - (messages[0]?.timestamp || Date.now())) / 1000),
       teacher: session.teacher,
@@ -569,9 +573,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       messages: finalMessages,
       result: analysisResult,
       sessionSnapshot: session,
+      completedGlobalEvents: completedGlobalEventsRef.current.length > 0 ? [...completedGlobalEventsRef.current] : undefined,
       userId: currentUser?.id,
       userEmail: currentUser?.email
     };
+    completedGlobalEventsRef.current = [];
 
     if (currentUser?.id) {
       console.log('[archiveSession] Saving to user archive for ID:', currentUser.id);
@@ -696,19 +702,24 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // Завершение глобального события (возврат в диалог — по любой клавише/клику)
   const completeGlobalEvent = () => {
     if (!activeGlobalEvent) return;
-    
+    // Сохраняем снимок события в лог (диалог внутри модалки)
+    completedGlobalEventsRef.current.push({
+      title: activeGlobalEvent.title,
+      description: activeGlobalEvent.description,
+      bonuses: activeGlobalEvent.bonuses,
+      penalties: activeGlobalEvent.penalties,
+      history: [...(activeGlobalEvent.history || [])]
+    });
     setAccumulatedEventResults(prev => ({
       bonuses: prev.bonuses + activeGlobalEvent.bonuses,
       penalties: prev.penalties + activeGlobalEvent.penalties
     }));
-    
     const summaryMsg: Message = {
       id: `event-end-${Date.now()}`,
       role: MessageRole.SYSTEM,
       content: `ГЛОБАЛЬНОЕ СОБЫТИЕ ЗАВЕРШЕНО.\nИтог: Бонусы +${activeGlobalEvent.bonuses}, Штрафы -${activeGlobalEvent.penalties}.\nВозвращаемся к уроку.`,
       timestamp: Date.now()
     };
-    
     setMessages(prev => [...prev, summaryMsg]);
     setActiveGlobalEvent(null);
   };
@@ -952,6 +963,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             messages: finalMessages,
             result: { overall_score: 0, summary: 'Ожидает анализа', commission: [], timestamp: Date.now() },
             sessionSnapshot: session,
+            completedGlobalEvents: completedGlobalEventsRef.current.length > 0 ? [...completedGlobalEventsRef.current] : undefined,
             userId: currentUser?.id,
             userEmail: currentUser?.email
           };

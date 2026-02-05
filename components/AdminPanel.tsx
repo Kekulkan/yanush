@@ -1209,6 +1209,29 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                   </div>
                 )}
 
+                {/* Глобальные события (диалог в модалке) */}
+                {detailSessionLog.completedGlobalEvents && detailSessionLog.completedGlobalEvents.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                      <ActivityIcon size={12} /> Глобальные события ({detailSessionLog.completedGlobalEvents.length})
+                    </div>
+                    {detailSessionLog.completedGlobalEvents.map((ev, evIdx) => (
+                      <div key={evIdx} className="glass p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                        <div className="text-emerald-400 font-bold text-xs">{ev.title}</div>
+                        <p className="text-[10px] text-slate-500 mt-1">{ev.description}</p>
+                        <div className="text-[10px] text-slate-400 mt-1">Бонусы: +{ev.bonuses}, Штрафы: −{ev.penalties}</div>
+                        <div className="mt-2 space-y-1 max-h-32 overflow-y-auto custom-scroll">
+                          {(ev.history || []).map((msg, i) => (
+                            <div key={i} className={`text-[11px] py-1 ${msg.role === MessageRole.USER ? 'text-cyan-300' : 'text-slate-400'}`}>
+                              {msg.role === MessageRole.USER ? 'Учитель: ' : ''}{msg.content?.slice(0, 200)}{(msg.content?.length ?? 0) > 200 ? '…' : ''}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="pt-4 border-t border-white/10 flex justify-end">
                   <button
                     onClick={() => {
