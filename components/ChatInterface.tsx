@@ -114,6 +114,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [autoPlayActive, setAutoPlayActive] = useState(false);
   const [autoPlayStep, setAutoPlayStep] = useState(0);
   const autoPlayStopRef = useRef(false);
+  // Админский флаг: отключить комиссию/совещательную (супервизоры)
+  const [supervisorsEnabled, setSupervisorsEnabled] = useState(true);
   // Сжатое резюме диалога для сокращения контекста LLM
   const [dialogueSummary, setDialogueSummary] = useState<DialogueSummary | null>(null);
   
@@ -641,6 +643,22 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
   };
 
   const handleStop = async () => {
+      // Если супервизоры отключены (режим отладки) — выходим без вызова комиссии
+      if (!supervisorsEnabled) {
+        if (!window.confirm('Завершить сеанс БЕЗ вердикта комиссии (режим отладки супервизоров)?')) {
+          return;
+        }
+        const stubResult: AnalysisResult = {
+          overall_score: 0,
+          summary: 'Сессия завершена в режиме отладки: анализ комиссии был отключён.',
+          commission: [],
+          timestamp: Date.now()
+        };
+        setAnalysis(stubResult);
+        archiveSession(messages, stubResult, 'manual');
+        return;
+      }
+
       // Проверка минимума реплик для анализа
       const userMessages = messages.filter(m => m.role === MessageRole.USER);
       const MIN_MESSAGES = 10;
@@ -1053,8 +1071,22 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
   // Функция продолжения анализа после паузы
   const handleContinueAfterTermination = async () => {
     if (!pendingTermination) return;
-    
+
     setAwaitingContinue(false);
+
+    // Если супервизоры отключены — завершаем без вызова комиссии
+    if (!supervisorsEnabled) {
+      const stubResult: AnalysisResult = {
+        overall_score: 0,
+        summary: 'Сессия завершена в режиме отладки: анализ комиссии был отключён.',
+        commission: [],
+        timestamp: Date.now()
+      };
+      setAnalysis(stubResult);
+      setPendingTermination(null);
+      return;
+    }
+
     setIsAnalyzing(true);
     
     try {
@@ -1466,6 +1498,24 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
                 >
                   {autoPlayActive ? <Pause size={16} /> : <Play size={16} />}
                   {autoPlayActive && <span className="text-[9px] font-black">{autoPlayStep}</span>}
+                </button>
+              )}
+              {/* Админский тумблер: включить/выключить супервизоров (комиссию) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setSupervisorsEnabled(prev => !prev)}
+                  className={`p-2.5 rounded-xl transition-all flex items-center gap-1 ${
+                    supervisorsEnabled
+                      ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  }`}
+                  title={supervisorsEnabled ? 'Супервизоры ВКЛ: комиссия и анализ работают' : 'Супервизоры ВЫКЛ: комиссия и анализ отключены (режим отладки)'}
+                >
+                  <ShieldAlert size={16} />
+                  <span className="text-[9px] font-black uppercase tracking-widest">
+                    {supervisorsEnabled ? 'SUP' : 'NO SUP'}
+                  </span>
                 </button>
               )}
               {isAdmin && (
