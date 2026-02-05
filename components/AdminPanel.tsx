@@ -72,6 +72,24 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [detailExpandedAquarium, setDetailExpandedAquarium] = useState<boolean>(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [logsSource, setLogsSource] = useState<'server' | 'local'>('local');
+
+  /** Санитизация лога перед открытием модалки: убираем undefined из commission/advisory/aquarium, чтобы не было чтения .name у undefined */
+  const sanitizeSessionLogForDetail = (log: SessionLog): SessionLog => {
+    const result = log.result;
+    if (!result) return log;
+    const safeCommission = (result.commission || []).filter((m): m is NonNullable<typeof m> & { name: string } => Boolean(m && typeof (m as any)?.name === 'string');
+    const safeAdvisory = (result.advisory || []).filter((a): a is NonNullable<typeof a> & { member: { name?: string; title?: string } } => Boolean(a && a.member != null));
+    const safeAquarium = (result.aquarium || []).filter((d): d is NonNullable<typeof d> => Boolean(d));
+    return {
+      ...log,
+      result: {
+        ...result,
+        commission: safeCommission,
+        advisory: safeAdvisory,
+        aquarium: safeAquarium
+      }
+    };
+  };
   
   // Загрузка данных при авторизации
   useEffect(() => {
@@ -952,7 +970,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setDetailSessionLog(log);
+                                                            setDetailSessionLog(sanitizeSessionLogForDetail(log));
                                                             setDetailExpandedAdvisory(true);
                                                             setDetailExpandedAquarium(false);
                                                         }}
