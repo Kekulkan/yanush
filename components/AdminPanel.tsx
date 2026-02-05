@@ -69,7 +69,6 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [expandedGlobalSession, setExpandedGlobalSession] = useState<string | null>(null);
   const [detailSessionLog, setDetailSessionLog] = useState<SessionLog | null>(null);
   const [detailExpandedAdvisory, setDetailExpandedAdvisory] = useState<boolean>(true);
-  const [detailExpandedAquarium, setDetailExpandedAquarium] = useState<boolean>(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [logsSource, setLogsSource] = useState<'server' | 'local'>('local');
 
@@ -972,7 +971,6 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                             e.stopPropagation();
                                                             setDetailSessionLog(sanitizeSessionLogForDetail(log));
                                                             setDetailExpandedAdvisory(true);
-                                                            setDetailExpandedAquarium(false);
                                                         }}
                                                         className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg text-[10px] font-bold uppercase hover:bg-blue-500/20 transition-all"
                                                     >
@@ -1177,31 +1175,6 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                             </div>
                             <p className="text-[9px] text-slate-500">{adv.member?.title ?? ''}</p>
                             <p className="text-[11px] text-amber-200/90 mt-1 italic">"{adv.verdict ?? ''}"</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Аквариум */}
-                {detailSessionLog.result?.aquarium && detailSessionLog.result.aquarium.length > 0 && (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => setDetailExpandedAquarium(!detailExpandedAquarium)}
-                      className="w-full flex items-center justify-between text-[10px] font-black text-violet-500 uppercase tracking-widest"
-                    >
-                      <span className="flex items-center gap-2"><MessageSquare size={12} /> Аквариум</span>
-                      {detailExpandedAquarium ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                    {detailExpandedAquarium && (
-                      <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll">
-                        {(detailSessionLog.result.aquarium || [])
-                          .filter((d): d is { speakerName: string; text: string } => Boolean(d && (d.speakerName != null || d.text != null)))
-                          .map((d, idx) => (
-                          <div key={idx} className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/20">
-                            <span className="text-violet-400 font-bold text-xs">{d.speakerName ?? '—'}:</span>
-                            <p className="text-[11px] text-violet-200/90 mt-1">{d.text ?? ''}</p>
                           </div>
                         ))}
                       </div>

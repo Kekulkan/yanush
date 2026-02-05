@@ -54,7 +54,6 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 'Все 11 акцентуаций',
                 'Совещательная комиссия',
                 'Архив всех сессий',
-                'Aquarium Mode',
                 'Новые типы ситуаций'
               ].map((text, i) => (
                 <li key={i} className="flex items-center gap-3 text-xs text-slate-300 font-medium">

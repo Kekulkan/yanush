@@ -6,7 +6,7 @@ import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../serv
 import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
-import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, User, Megaphone, AlertOctagon, Skull, MessageSquare, ChevronDown, ChevronUp, Play, Pause, Theater, Crown, Lock } from 'lucide-react';
+import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, User, Megaphone, AlertOctagon, Skull, ChevronDown, ChevronUp, Play, Pause, Crown, Lock } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
 import SecurityShield from './SecurityShield';
 import HelpOverlay, { CHAT_HELP_ITEMS } from './HelpOverlay';
@@ -626,15 +626,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       if (!window.confirm('ЗАВЕРШИТЬ СЕАНС И ПОЛУЧИТЬ ВЕРДИКТ?')) return;
       setIsAnalyzing(true);
       try {
-          const isPremium = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
           const result = await analyzeChatSession(
             messages, 
             session.chaosDetails.accentuation, 
             'Принудительное завершение',
-            { 
-              includeAdvisory: true,
-              includeAquarium: isPremium  // Аквариум только для премиум
-            }
+            { includeAdvisory: true }
           );
           setAnalysis(result);
           archiveSession(messages, result, 'manual');
@@ -1001,15 +997,11 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setIsAnalyzing(true);
     
     try {
-      const isPremiumUser = user?.role === 'PREMIUM' || user?.role === 'ADMIN';
       const result = await analyzeChatSession(
         pendingTermination.messages,
         session.chaosDetails.accentuation,
         pendingTermination.reason,
-        { 
-          includeAdvisory: true,
-          includeAquarium: isPremiumUser
-        }
+        { includeAdvisory: true }
       );
       setAnalysis(result);
       // Используем существующий ID чтобы обновить предварительную запись
@@ -1030,22 +1022,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
   // Состояния для отображения секций анализа
   const [showAdvisory, setShowAdvisory] = useState(false);
-  const [showAquarium, setShowAquarium] = useState(false);
-  const [aquariumIndex, setAquariumIndex] = useState(0);
-  const [aquariumPlaying, setAquariumPlaying] = useState(false);
-
-  // Автопроигрывание аквариума
-  useEffect(() => {
-    if (!aquariumPlaying || !analysis?.aquarium) return;
-    if (aquariumIndex >= analysis.aquarium.length) {
-      setAquariumPlaying(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setAquariumIndex(prev => prev + 1);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [aquariumPlaying, aquariumIndex, analysis?.aquarium]);
 
   // Цвет оценки
   const getScoreColor = (score: number) => {
@@ -1197,78 +1173,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                     </div>
                                   );
                                 })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* === АКВАРИУМ (премиум) === */}
-                      {session.teacher.settings?.advisoryCommission !== false && analysis.aquarium && analysis.aquarium.length > 0 && (
-                        <div className="space-y-4">
-                          <button 
-                            onClick={() => {
-                              setShowAquarium(!showAquarium);
-                              if (!showAquarium) {
-                                setAquariumIndex(0);
-                                setAquariumPlaying(false);
-                              }
-                            }}
-                            className="w-full flex items-center justify-between text-[11px] font-black text-violet-500/70 uppercase tracking-widest hover:text-violet-500 transition-colors"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Theater size={14} />
-                              АКВАРИУМ — ОБСУЖДЕНИЕ КОМИССИИ
-                            </span>
-                            {showAquarium ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </button>
-                          
-                          {showAquarium && (
-                            <div className="space-y-3 animate-in slide-in-from-top-2">
-                              <div className="flex items-center justify-between">
-                                <p className="text-[10px] text-slate-500 italic">
-                                  Подслушайте, как члены совещательной комиссии обсуждают вашу работу между собой.
-                                </p>
-                                <div className="flex gap-2">
-                                  <button 
-                                    onClick={() => {
-                                      setAquariumPlaying(!aquariumPlaying);
-                                      if (!aquariumPlaying && aquariumIndex >= analysis.aquarium!.length) {
-                                        setAquariumIndex(0);
-                                      }
-                                    }}
-                                    className="p-2 rounded-full bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
-                                  >
-                                    {aquariumPlaying ? <Pause size={14} /> : <Play size={14} />}
-                                  </button>
-                                </div>
-                              </div>
-                              
-                              <div className="glass p-4 rounded-[20px] border-violet-500/20 bg-violet-500/5 space-y-3 max-h-[400px] overflow-y-auto custom-scroll">
-                                {analysis.aquarium.slice(0, aquariumIndex + 1).map((dialogue, i) => (
-                                  <div 
-                                    key={i} 
-                                    className={`p-3 rounded-xl transition-all ${
-                                      i === aquariumIndex ? 'bg-violet-500/10 animate-in fade-in slide-in-from-bottom-2' : 'bg-white/5'
-                                    }`}
-                                  >
-                                    <div className="flex items-start gap-2">
-                                      <MessageSquare size={12} className="text-violet-400 mt-1 shrink-0" />
-                                      <div>
-                                        <span className="text-violet-400 font-bold text-xs">{dialogue.speakerName}:</span>
-                                        <p className="text-[11px] text-violet-200/80 mt-1">{dialogue.text}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                                {aquariumIndex < analysis.aquarium.length - 1 && !aquariumPlaying && (
-                                  <button 
-                                    onClick={() => setAquariumIndex(analysis.aquarium!.length)}
-                                    className="text-[10px] text-violet-400/50 hover:text-violet-400 transition-colors"
-                                  >
-                                    Показать всё ({analysis.aquarium!.length - aquariumIndex - 1} реплик)
-                                  </button>
-                                )}
                               </div>
                             </div>
                           )}

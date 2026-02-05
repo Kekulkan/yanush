@@ -1,10 +1,9 @@
 // services/geminiService.ts
-import { Message, MessageRole, GlobalSettings, AnalysisResult, AdvisoryFeedback, AquariumDialogue, SessionContext, WorldEvent } from "../types";
+import { Message, MessageRole, GlobalSettings, AnalysisResult, AdvisoryFeedback, SessionContext, WorldEvent } from "../types";
 import { DEFAULT_SETTINGS } from "../constants";
 import { 
   buildMainCommissionPrompt, 
   buildAdvisoryCommissionPrompt, 
-  buildAquariumPrompt,
   getActiveAdvisoryMembers,
   ADVISORY_COMMISSION
 } from "./commissionService";
@@ -933,7 +932,7 @@ export const analyzeChatSession = async (
   history: Message[],
   scenarioName: string,
   endReason: string,
-  options?: { includeAdvisory?: boolean; includeAquarium?: boolean }
+  options?: { includeAdvisory?: boolean }
 ): Promise<AnalysisResult> => {
   const transcript = history.map((m) => {
     let line = `${m.role}: ${m.content}`;
@@ -1025,39 +1024,6 @@ export const analyzeChatSession = async (
     } catch (e) {
       console.error("Ошибка совещательной комиссии:", e);
       // Не фатально — продолжаем без совещательной
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // АКВАРИУМ (премиум — обсуждение между членами совещательной комиссии)
-  // ═══════════════════════════════════════════════════════════════════════════
-  
-  if (options?.includeAquarium && result.advisory && result.advisory.length >= 2) {
-    try {
-      const activeForAquarium = result.advisory.map(a => ({
-        member: a.member,
-        triggeredBy: a.triggered_by || []
-      }));
-      
-      const aquariumPrompt = buildAquariumPrompt(transcript, activeForAquarium, scenarioName);
-      
-      const aquariumText = await queryAI(ANALYSIS_MODEL, aquariumPrompt, 0.85, 90_000);
-      const aquariumJsonStr = extractFirstJsonObject(aquariumText);
-      
-      if (aquariumJsonStr) {
-        const aquariumParsed = JSON.parse(aquariumJsonStr);
-        if (Array.isArray(aquariumParsed.aquarium)) {
-          result.aquarium = aquariumParsed.aquarium.map((d: any) => ({
-            speaker: d.speaker,
-            speakerName: d.speaker_name || d.speakerName || "???",
-            text: d.text || "...",
-            replyTo: d.reply_to || d.replyTo || undefined
-          } as AquariumDialogue));
-        }
-      }
-    } catch (e) {
-      console.error("Ошибка аквариума:", e);
-      // Не фатально
     }
   }
 
