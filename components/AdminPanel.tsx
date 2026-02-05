@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, ArrowLeft, Terminal, Layers, AlertTriangle, Plus, X, Save, Trash2, Activity as ActivityIcon, Target, Download, Upload, Edit2, Eye, EyeOff, Archive, Database, BarChart3, Gavel, Users, MessageSquare, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { getSessionHistory } from '../services/logService';
-import { SessionLog, ContextModule, VisibilityWeights, MessageRole } from '../types';
+import { SessionLog, ContextModule, VisibilityWeights, MessageRole, Message } from '../types';
 import { DEFAULT_ACCENTUATIONS } from '../constants';
 import { 
   getAllModules, 
@@ -928,7 +928,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                 )}
                                                 <div className="max-h-48 overflow-y-auto custom-scroll">
                                                     {(log.messages || [])
-                                                        .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
+                                                        .filter((m): m is Message => Boolean(m && (m.role === MessageRole.USER || m.role === MessageRole.MODEL)))
                                                         .slice(0, 20)
                                                         .map((msg, i) => (
                                                             <div 
@@ -942,7 +942,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                                 <span className="font-bold text-[9px] uppercase tracking-wider opacity-50 mr-2">
                                                                     {msg.role === MessageRole.USER ? 'У:' : 'С:'}
                                                                 </span>
-                                                                {msg.content.slice(0, 200)}{msg.content.length > 200 ? '...' : ''}
+                                                                {(msg.content ?? '').slice(0, 200)}{(msg.content?.length ?? 0) > 200 ? '...' : ''}
                                                             </div>
                                                         ))
                                                     }
@@ -1070,7 +1070,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                   </div>
                   <div className="space-y-2 max-h-[320px] overflow-y-auto custom-scroll">
                     {(detailSessionLog.messages || [])
-                      .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
+                      .filter((m): m is Message => Boolean(m && (m.role === MessageRole.USER || m.role === MessageRole.MODEL)))
                       .map((msg, i) => (
                         <div
                           key={i}
@@ -1121,7 +1121,9 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                       <Gavel size={12} /> Основная комиссия
                     </div>
                     <div className="grid grid-cols-1 gap-3">
-                      {detailSessionLog.result.commission.map((member: { name: string; role: string; score: number; verdict: string }, idx: number) => (
+                      {(detailSessionLog.result.commission || [])
+                        .filter((m): m is { name: string; role: string; score: number; verdict: string } => Boolean(m && m.name != null))
+                        .map((member, idx) => (
                         <div key={idx} className="glass p-4 rounded-xl border border-white/5">
                           <div className="flex justify-between items-start gap-2 mb-2">
                             <span className="font-bold text-blue-400 text-sm">{member.name}</span>
@@ -1147,14 +1149,16 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                     </button>
                     {detailExpandedAdvisory && (
                       <div className="space-y-2">
-                        {detailSessionLog.result.advisory.map((adv: { member: { name: string; title: string }; verdict: string; score?: number }, idx: number) => (
+                        {(detailSessionLog.result.advisory || [])
+                          .filter((adv): adv is { member: { name: string; title: string }; verdict: string; score?: number } => Boolean(adv && adv.member && (adv.member.name != null || adv.member.title != null)))
+                          .map((adv, idx) => (
                           <div key={idx} className="glass p-3 rounded-xl border-l-4 border-amber-500/30 bg-amber-500/5">
                             <div className="flex justify-between items-start">
-                              <span className="font-bold text-amber-400 text-xs">{adv.member.name}</span>
+                              <span className="font-bold text-amber-400 text-xs">{adv.member?.name ?? '—'}</span>
                               {adv.score != null && <span className="text-amber-400/80 text-xs">{adv.score}/10</span>}
                             </div>
-                            <p className="text-[9px] text-slate-500">{adv.member.title}</p>
-                            <p className="text-[11px] text-amber-200/90 mt-1 italic">"{adv.verdict}"</p>
+                            <p className="text-[9px] text-slate-500">{adv.member?.title ?? ''}</p>
+                            <p className="text-[11px] text-amber-200/90 mt-1 italic">"{adv.verdict ?? ''}"</p>
                           </div>
                         ))}
                       </div>
@@ -1174,10 +1178,12 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                     </button>
                     {detailExpandedAquarium && (
                       <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll">
-                        {detailSessionLog.result.aquarium.map((d: { speakerName: string; text: string }, idx: number) => (
+                        {(detailSessionLog.result.aquarium || [])
+                          .filter((d): d is { speakerName: string; text: string } => Boolean(d && (d.speakerName != null || d.text != null)))
+                          .map((d, idx) => (
                           <div key={idx} className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/20">
-                            <span className="text-violet-400 font-bold text-xs">{d.speakerName}:</span>
-                            <p className="text-[11px] text-violet-200/90 mt-1">{d.text}</p>
+                            <span className="text-violet-400 font-bold text-xs">{d.speakerName ?? '—'}:</span>
+                            <p className="text-[11px] text-violet-200/90 mt-1">{d.text ?? ''}</p>
                           </div>
                         ))}
                       </div>

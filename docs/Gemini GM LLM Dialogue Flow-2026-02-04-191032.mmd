@@ -1,0 +1,36 @@
+sequenceDiagram
+    actor User as Учитель (пользователь)
+    participant UI as ChatInterface
+    participant GM as geminiService.queryGM
+    participant LLM_GM as LLM (GM_MODEL)
+    participant Student as geminiService.sendMessageToGemini
+    participant LLM_Student as LLM (CHAT_MODEL)
+    autonumber
+
+    User->>UI: Вводит реплику и нажимает «Отправить»
+    UI->>UI: Добавить user message в state, saveSessionBackup
+    User->>User: new msg
+    UI->>UI: Проверка&ﬂ°°59¶ß turnCount ≥ 5 и messagesSinceLastEvent ≥ MIN?
+
+    alt Нужно спросить GM о событии
+        UI->>GM: queryGM(сценарий, trust, stress, recentMessages, activeNpc, ...)
+        GM->>LLM_GM: buildGMPrompt + queryAI(GM_MODEL, temp=0.9)
+        LLM_GM-->>GM: JSON { should_generate, event?, reasoning }
+        GM-->>UI: gmDecision&ﬂ°°59¶ß при true gmEvent
+    end
+
+    UI->>Student: sendMessageToGemini(history, constructedPrompt, text, gmEvent?)
+    Note over Student: Если gmEvent ≠ null&ﬂ°°59¶ß добавить блок «ВНЕШНЕЕ СОБЫТИЕ» в system prompt
+    Student->>Student: Собрать messages&ﬂ°°59¶ß system + history (user/assistant как JSON state)
+    Student->>LLM_Student: postViaProxy(openrouter&ﬂ°°59¶ßCHAT_MODEL, messages)
+    LLM_Student-->>Student: raw response (текст с JSON)
+    Student->>Student: extractModelText → extractFirstJsonObject → normalizeChatJson
+    Student->>Student: Защита&ﬂ°°59¶ß если prev 40/70 → 0/100, то game_over=false, trust=25, stress=90
+    Student-->>UI: { text, thought, trust, stress, world_event?, event_reaction?, game_over, ... }
+
+    UI->>UI: Валидация trust/stress (clamp ±MAX_DELTA), event_reaction → finalTrust/finalStress
+    UI->>UI: Сформировать model message, добавить в state
+    alt game_over и (failure или triumph)
+        UI->>UI: Переход к анализу / комиссии
+    end
+    UI->>User: Отобразить реплику ученика и метрики

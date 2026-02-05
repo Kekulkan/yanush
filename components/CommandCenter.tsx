@@ -428,8 +428,8 @@ const SessionCard: React.FC<SessionCardProps> = ({
 
           {/* Transcript */}
           <div className="max-h-64 overflow-y-auto custom-scroll p-1">
-            {session.messages
-              .filter(m => m.role === MessageRole.USER || m.role === MessageRole.MODEL)
+            {(session.messages || [])
+              .filter((m): m is Message => Boolean(m && (m.role === MessageRole.USER || m.role === MessageRole.MODEL)))
               .map((msg, i) => (
                 <div 
                   key={i}
@@ -444,7 +444,7 @@ const SessionCard: React.FC<SessionCardProps> = ({
                       {msg.role === MessageRole.USER ? 'Педагог' : 'Ученик'}
                     </span>
                   </div>
-                  <div className="leading-relaxed">{msg.content}</div>
+                  <div className="leading-relaxed">{msg.content ?? ''}</div>
                 </div>
               ))
             }
