@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog, CompletedGlobalEventSnapshot, DialogueSummary } from '../types';
-import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext, summarizeDialogue } from '../services/geminiService';
+import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog, CompletedGlobalEventSnapshot } from '../types';
+import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
@@ -117,8 +117,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   // Админский флаг: отключить комиссию/совещательную (супервизоры)
   const [supervisorsEnabled, setSupervisorsEnabled] = useState(true);
   // Сжатое резюме диалога для сокращения контекста LLM
-  const [dialogueSummary, setDialogueSummary] = useState<DialogueSummary | null>(null);
-  
   const [expandedProfessional, setExpandedProfessional] = useState<number | null>(null);
   const [expandedAdvisory, setExpandedAdvisory] = useState<number | null>(null);
   // Состояния для глобального события
@@ -172,35 +170,6 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     }, 150);
     return () => clearTimeout(timeoutId);
   }, [messages, isLoading, ghostAdvice]);
-
-  // Обновление сжатого резюме диалога (каждые несколько ходов ученика)
-  useEffect(() => {
-    // Нужен хоть какой‑то диалог и последняя реплика от ученика
-    if (messages.length < 10) return;
-    const last = messages[messages.length - 1];
-    if (!last || last.role !== MessageRole.MODEL) return;
-
-    // Если уже недавно суммировали почти всю историю — подождём ещё ходов
-    if (dialogueSummary && messages.length - dialogueSummary.upToIndex < 6) {
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const updated = await summarizeDialogue(messages, dialogueSummary ?? undefined);
-        if (!cancelled) {
-          setDialogueSummary(updated);
-        }
-      } catch (e) {
-        console.error('[Summary] Failed to summarize dialogue:', e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [messages, dialogueSummary]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ЗАЩИТА ОТ ХИТРЕЦА: Таймер бездействия учителя
@@ -489,23 +458,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         
         if (autoPlayStopRef.current) break;
         
-        // 3. Получаем ответ ученика (с учётом сжатого резюме и только последних реплик)
-        const recentForStudent = currentMessages.slice(-8);
-        let studentPrompt = session.constructedPrompt;
-        if (dialogueSummary) {
-          studentPrompt += `
-
-════════════════ СЖАТОЕ РЕЗЮМЕ ДИАЛОГА ДО СЕЙЧАС ════════════════
-[КРАТКОЕ РЕЗЮМЕ]:
-${dialogueSummary.summary}
-
-[КЛЮЧЕВЫЕ МОМЕНТЫ]:
-${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
-════════════════ КОНЕЦ РЕЗЮМЕ ════════════════
-`;
-        }
-
-        const response = await sendMessageToGemini(recentForStudent, studentPrompt, advice);
+        // 3. Получаем ответ ученика (передаём весь диалог — иначе модель противоречит себе)
+        const response = await sendMessageToGemini(currentMessages, session.constructedPrompt, advice);
         
         const modelMsg: Message = {
           id: `auto-model-${Date.now()}`,
@@ -886,23 +840,8 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
         }
       }
       
-      // Вызываем ученика, передавая событие от GM (если есть) и сокращённый контекст
-      const recentForStudent = newMessages.slice(-8);
-      let studentPrompt = session.constructedPrompt;
-      if (dialogueSummary) {
-        studentPrompt += `
-
-════════════════ СЖАТОЕ РЕЗЮМЕ ДИАЛОГА ДО СЕЙЧАС ════════════════
-[КРАТКОЕ РЕЗЮМЕ]:
-${dialogueSummary.summary}
-
-[КЛЮЧЕВЫЕ МОМЕНТЫ]:
-${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
-════════════════ КОНЕЦ РЕЗЮМЕ ════════════════
-`;
-      }
-
-      const response = await sendMessageToGemini(recentForStudent, studentPrompt, text, gmEvent);
+      // Вызываем ученика, передавая событие от GM (если есть). Весь диалог — иначе модель противоречит себе (забывает факты, путает детали).
+      const response = await sendMessageToGemini(newMessages, session.constructedPrompt, text, gmEvent);
 
       // Если GM сгенерировал событие — добавляем его в ответ ученика
       let filteredWorldEvent = gmEvent ? {
@@ -1340,10 +1279,21 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
           >
             {/* Header with avatar */}
             <div className="flex items-center gap-6">
-              <img 
-                src={session.student.avatarUrl} 
-                className="w-20 h-20 rounded-2xl border-2 border-blue-500/30 shadow-xl" 
-              />
+              <div className="flex flex-col items-center gap-2">
+                <img 
+                  src={session.student.avatarUrl} 
+                  className="w-20 h-20 rounded-2xl border-2 border-blue-500/30 shadow-xl" 
+                />
+                {/* Выраженность: 1–2 зелёные, 3–4 жёлтые, 5 красная */}
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((lv) => {
+                    const lit = lv <= (session.chaosDetails?.intensity ?? 1);
+                    const intensity = session.chaosDetails?.intensity ?? 1;
+                    const color = !lit ? 'bg-slate-600/50' : intensity <= 2 ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]' : intensity <= 4 ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]' : 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.9)]';
+                    return <div key={lv} className={`w-2 h-2 rounded-full transition-all ${color}`} />;
+                  })}
+                </div>
+              </div>
               <div>
                 <h2 className="text-2xl font-black text-white uppercase italic tracking-tight">{session.student.name}</h2>
                 <p className="text-blue-500 text-xs font-black uppercase tracking-widest mt-1">{session.student.age} лет</p>
@@ -1353,7 +1303,7 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
             {/* Psychotype */}
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
               <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">ПСИХОТИП</div>
-              <div className="text-white font-bold">{session.chaosDetails.accentuation}</div>
+              <div className="text-white font-bold">{session.chaosDetails.accentuation} (выраженность {session.chaosDetails?.intensity ?? 1}/5)</div>
             </div>
 
             {/* Context Summary (Incident) */}
@@ -1464,9 +1414,18 @@ ${dialogueSummary.keyPoints.map(p => `• ${p}`).join('\n')}
 
       <header className="shrink-0 h-24 glass border-b border-white/5 flex items-center justify-between px-6 md:px-8 z-[500] bg-slate-950/80 backdrop-blur-xl">
           <div className="flex items-center gap-4">
-              <div className="relative cursor-pointer" onClick={() => setShowDossier(true)}>
+              <div className="relative cursor-pointer flex flex-col items-center gap-1" onClick={() => setShowDossier(true)}>
                   <img src={session.student.avatarUrl} className="w-10 h-10 md:w-12 md:h-12 rounded-xl border border-white/10 grayscale hover:grayscale-0 transition-all shadow-lg" />
                   {isAdmin && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-slate-950"></div>}
+                  {/* Выраженность акцентуации: 1–2 зелёные, 3–4 жёлтые, 5 красная */}
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((lv) => {
+                      const lit = lv <= (session.chaosDetails?.intensity ?? 1);
+                      const intensity = session.chaosDetails?.intensity ?? 1;
+                      const color = !lit ? 'bg-slate-600/50' : intensity <= 2 ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : intensity <= 4 ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]' : 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.8)]';
+                      return <div key={lv} className={`w-1.5 h-1.5 rounded-full transition-all ${color}`} />;
+                    })}
+                  </div>
               </div>
               <div className="hidden sm:block">
                   <h2 className="text-sm md:text-md font-black text-white uppercase tracking-tighter italic leading-none">{session.student.name}</h2>

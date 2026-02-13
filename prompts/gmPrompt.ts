@@ -5,6 +5,7 @@
  */
 
 import { SessionContext } from '../types';
+import { NORMATIVE_CONSTRAINTS } from '../data/normativeConstraints';
 
 interface GMPromptParams {
   // Контекст сцены
@@ -52,6 +53,7 @@ export function buildGMPrompt(params: GMPromptParams): string {
 
   return `[РОЛЬ: GM — ГЕЙММАСТЕР]
 [ЗАДАЧА: Решить, нужно ли сгенерировать внешнее событие]
+${NORMATIVE_CONSTRAINTS}
 
 ═══════════════════════════════════════════════════════════
 КОНТЕКСТ СЦЕНЫ:
