@@ -6,7 +6,7 @@ import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../serv
 import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
-import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, User, Megaphone, AlertOctagon, Skull, ChevronDown, ChevronUp, Play, Pause, Crown, Lock } from 'lucide-react';
+import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, User, Megaphone, AlertOctagon, Skull, ChevronDown, ChevronUp, Play, Pause, Crown, Lock, Check, AlertTriangle } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
 import SecurityShield from './SecurityShield';
 import HelpOverlay, { CHAT_HELP_ITEMS } from './HelpOverlay';
@@ -84,6 +84,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
   const [isListening, setIsListening] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const ASTERISK_HINT_KEY = 'yanush_asterisk_hint_seen';
+  const [showAsteriskHint, setShowAsteriskHint] = useState(false);
   const isPremium = authService.isPremium();
   
   // Пауза перед комиссией при автоматическом завершении
@@ -1387,15 +1389,19 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               </div>
             )}
 
-            {/* Metrics (Admin only) */}
+            {/* Metrics (Admin only). Иконки ✓/! для доступности (дальтонизм). */}
             {isAdmin && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
-                  <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">ДОВЕРИЕ</div>
+                  <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+                    <Check size={12} className="shrink-0" aria-hidden /> ДОВЕРИЕ
+                  </div>
                   <div className="text-2xl font-black text-white">{Math.round(currentTrust)}%</div>
                 </div>
                 <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
-                  <div className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">СТРЕСС</div>
+                  <div className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+                    <AlertTriangle size={12} className="shrink-0" aria-hidden /> СТРЕСС
+                  </div>
                   <div className="text-2xl font-black text-white">{Math.round(currentStress)}%</div>
                 </div>
               </div>
@@ -1692,10 +1698,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                   
                                   <div className={`p-4 md:p-6 rounded-[24px] md:rounded-[32px] rounded-tl-none text-sm font-medium border ${gradient.bg} ${gradient.border} ${gradient.text} ${gradient.glow} transition-all duration-500`}>
                                     {msg.content}
-                                    {/* Индикатор состояния — виден всем */}
+                                    {/* Индикатор состояния — виден всем; иконки для доступности (дальтонизм) */}
                                     <div className="flex gap-4 mt-3 pt-3 border-t border-white/10 text-[9px] font-black uppercase tracking-wider opacity-60">
-                                      <span className="text-emerald-400">Доверие: {Math.round(trust)}%</span>
-                                      <span className="text-red-400">Стресс: {Math.round(stress)}%</span>
+                                      <span className="text-emerald-400 flex items-center gap-1"><Check size={10} aria-hidden /> Доверие: {Math.round(trust)}%</span>
+                                      <span className="text-red-400 flex items-center gap-1"><AlertTriangle size={10} aria-hidden /> Стресс: {Math.round(stress)}%</span>
                                     </div>
                                   </div>
                                 </>
@@ -1785,14 +1791,38 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
       {/* INPUT AREA */}
       <footer className="shrink-0 p-4 md:p-6 glass border-t border-white/5 bg-slate-950/90 backdrop-blur-xl safe-bottom">
-          <div className="max-w-3xl mx-auto flex gap-3 items-center relative">
-              <textarea 
-                  value={input} 
-                  onChange={e => setInput(e.target.value)} 
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
-                  placeholder={isListening ? 'Слушаю вас...' : "Реплика или *действие* педагога..."} 
-                  className="w-full bg-slate-900 border border-white/10 rounded-[28px] p-4 pr-16 text-sm text-white outline-none resize-none h-14 md:h-16 focus:border-blue-500/40 transition-all placeholder:text-slate-600" 
-              />
+          <div className="max-w-3xl mx-auto space-y-3">
+              {/* Быстрые кнопки действий от первого лица */}
+              <div className="flex flex-wrap gap-2">
+                {['улыбаюсь', 'киваю', 'внимательно слушаю', 'сажусь рядом', 'делаю паузу'].map((action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    onClick={() => setInput(prev => (prev ? prev + ' ' : '') + `*${action}*`)}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/10 hover:border-white/20 transition-all"
+                  >
+                    {action}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 items-center relative">
+              <div className="relative w-full">
+                  {showAsteriskHint && (
+                    <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-slate-800 border border-blue-500/40 rounded-xl text-xs text-slate-200 shadow-xl z-10 animate-in fade-in slide-in-from-bottom-2">
+                      Используйте <strong>*звёздочки*</strong> для действий, например: <em>*улыбаюсь*</em>
+                      <button type="button" onClick={() => { setShowAsteriskHint(false); try { localStorage.setItem(ASTERISK_HINT_KEY, '1'); } catch (_) {} }} className="ml-2 text-blue-400 hover:text-blue-300 font-bold">Понятно</button>
+                    </div>
+                  )}
+                  <textarea 
+                    value={input} 
+                    onChange={e => setInput(e.target.value)} 
+                    onFocus={() => { if (typeof window !== 'undefined' && !localStorage.getItem(ASTERISK_HINT_KEY)) setShowAsteriskHint(true); }}
+                    onBlur={() => { if (showAsteriskHint) { setShowAsteriskHint(false); try { localStorage.setItem(ASTERISK_HINT_KEY, '1'); } catch (_) {} } }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} 
+                    placeholder={isListening ? 'Слушаю вас...' : "Напишите ответ или *действие*…"} 
+                    className="w-full bg-slate-900 border border-white/10 rounded-[28px] p-4 pr-16 text-sm text-white outline-none resize-none h-14 md:h-16 focus:border-blue-500/40 transition-all placeholder:text-slate-600" 
+                  />
+                </div>
               <button 
                 type="button"
                 onClick={() => handleSend()} 
@@ -1801,6 +1831,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
               >
                 <Send size={20} />
               </button>
+              </div>
           </div>
       </footer>
       <SubscriptionModal 
