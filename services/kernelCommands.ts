@@ -4,7 +4,7 @@
  */
 
 import { UserAccount } from '../types';
-import { getUserArchiveStats, wipeUserArchive, getGlobalArchiveStats, getGlobalArchive, saveToUserArchive, getUserArchive } from './archiveService';
+import { getUserArchiveStats, wipeUserArchive, getGlobalArchiveStats, getGlobalArchive, saveToUserArchive, getUserArchive, formatDuration } from './archiveService';
 import { authService } from './authService';
 
 // Версия ядра
@@ -23,6 +23,7 @@ export interface TerminalOutput {
 export interface CommandResult {
   output: TerminalOutput[];
   clearScreen?: boolean;
+  action?: 'logout';
 }
 
 /**
@@ -80,6 +81,14 @@ export async function executeCommand(
     
     case 'IMPORT':
       return { output: [commandLog, ...await cmdImport(user, args)] };
+
+    case 'QUIT':
+    case 'EXIT':
+    case 'LOGOUT':
+      return {
+        output: [commandLog, { type: 'success', text: 'Logging out...', timestamp: Date.now() }],
+        action: 'logout'
+      };
     
     default:
       return {
@@ -112,6 +121,7 @@ function cmdHelp(): TerminalOutput[] {
     { type: 'info', text: 'SAY [msg]   — Echo message from system', timestamp: Date.now() },
     { type: 'info', text: 'UPTIME      — Show system uptime', timestamp: Date.now() },
     { type: 'info', text: 'VERSION     — Show kernel version', timestamp: Date.now() },
+    { type: 'info', text: 'QUIT/EXIT   — Logout from system', timestamp: Date.now() },
     { type: 'system', text: '═══════════════════════════════════════', timestamp: Date.now() }
   ];
 }

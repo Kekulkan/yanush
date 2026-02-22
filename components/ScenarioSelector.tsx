@@ -1,13 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
-import { Play, RotateCcw, Network, Activity, Terminal, Crown, Star, Info, HelpCircle } from 'lucide-react';
-import { getSessionBackup } from '../services/storageService';
+import React, { useState } from 'react';
+import { Play, Network, Activity, Terminal, Crown, Star, Info, HelpCircle } from 'lucide-react';
 import { SubscriptionInfo } from '../services/billingService';
 import DocumentsModal from './DocumentsModal';
 
 interface Props {
   onStart: () => void;
-  onResume?: () => void;
   onOpenMuseum?: () => void;
   onOpenCommandCenter?: () => void;
   onOpenSubscription?: () => void;
@@ -16,13 +14,11 @@ interface Props {
 
 const ScenarioSelector: React.FC<Props> = ({
   onStart,
-  onResume,
   onOpenMuseum,
   onOpenCommandCenter,
   onOpenSubscription,
   subscription
 }) => {
-  const [hasBackup, setHasBackup] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [initialDocId, setInitialDocId] = useState('methodology');
   
@@ -36,13 +32,6 @@ const ScenarioSelector: React.FC<Props> = ({
     setInitialDocId(id);
     setIsDocModalOpen(true);
   };
-
-  useEffect(() => {
-    const backup = getSessionBackup();
-    if (backup && backup.messages.length > 0) {
-      setHasBackup(true);
-    }
-  }, []);
 
   return (
     <div className="h-[100dvh] bg-[#0A0B1A] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -80,21 +69,12 @@ const ScenarioSelector: React.FC<Props> = ({
         </div>
 
         <div className="flex flex-col w-full sm:w-auto gap-4 pt-8">
-          {hasBackup && onResume && (
-             <button 
-               onClick={onResume}
-               className="w-full sm:w-72 px-8 py-5 glass hover:bg-white/10 text-emerald-400 rounded-[32px] font-black text-sm uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
-             >
-               <RotateCcw size={18} /> ПРОДОЛЖИТЬ СЕАНС
-             </button>
-          )}
-
-          <button 
+          <button
             onClick={onStart}
             className="group relative w-full sm:w-72 px-8 py-6 bg-white text-slate-950 rounded-[32px] font-black text-lg uppercase tracking-widest transition-all transform active:scale-95 shadow-[0_20px_60px_rgba(255,255,255,0.1)] hover:bg-blue-500 hover:text-white"
           >
             <span className="flex items-center justify-center gap-3">
-               {hasBackup ? 'НОВЫЙ СЕАНС' : 'НАЧАТЬ ТРЕНИНГ'} <Play fill="currentColor" size={18} />
+               НАЧАТЬ ТРЕНИНГ <Play fill="currentColor" size={18} />
             </span>
           </button>
 

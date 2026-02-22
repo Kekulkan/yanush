@@ -98,9 +98,12 @@ export interface GlobalEventState {
   description: string;    // Текущее описание ситуации от ГМ
   bonuses: number;        // Накопленные бонусы
   penalties: number;      // Накопленные штрафы
+  trustDelta?: number;    // Влияние на доверие ученика
+  stressDelta?: number;   // Влияние на стресс ученика
   availableTargets: EventTarget[]; // Кому можно ответить (макс 6)
   history: Message[];     // История переписки внутри события (изолирована от ученика)
   isCompleted: boolean;   // Событие завершено?
+  extreme_outcome?: ExtremeOutcome; // Добавлено: исход события
 }
 
 export interface Message {
@@ -111,16 +114,6 @@ export interface Message {
   non_verbal_valence?: number; // Окраска невербалики (-1..1)
   state?: SimulationState;
   timestamp: number;
-}
-
-// Сжатое резюме диалога для уменьшения контекста LLM
-export interface DialogueSummary {
-  /** Краткое резюме всей истории до upToIndex */
-  summary: string;
-  /** Ключевые поворотные моменты (для напоминания модели) */
-  keyPoints: string[];
-  /** Сколько сообщений исходной истории уже учтено в этом резюме (index в messages[]) */
-  upToIndex: number;
 }
 
 export interface TeacherProfile {
@@ -292,7 +285,10 @@ export interface CompletedGlobalEventSnapshot {
   description: string;
   bonuses: number;
   penalties: number;
+  trustDelta?: number;
+  stressDelta?: number;
   history: Message[];
+  extreme_outcome?: ExtremeOutcome;
 }
 
 export interface SessionLog {

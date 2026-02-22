@@ -1,9 +1,13 @@
 import { ContextModule, ContextVisibility, SessionContext, Accentuation } from '../types';
 import { DEFAULT_CONTEXT_MODULES, DEFAULT_ACCENTUATIONS } from '../constants';
+import { supabase } from '../lib/supabase';
 
-const STORAGE_KEY = 'custom_modules';
 const RECENT_INCIDENTS_KEY = 'recent_incidents';
 const MAX_RECENT_INCIDENTS = 5; // Запоминаем последние 5 инцидентов
+
+// Локальный кеш модулей (загружается из БД)
+let modulesCache: ContextModule[] = [];
+let isInitialized = false;
 
 // ==================== COOLDOWN (РАЗНООБРАЗИЕ СЦЕНАРИЕВ) ====================
 
@@ -45,28 +49,54 @@ export function clearRecentIncidents(): void {
   localStorage.removeItem(RECENT_INCIDENTS_KEY);
 }
 
-// ==================== CRUD ОПЕРАЦИИ ====================
+// ==================== CRUD ОПЕРАЦИИ (SUPABASE) ====================
 
 /**
- * Получить все кастомные модули из localStorage
+ * Инициализация модулей: загрузка из Supabase в кеш
  */
-export function getCustomModules(): ContextModule[] {
+export async function initModules(): Promise<void> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored) as ContextModule[];
-  } catch {
-    return [];
+    const { data, error } = await supabase
+      .from('context_modules')
+      .select('*')
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Failed to load modules from DB:', error);
+      return;
+    }
+
+    if (data) {
+      modulesCache = data.map(row => ({
+        id: row.id,
+        category: row.category,
+        name: row.name,
+        isCustom: true, // Все модули из БД считаем кастомными (или переопределенными)
+        ...row.config
+      })) as ContextModule[];
+    }
+    
+    isInitialized = true;
+  } catch (e) {
+    console.error('Error initializing modules:', e);
   }
 }
 
 /**
- * Получить все модули (базовые + кастомные)
+ * Получить все модули (базовые + из БД/кеша)
+ * Синхронная функция для совместимости с UI.
+ * Убедитесь, что вызвали initModules() перед использованием, если нужны свежие данные.
  */
 export function getAllModules(): ContextModule[] {
-  const baseModules = DEFAULT_CONTEXT_MODULES.map(m => ({ ...m, isCustom: false }));
-  const customModules = getCustomModules().map(m => ({ ...m, isCustom: true }));
-  return [...baseModules, ...customModules];
+  const dbModules = modulesCache.map(m => ({ ...m, isCustom: true }));
+  const dbIds = new Set(dbModules.map(m => m.id));
+  
+  // Базовые модули, которые НЕ перекрыты модулями из БД
+  const baseModules = DEFAULT_CONTEXT_MODULES
+    .filter(m => !dbIds.has(m.id))
+    .map(m => ({ ...m, isCustom: false }));
+    
+  return [...baseModules, ...dbModules];
 }
 
 /**
@@ -77,39 +107,170 @@ export function getModulesByCategory(category: 'incident' | 'background'): Conte
 }
 
 /**
- * Сохранить кастомный модуль (создание или обновление)
+ * Сохранить модуль в БД (создание или обновление)
+ */
+export async function saveModuleToDB(module: ContextModule): Promise<boolean> {
+  try {
+    const { id, category, name, isCustom, ...config } = module;
+    
+    // Подготовка данных для сохранения
+    // config хранит все специфичные поля (prompt_text, weights и т.д.)
+    const payload = {
+      id,
+      category,
+      name,
+      is_active: true,
+      config: config,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('context_modules')
+      .upsert(payload);
+
+    if (error) {
+      console.error('Error saving module:', JSON.stringify(error, null, 2));
+      return false;
+    }
+
+    // Обновляем локальный кеш
+    const existingIndex = modulesCache.findIndex(m => m.id === module.id);
+    if (existingIndex >= 0) {
+      modulesCache[existingIndex] = { ...module, isCustom: true };
+    } else {
+      modulesCache.push({ ...module, isCustom: true });
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Exception saving module:', e);
+    return false;
+  }
+}
+
+/**
+ * Удалить модуль из БД (мягкое удаление или полное)
+ * Если модуль перекрывает базовый — он просто исчезнет из БД, и вернется базовый.
+ */
+export async function deleteModuleFromDB(id: string): Promise<boolean> {
+  try {
+    // Проверяем, есть ли он в БД
+    if (!modulesCache.some(m => m.id === id)) {
+      return false; 
+    }
+
+    const { error } = await supabase
+      .from('context_modules')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting module:', error);
+      return false;
+    }
+
+    // Обновляем кеш
+    modulesCache = modulesCache.filter(m => m.id !== id);
+    return true;
+  } catch (e) {
+    console.error('Exception deleting module:', e);
+    return false;
+  }
+}
+
+// ALIASES для обратной совместимости (но теперь асинхронные, где нужно, или заглушки)
+// В компонентах нужно будет использовать await saveModuleToDB вместо saveCustomModule
+
+/**
+ * @deprecated Use saveModuleToDB
  */
 export function saveCustomModule(module: ContextModule): void {
-  const modules = getCustomModules();
-  const existingIndex = modules.findIndex(m => m.id === module.id);
-  
+  console.warn('saveCustomModule is deprecated. Use saveModuleToDB (async). Saving to local cache only.');
+  // Временное сохранение в кеш для UI, пока не перезагрузят страницу
+  const existingIndex = modulesCache.findIndex(m => m.id === module.id);
   if (existingIndex >= 0) {
-    modules[existingIndex] = { ...module, isCustom: true };
+    modulesCache[existingIndex] = { ...module, isCustom: true };
   } else {
-    modules.push({ ...module, isCustom: true });
+    modulesCache.push({ ...module, isCustom: true });
   }
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(modules));
+  // В фоне пытаемся сохранить
+  saveModuleToDB(module); 
 }
 
 /**
- * Удалить кастомный модуль
+ * @deprecated Use deleteModuleFromDB
  */
 export function deleteCustomModule(id: string): boolean {
-  const modules = getCustomModules();
-  const filtered = modules.filter(m => m.id !== id);
-  
-  if (filtered.length === modules.length) return false;
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return true;
+  console.warn('deleteCustomModule is deprecated. Use deleteModuleFromDB (async). Deleting from local cache only.');
+  const initialLength = modulesCache.length;
+  modulesCache = modulesCache.filter(m => m.id !== id);
+  // В фоне пытаемся удалить
+  deleteModuleFromDB(id);
+  return modulesCache.length !== initialLength;
 }
 
 /**
- * Проверить, является ли модуль кастомным (можно редактировать/удалять)
+ * Проверить, является ли модуль кастомным (есть в БД/кеше)
  */
 export function isCustomModule(id: string): boolean {
-  return getCustomModules().some(m => m.id === id);
+  return modulesCache.some(m => m.id === id);
+}
+
+// ==================== УТИЛИТЫ ДЛЯ МИГРАЦИИ ====================
+
+/**
+ * Загрузить ВСЕ базовые модули в БД (инициализация)
+ */
+export async function seedDatabaseWithDefaults(): Promise<{ success: number; failed: number }> {
+  let success = 0;
+  let failed = 0;
+
+  for (const module of DEFAULT_CONTEXT_MODULES) {
+    const result = await saveModuleToDB(module);
+    if (result) success++;
+    else failed++;
+  }
+  
+  return { success, failed };
+}
+
+// ==================== ЭКСПОРТ/ИМПОРТ ====================
+
+/**
+ * Экспорт кастомных модулей в JSON
+ */
+export function exportModulesToJSON(): string {
+  return JSON.stringify(modulesCache, null, 2);
+}
+
+/**
+ * Импорт модулей из JSON
+ */
+export async function importModulesFromJSON(json: string): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const modules = JSON.parse(json) as ContextModule[];
+    
+    if (!Array.isArray(modules)) {
+      return { success: false, count: 0, error: 'Invalid format: expected array' };
+    }
+    
+    // Валидация
+    for (const module of modules) {
+      if (!module.id || !module.name || !module.category) {
+        return { success: false, count: 0, error: `Invalid module: ${JSON.stringify(module)}` };
+      }
+    }
+    
+    // Сохраняем в БД
+    let count = 0;
+    for (const m of modules) {
+      if (await saveModuleToDB(m)) count++;
+    }
+    
+    return { success: true, count };
+  } catch (e) {
+    return { success: false, count: 0, error: String(e) };
+  }
 }
 
 // ==================== ФИЛЬТРАЦИЯ ПО СОВМЕСТИМОСТИ ====================
@@ -195,111 +356,50 @@ export function getCompatibleModules(
   return modules;
 }
 
-// ==================== VISIBILITY ====================
-
 /**
- * Определить статус видимости на основе весов
- */
-export function rollVisibility(weights: { known: number; rumor: number; secret: number }): ContextVisibility {
-  const total = weights.known + weights.rumor + weights.secret;
-  if (total === 0) return 'known';
-  
-  const roll = Math.random() * total;
-  
-  if (roll < weights.known) return 'known';
-  if (roll < weights.known + weights.rumor) return 'rumor';
-  return 'secret';
-}
-
-/**
- * Создать SessionContext с определённым visibility
- */
-export function createSessionContext(module: ContextModule): SessionContext {
-  const visibility = module.visibility_weights 
-    ? rollVisibility(module.visibility_weights)
-    : 'known'; // incidents всегда известны
-    
-  return { module, visibility };
-}
-
-// ==================== ВЫБОР СЛУЧАЙНОГО МОДУЛЯ ====================
-
-/**
- * Выбрать случайный модуль с учётом весов
+ * Выбрать случайный модуль из списка (с учётом весов)
  */
 export function selectRandomModule(modules: ContextModule[]): ContextModule | null {
   if (modules.length === 0) return null;
   
   const totalWeight = modules.reduce((sum, m) => sum + (m.weight || 1), 0);
-  let roll = Math.random() * totalWeight;
+  let random = Math.random() * totalWeight;
   
   for (const module of modules) {
-    roll -= module.weight || 1;
-    if (roll <= 0) return module;
+    const weight = module.weight || 1;
+    if (random < weight) {
+      return module;
+    }
+    random -= weight;
   }
   
-  return modules[modules.length - 1];
+  return modules[0];
 }
 
 /**
- * Выбрать несколько случайных background модулей
+ * Создать контекст сессии из модуля (определить видимость)
  */
-export function selectRandomBackgrounds(
-  gender: 'male' | 'female',
-  age: number,
-  accentuationId: string,
-  count: number = 2
-): SessionContext[] {
-  const results: SessionContext[] = [];
-  const selectedIds: string[] = [];
+export function createSessionContext(module: ContextModule): SessionContext {
+  // Если веса не заданы, используем дефолтные
+  const weights = module.visibility_weights || { known: 0.7, rumor: 0.2, secret: 0.1 };
   
-  for (let i = 0; i < count; i++) {
-    const compatible = getCompatibleModules('background', gender, age, accentuationId, selectedIds);
-    const selected = selectRandomModule(compatible);
-    
-    if (selected) {
-      selectedIds.push(selected.id);
-      results.push(createSessionContext(selected));
-    }
+  const totalWeight = weights.known + weights.rumor + weights.secret;
+  const random = Math.random() * totalWeight;
+  
+  let visibility: ContextVisibility = 'known';
+  
+  if (random < weights.known) {
+    visibility = 'known';
+  } else if (random < weights.known + weights.rumor) {
+    visibility = 'rumor';
+  } else {
+    visibility = 'secret';
   }
   
-  return results;
-}
-
-// ==================== ЭКСПОРТ/ИМПОРТ ====================
-
-/**
- * Экспорт кастомных модулей в JSON
- */
-export function exportModulesToJSON(): string {
-  return JSON.stringify(getCustomModules(), null, 2);
-}
-
-/**
- * Импорт модулей из JSON
- */
-export function importModulesFromJSON(json: string): { success: boolean; count: number; error?: string } {
-  try {
-    const modules = JSON.parse(json) as ContextModule[];
-    
-    if (!Array.isArray(modules)) {
-      return { success: false, count: 0, error: 'Invalid format: expected array' };
-    }
-    
-    // Валидация каждого модуля
-    for (const module of modules) {
-      if (!module.id || !module.name || !module.category) {
-        return { success: false, count: 0, error: `Invalid module: ${JSON.stringify(module)}` };
-      }
-    }
-    
-    // Сохраняем каждый модуль
-    modules.forEach(m => saveCustomModule(m));
-    
-    return { success: true, count: modules.length };
-  } catch (e) {
-    return { success: false, count: 0, error: String(e) };
-  }
+  return {
+    module,
+    visibility
+  };
 }
 
 // ==================== УТИЛИТЫ ====================
@@ -334,4 +434,3 @@ export function getModuleName(id: string): string {
   const module = getAllModules().find(m => m.id === id);
   return module?.name || id;
 }
-

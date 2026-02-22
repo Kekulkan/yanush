@@ -59,6 +59,20 @@ export const GlobalEventModal: React.FC<GlobalEventModalProps> = ({
               </div>
             </div>
 
+            {(eventState.trustDelta !== 0 || eventState.stressDelta !== 0) && (
+                <div className="text-center pb-4">
+                    <p className="text-slate-400 text-sm uppercase tracking-widest mb-2">Влияние на ученика</p>
+                    <div className="flex justify-center gap-6">
+                        <span className={`text-lg font-bold ${eventState.trustDelta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            Trust: {eventState.trustDelta > 0 ? '+' : ''}{eventState.trustDelta}
+                        </span>
+                        <span className={`text-lg font-bold ${eventState.stressDelta < 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            Stress: {eventState.stressDelta > 0 ? '+' : ''}{eventState.stressDelta}
+                        </span>
+                    </div>
+                </div>
+            )}
+
             <p className="text-slate-400">
               Результаты учтены. Нажмите любую клавишу или кнопку — возврат к диалогу с учеником.
             </p>
@@ -96,6 +110,18 @@ export const GlobalEventModal: React.FC<GlobalEventModalProps> = ({
           </div>
 
           <div className="flex gap-4">
+            {/* Метрики ученика */}
+            {(eventState.trustDelta !== 0 || eventState.stressDelta !== 0) && (
+                <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg mr-2">
+                    <span className={`text-xs font-bold ${eventState.trustDelta > 0 ? 'text-emerald-400' : eventState.trustDelta < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                        Trust {eventState.trustDelta > 0 ? '+' : ''}{eventState.trustDelta}
+                    </span>
+                    <span className={`text-xs font-bold ${eventState.stressDelta < 0 ? 'text-emerald-400' : eventState.stressDelta > 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                        Stress {eventState.stressDelta > 0 ? '+' : ''}{eventState.stressDelta}
+                    </span>
+                </div>
+            )}
+
             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
               <Trophy className="w-4 h-4 text-emerald-400" />
               <span className="text-emerald-300 font-mono font-bold">{eventState.bonuses}</span>

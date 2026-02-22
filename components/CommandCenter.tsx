@@ -11,12 +11,13 @@ import {
   getScoreColor,
   importFromJSON
 } from '../services/archiveService';
-import { 
-  executeCommand, 
-  getWelcomeMessage, 
-  confirmWipe, 
-  TerminalOutput 
+import {
+  executeCommand,
+  getWelcomeMessage,
+  confirmWipe,
+  TerminalOutput
 } from '../services/kernelCommands';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CommandCenterProps {
   user: UserAccount;
@@ -24,6 +25,7 @@ interface CommandCenterProps {
 }
 
 const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
+  const { signOut } = useAuth();
   // Terminal state
   const [terminalHistory, setTerminalHistory] = useState<TerminalOutput[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -56,7 +58,7 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
   }, [user.id]);
 
   // Handle command input
-  const handleCommand = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleCommand = useCallback(async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim()) {
       const cmd = inputValue.trim();
       
@@ -64,13 +66,20 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
       setCommandHistory(prev => [cmd, ...prev.slice(0, 49)]);
       setHistoryIndex(-1);
       
-      // Execute command
-      const result = executeCommand(cmd, user, () => setWipeConfirmPending(true));
+      // Execute command (async!)
+      const result = await executeCommand(cmd, user, () => setWipeConfirmPending(true));
       
       if (result.clearScreen) {
         setTerminalHistory(result.output);
       } else {
         setTerminalHistory(prev => [...prev, ...result.output]);
+      }
+
+      if (result.action === 'logout') {
+        setTimeout(() => {
+          signOut();
+          // onBack не нужен, так как AuthContext изменится и App перерисуется
+        }, 1000);
       }
       
       setInputValue('');

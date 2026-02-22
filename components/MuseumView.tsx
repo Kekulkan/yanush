@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Target, Zap, ShieldAlert, User, Info, Sparkles, Activity, Play, Eye, Lock } from 'lucide-react';
 import DemoSession from './DemoSession';
 import { getDemoScenario } from '../data/demoScenarios';
-import { DemoScenario } from '../types';
-import { getSubscriptionInfo } from '../services/billingService';
+import { DemoScenario, } from '../types';
+import { SubscriptionInfo, getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
 
 const FREE_ACCENTUATIONS = ['hyperthymic', 'sensitive'];
@@ -208,12 +208,24 @@ const EXHIBITS: Exhibit[] = [
 interface Props {
     onBack: () => void;
     onOpenSubscription?: () => void;
+    subscription?: SubscriptionInfo;
 }
 
-const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription }) => {
+const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription, subscription }) => {
     const [selected, setSelected] = useState<Exhibit | null>(null);
     const [activeDemo, setActiveDemo] = useState<DemoScenario | null>(null);
-    const isPremium = authService.isPremium();
+    const checkIsPremium = () => {
+        // Проверяем и через authService (для залогиненных), и напрямую через billingService (для гостей)
+        const subInfo = getSubscriptionInfo();
+        return authService.isPremium() || subInfo.tier === 'premium';
+    };
+
+    const [isPremium, setIsPremium] = useState(() => checkIsPremium());
+
+    // Обновляем isPremium при изменении subscription (после активации промокода)
+    useEffect(() => {
+        setIsPremium(checkIsPremium());
+    }, [subscription]);
 
     // Запуск демо-режима
     const startDemo = (exhibit: Exhibit) => {

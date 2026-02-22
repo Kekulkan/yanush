@@ -664,7 +664,7 @@ const DOCUMENTS: Document[] = [
         <h2 className="text-xl font-bold text-white">Связаться с нами</h2>
         <p>По вопросам сотрудничества и технической поддержки:</p>
         <div className="p-4 bg-slate-800/50 rounded-xl border border-white/5">
-          <p className="text-white">Email: support@yanush-sim.ru</p>
+          <p className="text-white">Email: yanush.trainer@gmail.com</p>
           <p className="text-slate-500 text-sm mt-1">Отвечаем в течение 24 часов</p>
         </div>
       </div>

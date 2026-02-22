@@ -3,11 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { ShieldAlert, ArrowLeft, Terminal, Layers, AlertTriangle, Plus, X, Save, Trash2, Activity as ActivityIcon, Target, Download, Upload, Edit2, Eye, EyeOff, Archive, Database, BarChart3, Gavel, Users, MessageSquare, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { getSessionHistory } from '../services/logService';
 import { SessionLog, ContextModule, VisibilityWeights, MessageRole, Message } from '../types';
-import { DEFAULT_ACCENTUATIONS } from '../constants';
-import { 
-  getAllModules, 
-  saveCustomModule, 
-  deleteCustomModule, 
+import { DEFAULT_ACCENTUATIONS, DEFAULT_CONTEXT_MODULES } from '../constants';
+import { supabase } from '../lib/supabase';
+import {
+  getAllModules,
+  saveModuleToDB,
+  deleteModuleFromDB,
+  initModules,
+  seedDatabaseWithDefaults,
   isCustomModule,
   generateModuleId,
   exportModulesToJSON,
@@ -94,7 +97,13 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   useEffect(() => {
     if (isAuthenticated) {
       setHistory(getSessionHistory());
-      setModules(getAllModules());
+      
+      // Инициализация модулей из БД
+      const loadModules = async () => {
+        await initModules();
+        setModules(getAllModules());
+      };
+      loadModules();
       
       // Сначала показываем локальные логи
       const loadLocalLogs = async () => {
@@ -170,7 +179,31 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
     }
   };
 
-  const verify2FA = () => { if (twoFactorCode === '4308') setIsAuthenticated(true); };
+  const verify2FA = async () => {
+    if (twoFactorCode === '4308') {
+      // Пытаемся авторизоваться в Supabase как админ
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: 'yanush@director.local',
+          password: 'Yan*memento#2010'
+        });
+
+        if (error) {
+           console.error('Supabase Auth failed:', error.message);
+           alert('Ошибка авторизации Supabase (проверьте консоль): ' + error.message);
+        } else {
+           console.log('Supabase Auth success: Admin logged in');
+        }
+      } catch (e) {
+        console.error('Auth exception:', e);
+        alert('Ошибка авторизации: ' + String(e));
+      }
+      
+      setIsAuthenticated(true);
+    } else {
+      alert('Неверный код доступа');
+    }
+  };
 
   const previewTokens = (text: string) => {
     return text
@@ -190,35 +223,49 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
 
   // Открыть редактор для существующего модуля
   const openEditModule = (mod: ContextModule) => {
-    if (!isCustomModule(mod.id)) {
-      alert('Базовые модули нельзя редактировать');
-      return;
-    }
+    // Разрешаем редактировать всё. При сохранении базовый модуль станет "кастомным" (перекроется).
     setEditingModule({ ...mod });
     setShowEditor(true);
   };
 
   // Сохранить модуль
-  const handleSaveModule = () => {
+  const handleSaveModule = async () => {
     if (!editingModule?.name || !editingModule?.prompt_text) {
       alert('Заполните обязательные поля: Название и Текст промпта');
       return;
     }
-    saveCustomModule(editingModule as ContextModule);
-    refreshModules();
-    setShowEditor(false);
-    setEditingModule(null);
+    
+    // Optimistic update
+    const saved = await saveModuleToDB(editingModule as ContextModule);
+    if (saved) {
+      refreshModules();
+      setShowEditor(false);
+      setEditingModule(null);
+    } else {
+      alert('Ошибка при сохранении в базу данных. Проверьте консоль.');
+    }
   };
 
-  // Удалить модуль
-  const handleDeleteModule = (id: string) => {
-    if (!isCustomModule(id)) {
-      alert('Базовые модули нельзя удалять');
-      return;
-    }
-    if (confirm('Удалить этот контейнер?')) {
-      deleteCustomModule(id);
-      refreshModules();
+  // Удалить модуль (или сбросить изменения для базового)
+  const handleDeleteModule = async (id: string) => {
+    if (isCustomModule(id)) {
+        // Если это кастомный модуль (или переопределенный базовый)
+        const isBaseOverridden = DEFAULT_CONTEXT_MODULES.some(m => m.id === id);
+        
+        const message = isBaseOverridden
+          ? 'Сбросить изменения этого модуля? Он вернется к исходному (базовому) состоянию.'
+          : 'Удалить этот пользовательский модуль безвозвратно из БД?';
+          
+        if (confirm(message)) {
+            const deleted = await deleteModuleFromDB(id);
+            if (deleted) {
+              refreshModules();
+            } else {
+              alert('Ошибка при удалении из БД');
+            }
+        }
+    } else {
+        alert('Базовые модули нельзя удалять. Вы можете отредактировать их (создав копию в БД) или скрыть.');
     }
   };
 
@@ -243,15 +290,25 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const text = await file.text();
-      const result = importModulesFromJSON(text);
+      const result = await importModulesFromJSON(text);
       if (result.success) {
-        alert(`Импортировано ${result.count} модулей`);
+        alert(`Импортировано ${result.count} модулей в БД`);
         refreshModules();
       } else {
         alert(`Ошибка импорта: ${result.error}`);
       }
     };
     input.click();
+  };
+
+  // Инициализация БД дефолтными значениями
+  const handleSeedDB = async () => {
+    if (!confirm('Это загрузит ВСЕ базовые модули в базу данных Supabase. Существующие записи с такими ID будут обновлены. Продолжить?')) return;
+    
+    const res = await seedDatabaseWithDefaults();
+    alert(`Загружено: ${res.success}, Ошибок: ${res.failed}`);
+    await initModules(); // Перезагрузить кеш
+    refreshModules();
   };
 
   // Переключение несовместимости акцентуации
@@ -538,7 +595,11 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase">Конфликтующие контейнеры</label>
                 <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto custom-scroll">
-                  {modules.filter(m => m.id !== editingModule.id).map(mod => (
+                  {modules
+                    .filter(m => m.id !== editingModule.id)
+                    // Если редактируем инцидент — скрываем другие инциденты из списка конфликтов (они взаимоисключающие по определению)
+                    .filter(m => !(editingModule.category === 'incident' && m.category === 'incident'))
+                    .map(mod => (
                     <button
                       key={mod.id}
                       onClick={() => toggleConflict(mod.id)}
@@ -611,13 +672,16 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
 
                 {activeTab === 'database' && (
                     <div className="space-y-12 animate-in fade-in duration-500">
-                        {/* Import/Export */}
-                        <div className="flex gap-4">
+                        {/* Import/Export/Seed */}
+                        <div className="flex flex-wrap gap-4">
                           <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-[10px] font-black uppercase text-slate-400 transition-all">
-                            <Download size={14} /> Экспорт
+                            <Download size={14} /> Экспорт (JSON)
                           </button>
                           <button onClick={handleImport} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-[10px] font-black uppercase text-slate-400 transition-all">
-                            <Upload size={14} /> Импорт
+                            <Upload size={14} /> Импорт (в БД)
+                          </button>
+                          <button onClick={handleSeedDB} className="flex items-center gap-2 px-4 py-2 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded-xl text-[10px] font-black uppercase transition-all ml-auto">
+                            <Database size={14} /> Инит БД (Seed)
                           </button>
                         </div>
 
@@ -633,7 +697,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                         <div key={acc.id} className="p-6 rounded-2xl bg-slate-900/50 border border-white/5">
                                             <div className="text-white font-black text-xs uppercase mb-3 italic">{acc.name}</div>
                                             <div className="text-[10px] text-slate-500 italic leading-relaxed">
-                                                "{acc.description_template.replace('{intensity}/5', 'MAX')}"
+                                                "{acc.description_template.replace('{intensity}/5', '3/5')}"
                                             </div>
                                         </div>
                                     ))}
@@ -660,7 +724,11 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                 <div>
                                                   <div className="text-white font-black text-xs uppercase italic flex items-center gap-2">
                                                     {mod.name}
-                                                    {mod.isCustom && <span className="text-[8px] text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full">CUSTOM</span>}
+                                                    {mod.isCustom && (
+                                                      <span className={`text-[8px] px-2 py-0.5 rounded-full ${DEFAULT_CONTEXT_MODULES.some(m => m.id === mod.id) ? 'text-blue-400 bg-blue-500/10' : 'text-rose-500 bg-rose-500/10'}`}>
+                                                        {DEFAULT_CONTEXT_MODULES.some(m => m.id === mod.id) ? 'MODIFIED' : 'CUSTOM'}
+                                                      </span>
+                                                    )}
                                                   </div>
                                                   {/* Теги несовместимостей */}
                                                   <div className="flex flex-wrap gap-1 mt-2">
@@ -680,15 +748,15 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                   <div className="text-[8px] font-black text-rose-500 bg-rose-500/10 px-3 py-1 rounded-full uppercase">
                                                     S:{mod.initial_stress}%
                                                   </div>
+                                                  
+                                                  <button onClick={() => openEditModule(mod)} className="p-1.5 text-slate-500 hover:text-white transition-all">
+                                                    <Edit2 size={12} />
+                                                  </button>
+                                                  
                                                   {mod.isCustom && (
-                                                    <>
-                                                      <button onClick={() => openEditModule(mod)} className="p-1.5 text-slate-500 hover:text-white transition-all">
-                                                        <Edit2 size={12} />
-                                                      </button>
-                                                      <button onClick={() => handleDeleteModule(mod.id)} className="p-1.5 text-slate-500 hover:text-rose-500 transition-all">
-                                                        <Trash2 size={12} />
-                                                      </button>
-                                                    </>
+                                                    <button onClick={() => handleDeleteModule(mod.id)} className="p-1.5 text-slate-500 hover:text-rose-500 transition-all">
+                                                      <Trash2 size={12} />
+                                                    </button>
                                                   )}
                                                 </div>
                                             </div>
@@ -720,7 +788,11 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                 <div>
                                                   <div className="text-white font-black text-xs uppercase italic flex items-center gap-2">
                                                     {mod.name}
-                                                    {mod.isCustom && <span className="text-[8px] text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">CUSTOM</span>}
+                                                    {mod.isCustom && (
+                                                      <span className={`text-[8px] px-2 py-0.5 rounded-full ${DEFAULT_CONTEXT_MODULES.some(m => m.id === mod.id) ? 'text-blue-400 bg-blue-500/10' : 'text-amber-500 bg-amber-500/10'}`}>
+                                                        {DEFAULT_CONTEXT_MODULES.some(m => m.id === mod.id) ? 'MODIFIED' : 'CUSTOM'}
+                                                      </span>
+                                                    )}
                                                   </div>
                                                   {/* Теги несовместимостей */}
                                                   <div className="flex flex-wrap gap-1 mt-2">
@@ -745,15 +817,15 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                                   <div className="text-[8px] font-black text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full uppercase">
                                                     T:{mod.initial_trust}%
                                                   </div>
+                                                  
+                                                  <button onClick={() => openEditModule(mod)} className="p-1.5 text-slate-500 hover:text-white transition-all">
+                                                    <Edit2 size={12} />
+                                                  </button>
+
                                                   {mod.isCustom && (
-                                                    <>
-                                                      <button onClick={() => openEditModule(mod)} className="p-1.5 text-slate-500 hover:text-white transition-all">
-                                                        <Edit2 size={12} />
-                                                      </button>
-                                                      <button onClick={() => handleDeleteModule(mod.id)} className="p-1.5 text-slate-500 hover:text-rose-500 transition-all">
-                                                        <Trash2 size={12} />
-                                                      </button>
-                                                    </>
+                                                    <button onClick={() => handleDeleteModule(mod.id)} className="p-1.5 text-slate-500 hover:text-rose-500 transition-all">
+                                                      <Trash2 size={12} />
+                                                    </button>
                                                   )}
                                                 </div>
                                             </div>
@@ -1166,7 +1238,7 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                     {detailExpandedAdvisory && (
                       <div className="space-y-2">
                         {(detailSessionLog.result.advisory || [])
-                          .filter((adv): adv is { member: { name: string; title: string }; verdict: string; score?: number } => Boolean(adv && adv.member && (adv.member.name != null || adv.member.title != null)))
+                          .filter((adv) => Boolean(adv && adv.member && (adv.member.name != null || adv.member.title != null)))
                           .map((adv, idx) => (
                           <div key={idx} className="glass p-3 rounded-xl border-l-4 border-amber-500/30 bg-amber-500/5">
                             <div className="flex justify-between items-start">

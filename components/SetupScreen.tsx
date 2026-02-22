@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { TeacherProfile, StudentProfile } from '../types';
-import { 
-  ChevronRight, 
-  User, 
-  Settings, 
-  LogOut, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Activity, 
-  Target, 
-  CreditCard, 
-  Sparkles, 
-  X, 
+import {
+  ChevronRight,
+  User,
+  Settings,
+  LogOut,
+  ArrowLeft,
+  CheckCircle2,
+  Activity,
+  Target,
+  CreditCard,
+  Sparkles,
+  X,
   Loader2,
   ShieldCheck,
   MessageSquare
@@ -19,14 +19,16 @@ import {
 import { generateStudentName } from '../services/chaosEngine';
 import { authService } from '../services/authService';
 import { COMMERCIAL_CONFIG } from '../constants';
+import { SubscriptionInfo } from '../services/billingService';
 
 interface Props {
   onStart: (teacher: TeacherProfile, student: StudentProfile) => void;
   onOpenAdmin: () => void;
   onBack: () => void;
+  subscription?: SubscriptionInfo;
 }
 
-const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
+const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscription }) => {
   // Загружаем сохранённые настройки учителя из localStorage
   const getSavedTeacherSettings = () => {
     try {
@@ -51,7 +53,7 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack }) => {
   const [showPayment, setShowPayment] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const isPremium = authService.isPremium();
+  const isPremium = subscription?.tier === 'premium' || authService.isPremium();
   const isAdmin = authService.isAdmin();
 
   // Сохраняем настройки учителя при изменении

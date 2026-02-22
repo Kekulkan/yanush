@@ -12,20 +12,29 @@ import SubscriptionModal from './components/SubscriptionModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ActiveSession, TeacherProfile, StudentProfile, Message, SessionLog, UserAccount } from './types';
 import { buildDynamicPrompt } from './services/chaosEngine';
-import { getSessionBackup } from './services/storageService';
+import { clearSessionBackup } from './services/storageService';
 import { authService } from './services/authService';
 import { preloadPrompts } from './services/promptsService';
 import { getSubscriptionInfo, SubscriptionInfo } from './services/billingService';
 import { resetApiLimits } from './services/geminiService';
 import { migrateToIDB } from './services/archiveService';
+import { initModules } from './services/modulesService';
+import { useAuth } from './contexts/AuthContext';
+import { createSession } from './lib/api';
 
 type ViewState = 'landing' | 'setup' | 'chat' | 'admin' | 'auth' | 'museum' | 'command_center';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<UserAccount | null>(authService.getCurrentUser());
-  const [view, setView] = useState<ViewState>(user ? 'landing' : 'auth');
+  // Supabase-пользователь из контекста (null — не авторизован)
+  const { user: supabaseUser, loading: authLoading } = useAuth();
+
+  // Локальный UserAccount для совместимости с остальным кодом приложения
+  const [user, setUser] = useState<UserAccount | null>(null);
+  const [view, setView] = useState<ViewState>('auth');
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [restoredMessages, setRestoredMessages] = useState<Message[]>([]);
+  /** ID текущей сессии в Supabase (null — гость или сессия не создана) */
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo>(getSubscriptionInfo());
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
@@ -33,42 +42,99 @@ const App: React.FC = () => {
     setSubscription(getSubscriptionInfo());
   };
 
+  // Синхронизируем локальный user с Supabase-сессией
   useEffect(() => {
-    if (user) Object.freeze(user);
-  }, [user]);
+    if (authLoading) return;
+    if (supabaseUser) {
+      // Формируем совместимый UserAccount из данных Supabase
+      const account: UserAccount = {
+        id: supabaseUser.id,
+        email: supabaseUser.email ?? '',
+        role: (supabaseUser.user_metadata?.role as UserAccount['role']) ?? 'USER',
+      };
+      setUser(account);
+      // Синхронизируем с localStorage для authService.isPremium() / isAdmin()
+      // Это нужно, т.к. authService читает роль из localStorage, а не из React state
+      try {
+        localStorage.setItem('janus_session_v1', JSON.stringify(account));
+      } catch (e) {
+        console.error('[App] Failed to sync user to localStorage:', e);
+      }
+      setView(prev => prev === 'auth' ? 'landing' : prev);
+    } else {
+      // Если это локальный админ-байпас, не сбрасываем его сессию
+      // Проверяем localStorage напрямую, так как user state может быть еще не обновлен или рассинхронизирован
+      const storedUser = localStorage.getItem('janus_session_v1');
+      let isLocalAdmin = false;
+      try {
+        if (storedUser && JSON.parse(storedUser).role === 'ADMIN') {
+          isLocalAdmin = true;
+        }
+      } catch (e) {
+        console.error('[App] JSON parse error:', e);
+      }
+
+      if (!isLocalAdmin) {
+        setUser(null);
+        localStorage.removeItem('janus_session_v1');
+        setView('auth');
+      } else {
+        // Восстанавливаем локального админа в state, если он там отсутствует
+        try {
+          const adminUser = JSON.parse(storedUser!);
+          if (!user) setUser(adminUser);
+          // Если мы на экране авторизации, переходим на лендинг
+          setView(prev => prev === 'auth' ? 'landing' : prev);
+        } catch (e) {
+             console.error('[App] Failed to restore admin user:', e);
+             setUser(null);
+             localStorage.removeItem('janus_session_v1');
+             setView('auth');
+        }
+      }
+    }
+  }, [supabaseUser, authLoading]);
 
   // Предзагрузка промптов при старте приложения и миграция БД
   useEffect(() => {
     preloadPrompts().catch(console.warn);
     migrateToIDB().catch(console.error);
+    initModules().catch(console.error); // Загрузка модулей из БД
     refreshSubscription();
+    // Очищаем любые оставшиеся бэкапы сессий при старте приложения
+    clearSessionBackup();
   }, []);
 
-  // Fix: The login process is handled inside the LoginScreen component, which updates localStorage.
-  // This handler simply updates the root application state to reflect the authenticated session.
+  // Вызывается из LoginScreen после успешного входа/регистрации
   const handleLogin = (email: string, role: any = 'USER') => {
-      const currentUser = authService.getCurrentUser();
-      setUser(currentUser);
-      setView('landing');
+    // Для admin-bypass (без Supabase) — устанавливаем user вручную
+    if (role === 'ADMIN') {
+      const adminAccount: UserAccount = {
+        id: 'admin',
+        email,
+        role: 'ADMIN',
+      };
+      setUser(adminAccount);
+    }
+    setView('landing');
   };
 
-  const startSession = (teacher: TeacherProfile, student: StudentProfile) => {
+  const startSession = async (teacher: TeacherProfile, student: StudentProfile) => {
     const isPremium = authService.isPremium();
+    
+    // Очищаем бэкап предыдущей сессии перед созданием новой
+    clearSessionBackup();
+    
     const sessionData = buildDynamicPrompt(teacher, student, isPremium);
     resetApiLimits(); // Сброс лимитов API для новой сессии
-    setActiveSession(sessionData);
-    setRestoredMessages([]); 
-    setView('chat');
-  };
 
-  const resumeSession = () => {
-      const backup = getSessionBackup();
-      if (backup) {
-          resetApiLimits(); // Сброс лимитов при восстановлении
-          setActiveSession(backup.session);
-          setRestoredMessages(backup.messages);
-          setView('chat');
-      }
+    // Создаём запись в Supabase (только для авторизованных пользователей)
+    const sessionId = await createSession({ scenario_config: sessionData });
+    setCurrentSessionId(sessionId);
+
+    setActiveSession(sessionData);
+    setRestoredMessages([]);
+    setView('chat');
   };
 
   const handleRestoreSession = (log: SessionLog) => {
@@ -86,6 +152,7 @@ const App: React.FC = () => {
       <MuseumView
         onBack={() => setView(user ? 'landing' : 'auth')}
         onOpenSubscription={() => setIsSubModalOpen(true)}
+        subscription={subscription}
       />
     );
     
@@ -94,7 +161,6 @@ const App: React.FC = () => {
         {view === 'landing' && (
           <ScenarioSelector
               onStart={() => setView('setup')}
-              onResume={resumeSession}
               onOpenMuseum={() => setView('museum')}
               onOpenCommandCenter={() => setView('command_center')}
               onOpenSubscription={() => setIsSubModalOpen(true)}
@@ -103,20 +169,22 @@ const App: React.FC = () => {
         )}
 
         {view === 'setup' && (
-           <SetupScreen 
-              onStart={startSession} 
-              onOpenAdmin={() => setView('admin')} 
+           <SetupScreen
+              onStart={startSession}
+              onOpenAdmin={() => setView('admin')}
               onBack={() => setView('landing')}
+              subscription={subscription}
            />
         )}
         
         {view === 'chat' && activeSession && (
-          <ChatInterface 
-            session={activeSession} 
+          <ChatInterface
+            session={activeSession}
             isAdmin={user?.role === 'ADMIN'}
             user={user}
-            onExit={() => setView('landing')} 
+            onExit={() => { setCurrentSessionId(null); setView('landing'); }}
             initialMessages={restoredMessages}
+            sessionId={currentSessionId}
           />
         )}
 
@@ -150,4 +218,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
