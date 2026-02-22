@@ -310,7 +310,15 @@ function extractFirstJsonObject(s: string): string | null {
     const ch = text[i];
     if (ch === "{") depth++;
     else if (ch === "}") depth--;
-    if (depth === 0) return text.slice(start, i + 1);
+    if (depth === 0) {
+      let jsonStr = text.slice(start, i + 1);
+      // FIX: Удаляем плюсы перед числами, так как JSON стандарт их не допускает, а AI любит ставить (напр. "+25")
+      // Регулярка ищет ": +DIGIT" или ":+DIGIT" и заменяет на ": DIGIT"
+      // Также обрабатываем случаи, когда числа в кавычках с плюсом, если это числовое поле
+      jsonStr = jsonStr.replace(/:\s*\+(\d+)/g, ': $1');
+      jsonStr = jsonStr.replace(/:\s*"\+(\d+)"/g, ': $1'); // "+25" -> 25 (числом)
+      return jsonStr;
+    }
   }
   return null;
 }
