@@ -987,7 +987,10 @@ export const analyzeChatSession = async (
   const mainPrompt = buildMainCommissionPrompt(transcript, scenarioName, endReason);
   
   const mainText = await queryAI(ANALYSIS_MODEL, mainPrompt, 0.4, 120_000);
+  console.log("[Commission] Raw response:", mainText.substring(0, 500)); // LOGGING ADDED
+
   const mainJsonStr = extractFirstJsonObject(mainText) ?? stripCodeFences(mainText);
+  console.log("[Commission] Extracted JSON string:", mainJsonStr.substring(0, 500)); // LOGGING ADDED
   
   let result: AnalysisResult;
   try {
@@ -1024,7 +1027,10 @@ export const analyzeChatSession = async (
       if (activeAdvisory.length > 0) {
         const advisoryPrompt = buildAdvisoryCommissionPrompt(transcript, activeAdvisory, scenarioName);
         
+        console.log(`[Advisory] Requesting for ${activeAdvisory.length} members`); // LOGGING
         const advisoryText = await queryAI(ANALYSIS_MODEL, advisoryPrompt, 0.7, 90_000);
+        console.log("[Advisory] Raw response:", advisoryText.substring(0, 500)); // LOGGING
+
         const advisoryJsonStr = extractFirstJsonObject(advisoryText);
         
         if (advisoryJsonStr) {
