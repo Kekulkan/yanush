@@ -1077,7 +1077,7 @@ export const analyzeChatSession = async (
           try {
             console.log(`[Advisory] Requesting for: ${memberObj.member.name}`);
             // Используем GHOST_MODEL (быстрее и без глубоких раздумий), чтобы уложиться в лимиты времени
-            const singleText = await queryAI(GHOST_MODEL, singlePrompt, 0.7, 60_000);
+            const singleText = await queryAI(GHOST_MODEL, singlePrompt, 0.7, 90_000);
             
             const singleJsonStr = extractFirstJsonObject(singleText);
             
