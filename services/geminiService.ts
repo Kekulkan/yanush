@@ -757,7 +757,14 @@ ${gmEvent.npc_stays ? `→ NPC ОСТАЁТСЯ в сцене — учти ег�
             role: msg.role === MessageRole.USER ? "user" : "assistant",
             content: msg.role === MessageRole.USER
               ? msg.content
-              : JSON.stringify(msg.state ?? { text: msg.content }),
+              : JSON.stringify({
+                  thought: msg.state?.thought,
+                  non_verbal: msg.non_verbal,
+                  speech: msg.content,
+                  trust: msg.state?.trust,
+                  stress: msg.state?.stress,
+                  ...(msg.state?.world_event ? { world_event: msg.state.world_event } : {})
+                }),
           });
         });
 
@@ -786,7 +793,14 @@ ${gmEvent.npc_stays ? `→ NPC ОСТАЁТСЯ в сцене — учти ег�
             role: msg.role === MessageRole.USER ? "user" : "assistant",
             content: msg.role === MessageRole.USER
               ? msg.content
-              : JSON.stringify(msg.state ?? { text: msg.content }),
+              : JSON.stringify({
+                  thought: msg.state?.thought,
+                  non_verbal: msg.non_verbal,
+                  speech: msg.content,
+                  trust: msg.state?.trust,
+                  stress: msg.state?.stress,
+                  ...(msg.state?.world_event ? { world_event: msg.state.world_event } : {})
+                }),
           });
         });
 
@@ -809,7 +823,14 @@ ${gmEvent.npc_stays ? `→ NPC ОСТАЁТСЯ в сцене — учти ег�
           role: msg.role === MessageRole.USER ? "user" : "assistant",
           content: msg.role === MessageRole.USER
             ? msg.content
-            : JSON.stringify(msg.state ?? { text: msg.content }),
+            : JSON.stringify({
+                thought: msg.state?.thought,
+                non_verbal: msg.non_verbal,
+                speech: msg.content,
+                trust: msg.state?.trust,
+                stress: msg.state?.stress,
+                ...(msg.state?.world_event ? { world_event: msg.state.world_event } : {})
+              }),
         }));
 
       // lastUserMessage НЕ добавляем — он уже в history!
@@ -834,7 +855,14 @@ ${gmEvent.npc_stays ? `→ NPC ОСТАЁТСЯ в сцене — учти ег�
             text:
               msg.role === MessageRole.USER
                 ? msg.content
-                : JSON.stringify(msg.state ?? { text: msg.content }),
+                : JSON.stringify({
+                    thought: msg.state?.thought,
+                    non_verbal: msg.non_verbal,
+                    speech: msg.content,
+                    trust: msg.state?.trust,
+                    stress: msg.state?.stress,
+                    ...(msg.state?.world_event ? { world_event: msg.state.world_event } : {})
+                  }),
           },
         ],
       }));
