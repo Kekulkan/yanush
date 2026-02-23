@@ -294,6 +294,7 @@ export const sendGlobalEventTurn = async (
 
 function stripCodeFences(s: string): string {
   return s
+    .replace(/<think>[\s\S]*?<\/think>/gi, "") // Сначала удаляем блоки <think>...</think>
     .replace(/```(?:json)?/gi, "```")
     .replace(/```/g, "")
     .trim();
@@ -326,8 +327,15 @@ function extractFirstJsonObject(s: string): string | null {
 function coerceNum(v: any, def: number): number {
   if (typeof v === "number") return v;
   if (typeof v === "string") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : def;
+    // Пробуем простое преобразование
+    let n = Number(v);
+    if (Number.isFinite(n)) return n;
+    // Если строка вида "10/10" или "8 баллов", пытаемся извлечь первое число
+    const match = v.match(/-?\d+(\.\d+)?/);
+    if (match) {
+      n = Number(match[0]);
+      if (Number.isFinite(n)) return n;
+    }
   }
   return def;
 }
@@ -1068,7 +1076,8 @@ export const analyzeChatSession = async (
           
           try {
             console.log(`[Advisory] Requesting for: ${memberObj.member.name}`);
-            const singleText = await queryAI(ANALYSIS_MODEL, singlePrompt, 0.7, 60_000);
+            // Используем GHOST_MODEL (быстрее и без глубоких раздумий), чтобы уложиться в лимиты времени
+            const singleText = await queryAI(GHOST_MODEL, singlePrompt, 0.7, 60_000);
             
             const singleJsonStr = extractFirstJsonObject(singleText);
             
@@ -1080,8 +1089,8 @@ export const analyzeChatSession = async (
                 result.advisory.push({
                   member: memberObj.member,
                   verdict: a.verdict || "Без комментариев.",
-                  score: a.score ?? 50,
-                  triggered_by: a.triggered_by || memberObj.triggeredBy
+                  score: coerceNum(a.score, 50),
+                  triggered_by: Array.isArray(a.triggered_by) ? a.triggered_by : memberObj.triggeredBy
                 });
               }
             } else {
