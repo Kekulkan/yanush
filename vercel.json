@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/proxy.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/favicon.ico", "destination": "/favicon.svg" }
   ]

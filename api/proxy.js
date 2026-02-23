@@ -1,3 +1,8 @@
+// Увеличиваем лимит выполнения serverless function до 60 секунд (максимум для Hobby плана)
+export const config = {
+  maxDuration: 60,
+};
+
 export default async function handler(req, res) {
   const API_KEY = process.env.API_KEY;
 

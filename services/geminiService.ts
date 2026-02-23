@@ -1025,53 +1025,42 @@ export const analyzeChatSession = async (
       const activeAdvisory = getActiveAdvisoryMembers(history);
       
       if (activeAdvisory.length > 0) {
-        const advisoryPrompt = buildAdvisoryCommissionPrompt(transcript, activeAdvisory, scenarioName);
+        result.advisory = [];
+        console.log(`[Advisory] Requesting individually for ${activeAdvisory.length} members...`); // LOGGING
         
-        console.log(`[Advisory] Requesting for ${activeAdvisory.length} members`); // LOGGING
-        const advisoryText = await queryAI(ANALYSIS_MODEL, advisoryPrompt, 0.7, 90_000);
-        console.log("[Advisory] Raw response:", advisoryText.substring(0, 500)); // LOGGING
-
-        const advisoryJsonStr = extractFirstJsonObject(advisoryText);
+        // Разделяем огромный запрос на серию маленьких по каждому члену комиссии отдельно,
+        // чтобы избежать Vercel Serverless Function 60s timeout и обрыва 'AbortError'.
+        // Запускаем их последовательно, чтобы не словить 429 Too Many Requests,
+        // но каждый запрос будет гарантированно быстрым (~10 секунд).
         
-        if (advisoryJsonStr) {
+        for (const memberObj of activeAdvisory) {
+          const singlePrompt = buildAdvisoryCommissionPrompt(transcript, [memberObj], scenarioName);
+          
           try {
-            const advisoryParsed = JSON.parse(advisoryJsonStr);
-            if (Array.isArray(advisoryParsed.advisory)) {
-              result.advisory = advisoryParsed.advisory.map((a: any) => {
-                // Ищем по ID, имени или части имени (LLM может вернуть разные форматы)
-                const member = ADVISORY_COMMISSION.find(m =>
-                  m.id === a.id ||
-                  m.name === a.name ||
-                  m.name.toLowerCase().includes((a.name || '').toLowerCase().split(' ')[0]) ||
-                  (a.name || '').toLowerCase().includes(m.name.toLowerCase().split(' ')[0])
-                );
+            console.log(`[Advisory] Requesting for: ${memberObj.member.name}`);
+            const singleText = await queryAI(ANALYSIS_MODEL, singlePrompt, 0.7, 60_000);
+            
+            const singleJsonStr = extractFirstJsonObject(singleText);
+            
+            if (singleJsonStr) {
+              const parsed = JSON.parse(singleJsonStr);
+              if (parsed.advisory && parsed.advisory.length > 0) {
+                const a = parsed.advisory[0];
                 
-                if (!member) {
-                  console.warn(`[Advisory] Member not found: id=${a.id}, name=${a.name}`);
-                }
-                
-                return {
-                  member: member || {
-                    id: a.id,
-                    name: a.name || "???",
-                    title: a.title || "???",
-                    age: 0,
-                    triggers: [],
-                    prompt: ""
-                  },
+                result.advisory.push({
+                  member: memberObj.member,
                   verdict: a.verdict || "Без комментариев.",
-                  score: a.score,
-                  triggered_by: a.triggered_by || []
-                } as AdvisoryFeedback;
-              });
+                  score: a.score ?? 50,
+                  triggered_by: a.triggered_by || memberObj.triggeredBy
+                });
+              }
+            } else {
+              console.warn(`[Advisory] No JSON found for ${memberObj.member.name}`);
             }
-          } catch (parseError) {
-            console.error("Ошибка парсинга JSON совещательной комиссии:", parseError);
-            console.log("Raw advisory text:", advisoryText);
+          } catch (memberError) {
+            console.error(`[Advisory] Ошибка генерации для ${memberObj.member.name}:`, memberError);
+            // Если один член комиссии упал, мы продолжаем обрабатывать остальных
           }
-        } else {
-            console.warn("Не удалось извлечь JSON из ответа совещательной комиссии");
-            console.log("Raw advisory text:", advisoryText);
         }
       }
     } catch (e) {
