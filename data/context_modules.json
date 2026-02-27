@@ -1,4 +1,3 @@
-
 [
   {
     "id": "inc_vape",
@@ -9,7 +8,9 @@
     "initial_trust": 10,
     "initial_stress": 85,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_psychasthenic"],
+    "incompatible_accentuations": [
+      "acc_psychasthenic"
+    ],
     "weight": 40
   },
   {
@@ -21,7 +22,10 @@
     "initial_trust": 5,
     "initial_stress": 60,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_psychasthenic", "acc_sensitive"],
+    "incompatible_accentuations": [
+      "acc_psychasthenic",
+      "acc_sensitive"
+    ],
     "weight": 40
   },
   {
@@ -33,7 +37,13 @@
     "initial_trust": 20,
     "initial_stress": 95,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_sensitive", "acc_schizoid", "acc_asthenic", "acc_psychasthenic", "acc_labile"],
+    "incompatible_accentuations": [
+      "acc_sensitive",
+      "acc_schizoid",
+      "acc_asthenic",
+      "acc_psychasthenic",
+      "acc_labile"
+    ],
     "weight": 40
   },
   {
@@ -45,7 +55,9 @@
     "initial_trust": 40,
     "initial_stress": 20,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_hyperthymic"],
+    "incompatible_accentuations": [
+      "acc_hyperthymic"
+    ],
     "weight": 30
   },
   {
@@ -57,7 +69,12 @@
     "initial_trust": 15,
     "initial_stress": 50,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_sensitive", "acc_epileptoid", "acc_psychasthenic", "acc_asthenic"],
+    "incompatible_accentuations": [
+      "acc_sensitive",
+      "acc_epileptoid",
+      "acc_psychasthenic",
+      "acc_asthenic"
+    ],
     "weight": 30
   },
   {
@@ -69,18 +86,26 @@
     "initial_trust": 10,
     "initial_stress": 0,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_schizoid", "acc_sensitive", "acc_psychasthenic", "acc_conformal"],
+    "incompatible_accentuations": [
+      "acc_schizoid",
+      "acc_sensitive",
+      "acc_psychasthenic",
+      "acc_conformal"
+    ],
     "weight": 25
   },
   {
     "id": "bg_abuse",
     "category": "background",
     "name": "Домашнее насилие (Контекст)",
-    "prompt_text": "ФОН: Твой отец бьет тебя за любые проступки в школе. Звонок родителям для тебя — физическая угроза.",
-    "hidden_agenda": "МОТИВАЦИЯ: Умолять, врать, угрожать суицидом — что угодно, лишь бы учитель не позвонил отцу. Панический страх.",
+    "prompt_text": "ФОН: Твой дом — это зона боевых действий, где правит жестокий тиран. Твоя психика сломана постоянным ожиданием удара. Любая угроза 'позвонить родителям' равносильна смертному приговору.",
+    "hidden_agenda": "МОТИВАЦИЯ: Отыгрывай поведение затравленного зверька. Постоянно мониторь настроение учителя, вздрагивай от резких движений или громкого голоса. Если звучит угроза звонка домой — впадай в отчаянную панику: унижайся, умоляй, рыдай или агрессивно защищайся из чувства самосохранения.",
     "initial_trust": 0,
     "initial_stress": 40,
-    "conflicts": ["bg_rich", "bg_golden"],
+    "conflicts": [
+      "bg_rich",
+      "bg_golden"
+    ],
     "incompatible_accentuations": [],
     "weight": 30
   },
@@ -92,7 +117,10 @@
     "hidden_agenda": "МОТИВАЦИЯ: Давить авторитетом родителей. \"Вы знаете, кто мой отец?\". Уверенность в безнаказанности.",
     "initial_trust": 0,
     "initial_stress": -20,
-    "conflicts": ["bg_abuse", "bg_poor"],
+    "conflicts": [
+      "bg_abuse",
+      "bg_poor"
+    ],
     "incompatible_accentuations": [],
     "weight": 25
   },
@@ -104,8 +132,13 @@
     "hidden_agenda": "МОТИВАЦИЯ: Ты ждешь подвоха. Агрессия — твоя защита. Ты думаешь, учитель сейчас начнет тебя винить.",
     "initial_trust": -30,
     "initial_stress": 20,
-    "conflicts": ["bg_golden", "bg_blogger"],
-    "incompatible_accentuations": ["acc_hyperthymic"],
+    "conflicts": [
+      "bg_golden",
+      "bg_blogger"
+    ],
+    "incompatible_accentuations": [
+      "acc_hyperthymic"
+    ],
     "weight": 30
   },
   {
@@ -117,8 +150,10 @@
     "initial_trust": 30,
     "initial_stress": 10,
     "conflicts": [],
-    "incompatible_accentuations": ["acc_hysteroid", "acc_hyperthymic"],
+    "incompatible_accentuations": [
+      "acc_hysteroid",
+      "acc_hyperthymic"
+    ],
     "weight": 20
   }
 ]
-

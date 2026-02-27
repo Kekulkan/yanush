@@ -162,42 +162,14 @@ const rollIntensity = (accentuationId: string): number => {
 };
 
 /**
- * Выбрать случайную акцентуацию с учётом доступа и весов
+ * Выбрать случайную акцентуацию с учётом доступа
  */
 const selectAccentuation = (isPremium: boolean) => {
     const availableAccs = isPremium
         ? DEFAULT_ACCENTUATIONS
         : DEFAULT_ACCENTUATIONS.filter(a => ACCESS_LIMITS.FREE_ACCENTUATIONS.includes(a.id));
     
-    // Взвешенный выбор
-    // Эпилептоид должен быть ~11% (при 11 типах это примерно равномерно,
-    // но если их станет больше, вес поможет).
-    // Сейчас их 11, так что 1/11 ~ 9%. Чтобы было 11%, дадим чуть больше веса или оставим как есть если их 9.
-    // Но пользователь просит УМЕНЬШИТЬ. Значит сейчас он выпадает чаще?
-    // В массиве 11 элементов. Шанс каждого ~9%.
-    // Если пользователь хочет 11%, это УВЕЛИЧЕНИЕ.
-    // Скорее всего он имеет в виду, что сейчас выпадает слишком часто (равномерно).
-    
-    const weights: Record<string, number> = {
-        'acc_epileptoid': 0.11, // Целевая вероятность 11%
-    };
-    
-    // Остальные делят оставшиеся 89%
-    const otherWeight = (1 - (weights['acc_epileptoid'] || 0)) / (availableAccs.length - (weights['acc_epileptoid'] ? 1 : 0));
-    
-    const weightedAccs = availableAccs.map(acc => ({
-        acc,
-        weight: weights[acc.id] !== undefined ? weights[acc.id] : otherWeight
-    }));
-    
-    const totalWeight = weightedAccs.reduce((sum, item) => sum + item.weight, 0);
-    let random = Math.random() * totalWeight;
-    
-    for (const item of weightedAccs) {
-        if (random < item.weight) return item.acc;
-        random -= item.weight;
-    }
-    
+    // Возвращаем случайную акцентуацию с равномерным распределением
     return availableAccs[Math.floor(Math.random() * availableAccs.length)];
 };
 

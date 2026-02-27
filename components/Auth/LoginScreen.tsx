@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import {
   Mail, Lock, ArrowRight, Fingerprint, Activity,
-  UserPlus, LogIn, ChevronLeft, Loader2
+  UserPlus, LogIn, ChevronLeft, Loader2, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
+import DocumentsModal from '../DocumentsModal';
 
 interface Props {
   onLogin: (email: string, role?: string) => void;
@@ -22,6 +23,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +95,22 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
                   Открыть Экспозицию <ArrowRight size={14} />
                 </span>
               </div>
+            </button>
+
+            <button
+              onClick={() => setIsDocModalOpen(true)}
+              className="group w-full glass p-6 rounded-[35px] border-white/5 hover:border-white/20 transition-all flex items-center justify-between"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400">
+                  <BookOpen size={20} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-white font-black uppercase tracking-widest text-sm">О тренажере</h3>
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Руководство и концепция</p>
+                </div>
+              </div>
+              <ArrowRight className="text-slate-600 group-hover:text-blue-400 transition-colors" size={16} />
             </button>
 
             <div className="grid grid-cols-2 gap-4">
@@ -200,6 +218,10 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
           </form>
         )}
       </div>
+      <DocumentsModal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+      />
     </div>
   );
 };
