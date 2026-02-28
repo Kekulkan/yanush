@@ -6,7 +6,9 @@
     }
   },
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/favicon.svg" }
+    { "source": "/supabase-proxy/:match*", "destination": "https://ayrdlilidfgmuvceygbq.supabase.co/:match*" },
+    { "source": "/favicon.ico", "destination": "/favicon.svg" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
 

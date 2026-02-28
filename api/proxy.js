@@ -15,6 +15,21 @@ export default async function handler(req, res) {
 
   try {
     const action = String(req.query.url || "").trim();
+    
+    // ВАЖНО: Защита от SSRF (Server-Side Request Forgery).
+    // Параметр ?url= используется только как идентификатор действия (action).
+    // Функция разрешает проксировать запросы ТОЛЬКО на жестко заданные домены
+    // (openrouter.ai, proxyapi.ru, aitunnel.ru) и не позволяет передать произвольный URL.
+    const isAllowedAction = 
+      action.startsWith("openrouter:") || 
+      action.startsWith("aitunnel:") || 
+      action.startsWith("claude-") || 
+      action.includes(":"); // Для Gemini (gemini-...:generateContent)
+      
+    if (!isAllowedAction) {
+      return res.status(403).json({ error: "SSRF Protection: Action not allowed." });
+    }
+
     let targetUrl;
     
     // ============ OPENROUTER (DeepSeek, Claude, Gemini и др.) ============

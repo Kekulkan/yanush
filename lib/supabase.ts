@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseUrl = '/supabase-proxy';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 console.log('Supabase Config Check:', {
@@ -12,8 +12,8 @@ console.log('Supabase Config Check:', {
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing env vars details:', { supabaseUrl, supabaseAnonKey });
   throw new Error(
-    'Отсутствуют переменные среды VITE_SUPABASE_URL или VITE_SUPABASE_ANON_KEY. ' +
-    'Создайте файл .env и добавьте эти переменные.'
+    'Отсутствует переменная среды VITE_SUPABASE_ANON_KEY. ' +
+    'Создайте файл .env и добавьте эту переменную.'
   );
 }
 
