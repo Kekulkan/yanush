@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = '/supabase-proxy';
+const supabaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/supabase-proxy` : 'https://yanush-sim.ru/supabase-proxy';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 console.log('Supabase Config Check:', {
