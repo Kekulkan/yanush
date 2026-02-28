@@ -199,6 +199,7 @@ export interface MainCommissionMember {
   specialty: string;
   evaluationFocus: string;  // На что обращает внимание
   prompt: string;           // Системный промпт для генерации вердикта
+  avatar?: string;          // Путь к картинке (опционально)
 }
 
 // === СОВЕЩАТЕЛЬНАЯ КОМИССИЯ (не влияет на балл, триггерная) ===

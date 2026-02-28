@@ -6,6 +6,7 @@ import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../serv
 import { resolveGenderTokens } from '../services/chaosEngine';
 import { getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
+import { MAIN_COMMISSION } from '../services/commissionService';
 import { updateSession, finishSession, abortSession } from '../lib/api';
 import { Send, Activity as ScannerIcon, Zap, ShieldAlert, Cpu, Info, X, Target, Award, Mic, MicOff, Download, Printer, Loader2, Gavel, Eye, EyeOff, HelpCircle, Radio, Phone, Bell, Users, User, Megaphone, AlertOctagon, Skull, ChevronDown, ChevronUp, Play, Pause, Crown, Lock, Check, AlertTriangle } from 'lucide-react';
 import SubscriptionModal from './SubscriptionModal';
@@ -1216,29 +1217,50 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                     <div 
                                         key={i} 
                                         onClick={() => setExpandedProfessional(isExpanded ? null : i)}
-                                        className={`glass p-5 rounded-[28px] border-white/5 space-y-3 hover:border-blue-500/20 transition-all cursor-pointer relative overflow-hidden ${
+                                        className={`glass rounded-[28px] border-white/5 hover:border-blue-500/20 transition-all cursor-pointer relative overflow-hidden flex flex-col sm:flex-row ${
                                             isExpanded ? 'ring-2 ring-blue-500/30 bg-blue-500/5' : ''
                                         }`}
                                     >
-                                        <div className="flex justify-between items-start gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <span className="text-blue-400 font-bold text-sm block truncate">{member.name}</span>
-                                                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">{member.role}</span>
-                                            </div>
-                                            <div className={`text-2xl font-black italic shrink-0 ${getScoreColor(member.score)}`}>
-                                              {member.score}
-                                            </div>
-                                        </div>
-                                        <p className={`text-[11px] text-slate-300 italic leading-relaxed transition-all ${
-                                            isExpanded ? '' : 'line-clamp-4'
-                                        }`}>
-                                            "{member.verdict}"
-                                        </p>
-                                        {!isExpanded && member.verdict.length > 150 && (
-                                            <div className="absolute bottom-2 right-5 text-[8px] font-black text-blue-500/60 uppercase tracking-widest">
-                                                Развернуть →
+                                        {MAIN_COMMISSION.find(mc => mc.name === member.name)?.avatar && (
+                                            <div className="w-full sm:w-2/5 h-48 sm:h-auto shrink-0 relative">
+                                                <img 
+                                                    src={`${MAIN_COMMISSION.find(mc => mc.name === member.name)?.avatar}.jpg`}
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        if (target.src.endsWith('.jpg')) {
+                                                            target.src = `${MAIN_COMMISSION.find(mc => mc.name === member.name)?.avatar}.png`;
+                                                        } else if (target.src.endsWith('.png')) {
+                                                            target.src = `${MAIN_COMMISSION.find(mc => mc.name === member.name)?.avatar}.jpeg`;
+                                                        }
+                                                    }}
+                                                    alt={member.name}
+                                                    className="absolute inset-0 w-full h-full object-cover object-top sm:object-center"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0B1A] via-transparent to-transparent sm:hidden"></div>
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0A0B1A] hidden sm:block"></div>
                                             </div>
                                         )}
+                                        <div className="p-5 flex-1 flex flex-col space-y-3 relative z-10 bg-[#0A0B1A]/60 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none">
+                                            <div className="flex justify-between items-start gap-3">
+                                                <div>
+                                                    <span className="text-blue-400 font-bold text-sm block leading-tight">{member.name}</span>
+                                                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mt-1">{member.role}</span>
+                                                </div>
+                                                <div className={`text-2xl font-black italic shrink-0 ${getScoreColor(member.score)}`}>
+                                                  {member.score}
+                                                </div>
+                                            </div>
+                                            <p className={`text-[11px] text-slate-300 italic leading-relaxed transition-all flex-1 ${
+                                                isExpanded ? '' : 'line-clamp-4'
+                                            }`}>
+                                                "{member.verdict}"
+                                            </p>
+                                            {!isExpanded && member.verdict.length > 150 && (
+                                                <div className="text-right text-[8px] font-black text-blue-500/60 uppercase tracking-widest mt-2">
+                                                    Развернуть →
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}
