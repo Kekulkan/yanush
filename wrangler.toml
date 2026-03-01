@@ -1,0 +1,11 @@
+name = "ai-teacher-trainer"
+compatibility_date = "2024-03-01"
+pages_build_output_dir = "dist"
+
+[vars]
+# Укажите эти переменные в панели управления Cloudflare Pages (Settings -> Environment variables)
+# Не указывайте секреты здесь!
+# APP_URL = "https://your-project.pages.dev"
+# USE_DIRECT_API = "true" 
+# CF_ACCOUNT_ID = "ваш_account_id"
+# CF_GATEWAY_NAME = "ваш_gateway"

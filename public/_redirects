@@ -1,0 +1,3 @@
+/supabase-proxy/* https://ayrdlilidfgmuvceygbq.supabase.co/:splat 200
+/favicon.ico /favicon.svg 200
+/* /index.html 200
