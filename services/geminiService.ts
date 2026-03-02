@@ -470,7 +470,7 @@ async function postViaProxySingle(
   timeoutMs: number,
   signal?: AbortSignal
 ): Promise<any> {
-  const res = await fetch(`/api/proxy?url=${encodeURIComponent(action)}`, {
+  const res = await fetch(`https://yanush.pages.dev/api/proxy?url=${encodeURIComponent(action)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

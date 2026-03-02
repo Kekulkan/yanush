@@ -17,7 +17,7 @@ const getLogsApiUrl = () => {
     const base = proxyUrl.replace('/api/proxy', '');
     return `${base}/api/logs`;
   }
-  return '/api/logs';
+  return 'https://yanush.pages.dev/api/logs';
 };
 
 // ============ ОТПРАВКА НА СЕРВЕР ============
@@ -350,22 +350,24 @@ export async function importFromJSON(jsonStr: string, userId: string): Promise<{
     // Минимальная валидация: id + диалог в messages или dialogue
     const validLogs = logsToImport.filter(log => {
       if (!log || typeof log !== 'object' || !log.id) return false;
-      const hasMessages = log.messages && Array.isArray(log.messages);
-      const hasDialogue = (log as { dialogue?: unknown }).dialogue && Array.isArray((log as { dialogue: unknown[] }).dialogue);
+      const anyLog = log as any;
+      const hasMessages = anyLog.messages && Array.isArray(anyLog.messages);
+      const hasDialogue = anyLog.dialogue && Array.isArray(anyLog.dialogue);
       return hasMessages || hasDialogue;
     });
 
     if (validLogs.length === 0 && logsToImport.length > 0) {
       // Попробуем еще раз, вдруг там вложенный объект logs (как от сервера)
-      if (data.logs && Array.isArray(data.logs)) {
-        return importFromJSON(JSON.stringify(data.logs), userId);
+      const dataAsAny = data as any;
+      if (dataAsAny.logs && Array.isArray(dataAsAny.logs)) {
+        return importFromJSON(JSON.stringify(dataAsAny.logs), userId);
       }
     }
 
     let importedCount = 0;
     for (const log of validLogs) {
       // Нормализация: если в файле dialogue вместо messages — подставляем messages
-      const raw = log as SessionLog & { dialogue?: unknown[] };
+      const raw = log as any;
       const messages = Array.isArray(raw.messages) ? raw.messages : (Array.isArray(raw.dialogue) ? raw.dialogue : []);
       const importedLog: SessionLog = {
         ...log,

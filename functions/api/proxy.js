@@ -1,29 +1,31 @@
 export async function onRequest(context) {
   const { request, env } = context;
 
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+
   // Обработка CORS preflight запросов
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
+      headers: corsHeaders,
     });
   }
 
   // Проверка маршрута
   if (request.method === "GET") {
     return new Response(JSON.stringify({ ok: true, route: "/api/proxy", ts: Date.now() }), {
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json", ...corsHeaders }
     });
   }
 
   if (request.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json", ...corsHeaders }
     });
   }
 
@@ -41,7 +43,7 @@ export async function onRequest(context) {
     if (!isAllowedAction) {
       return new Response(JSON.stringify({ error: "SSRF Protection: Action not allowed." }), {
         status: 403,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json", ...corsHeaders }
       });
     }
 
@@ -62,16 +64,10 @@ export async function onRequest(context) {
     // Вспомогательная функция для генерации URL через AI Gateway (если настроен)
     const getGatewayUrl = (provider, originalUrl) => {
       if (cfAccountId && cfGatewayName) {
-        // Формат Gateway: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/{provider}
-        // Оригинальный: https://api.anthropic.com/v1/messages
-        // В случае с Anthropic путь /v1/messages добавляется к Gateway.
-        // Поэтому для CF мы берем базовый Gateway URL и добавляем нужный путь.
         if (provider === "anthropic") {
           return `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayName}/anthropic/v1/messages`;
         }
         if (provider === "google-ai-studio") {
-          // Исходный action содержит v1beta/models/...
-          // Возвращаем базовый url для google-ai-studio (далее приклеим путь)
           return `https://gateway.ai.cloudflare.com/v1/${cfAccountId}/${cfGatewayName}/google-ai-studio/v1beta/models/${encodeURIComponent(action)}`;
         }
       }
@@ -88,7 +84,7 @@ export async function onRequest(context) {
     if (action.startsWith("openrouter:")) {
       const OPENROUTER_KEY = env.OPENROUTER_KEY;
       if (!OPENROUTER_KEY) {
-        return new Response(JSON.stringify({ error: "OPENROUTER_KEY not configured" }), { status: 500 });
+        return new Response(JSON.stringify({ error: "OPENROUTER_KEY not configured" }), { status: 500, headers: corsHeaders });
       }
       const model = action.replace("openrouter:", "");
       targetUrl = "https://openrouter.ai/api/v1/chat/completions";
@@ -124,18 +120,16 @@ export async function onRequest(context) {
     // ============ CLAUDE (Anthropic) ============
     else if (action.startsWith("claude-")) {
       if (!/^claude[-\w.]+$/.test(action)) {
-        return new Response(JSON.stringify({ error: "Bad Claude model name." }), { status: 400 });
+        return new Response(JSON.stringify({ error: "Bad Claude model name." }), { status: 400, headers: corsHeaders });
       }
       
       const API_KEY = env.API_KEY || env.CLAUDE_API_KEY;
       
       if (useDirectApi) {
-        // Прямой доступ через Anthropic API (или через CF AI Gateway)
         targetUrl = getGatewayUrl("anthropic", "https://api.anthropic.com/v1/messages");
         fetchHeaders["x-api-key"] = API_KEY;
         fetchHeaders["anthropic-version"] = "2023-06-01";
       } else {
-        // Старый вариант (через proxyapi.ru)
         targetUrl = `https://api.proxyapi.ru/anthropic/v1/messages`;
         fetchHeaders["Authorization"] = `Bearer ${API_KEY}`;
       }
@@ -151,17 +145,15 @@ export async function onRequest(context) {
     // ============ GEMINI ============
     else if (action.includes(":")) {
       if (!/^gemini[-\w.]*:(generateContent|streamGenerateContent)$/.test(action)) {
-        return new Response(JSON.stringify({ error: "Bad url parameter." }), { status: 400 });
+        return new Response(JSON.stringify({ error: "Bad url parameter." }), { status: 400, headers: corsHeaders });
       }
       
       const API_KEY = env.API_KEY || env.GEMINI_API_KEY;
       
       if (useDirectApi) {
-        // Прямой доступ через Google AI Studio (или через CF AI Gateway)
         targetUrl = getGatewayUrl("google-ai-studio", `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(action)}`);
         targetUrl += `?key=${API_KEY}`;
       } else {
-        // Старый вариант (через proxyapi.ru)
         targetUrl = `https://api.proxyapi.ru/google/v1beta/models/${encodeURIComponent(action)}`;
         fetchHeaders["Authorization"] = `Bearer ${API_KEY}`;
       }
@@ -195,14 +187,14 @@ export async function onRequest(context) {
       status: upstream.status,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+        ...corsHeaders
       }
     });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e?.message || String(e) }), {
       status: 500,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json", ...corsHeaders }
     });
   }
 }
