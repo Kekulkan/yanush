@@ -11,8 +11,8 @@ const SUPABASE_URL = "https://ayrdlilidfgmuvceygbq.supabase.co";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, X-Client-Info, Prefer, Range",
-  "Access-Control-Expose-Headers": "Content-Range, X-Total-Count",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, Prefer, Range, Accept, x-supabase-api-version, supa-client-uid",
+  "Access-Control-Expose-Headers": "Content-Range, X-Total-Count, Content-Length",
 };
 
 export async function onRequest(context) {
