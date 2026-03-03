@@ -97,7 +97,7 @@ export async function onRequest(context) {
       };
 
       fetchHeaders["Authorization"] = `Bearer ${OPENROUTER_KEY}`;
-      fetchHeaders["HTTP-Referer"] = env.APP_URL || "https://yanush.pages.dev"; 
+      fetchHeaders["HTTP-Referer"] = env.APP_URL || "https://api.yanush-sim.ru"; 
       fetchHeaders["X-Title"] = "Yanush AI Teacher Trainer";
     }
     

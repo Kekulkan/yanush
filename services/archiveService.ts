@@ -17,7 +17,7 @@ const getLogsApiUrl = () => {
     const base = proxyUrl.replace('/api/proxy', '');
     return `${base}/api/logs`;
   }
-  return 'https://yanush.pages.dev/api/logs';
+  return 'https://api.yanush-sim.ru/api/logs';
 };
 
 // ============ ОТПРАВКА НА СЕРВЕР ============

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Используем локальный прокси для обхода блокировок
-const supabaseUrl = 'https://yanush.pages.dev/supabase-proxy';
+const supabaseUrl = 'https://api.yanush-sim.ru/supabase-proxy';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 if (!supabaseAnonKey) {
