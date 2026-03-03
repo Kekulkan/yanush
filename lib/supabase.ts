@@ -1,15 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase прокси всегда идёт через Cloudflare Pages (yanush.pages.dev),
-// чтобы фронтенд на российском сервере мог обращаться к Supabase без блокировок ТСПУ.
-const supabaseUrl = 'https://yanush.pages.dev/supabase-proxy';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-if (!supabaseAnonKey) {
-  console.error('Missing VITE_SUPABASE_ANON_KEY env var');
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env var');
   throw new Error(
-    'Отсутствует переменная среды VITE_SUPABASE_ANON_KEY. ' +
-    'Создайте файл .env и добавьте эту переменную.'
+    'Отсутствует переменная среды VITE_SUPABASE_URL или VITE_SUPABASE_ANON_KEY. ' +
+    'Создайте файл .env и добавьте эти переменные.'
   );
 }
 
