@@ -1234,7 +1234,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                                         }
                                                     }}
                                                     alt={member.name}
-                                                    className="absolute inset-0 w-full h-full object-cover object-top sm:object-center"
+                                                    className="absolute inset-0 w-full h-full object-cover object-top"
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A0B1A] via-transparent to-transparent sm:hidden"></div>
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0A0B1A] hidden sm:block"></div>
