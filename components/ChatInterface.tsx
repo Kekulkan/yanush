@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message, MessageRole, ActiveSession, AnalysisResult, SessionContext, ContextVisibility, UserAccount, SessionLog, CompletedGlobalEventSnapshot } from '../types';
-import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, GMEventContext } from '../services/geminiService';
+import { sendMessageToGemini, analyzeChatSession, generateGhostResponse, sendGlobalEventTurn, queryGM, communicateWithGM, GMEventContext } from '../services/geminiService';
 import { saveSessionBackup, clearSessionBackup } from '../services/storageService';
 import { saveToUserArchive, saveToGlobalArchive, sendLogToServer } from '../services/archiveService';
 import { resolveGenderTokens } from '../services/chaosEngine';
@@ -874,6 +874,36 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setIsInactive(false);
     setInactivityCount(0);
 
+    // Перехват команды /gm для админа
+    if (isAdmin && text.trim().startsWith('/gm ')) {
+      const gmMessageText = text.trim().substring(4).trim();
+      const adminMsg: Message = { id: Date.now().toString(), role: MessageRole.USER, content: gmMessageText, timestamp: Date.now(), is_gm_command: true };
+      const newMessages = [...messages, adminMsg];
+      setMessages(newMessages);
+      saveSessionBackup(session, newMessages);
+      setInput('');
+      setIsLoading(true);
+
+      try {
+        const gmResponse = await communicateWithGM(gmMessageText, newMessages, session.chaosDetails?.contextSummary || '');
+        const gmMsg: Message = { 
+          id: (Date.now() + 1).toString(), 
+          role: MessageRole.SYSTEM, 
+          content: `**ОТВЕТ GM:** ${gmResponse.reply}${gmResponse.new_directive ? `\n\n**СОХРАНЕНО НОВОЕ ПРАВИЛО:** ${gmResponse.new_directive}` : ''}`, 
+          timestamp: Date.now(), 
+          is_gm_response: true 
+        };
+        const finalMessages = [...newMessages, gmMsg];
+        setMessages(finalMessages);
+        saveSessionBackup(session, finalMessages);
+      } catch (e) {
+        console.error("GM Admin command error:", e);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     const userMsg: Message = { id: Date.now().toString(), role: MessageRole.USER, content: text, timestamp: Date.now() };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -1652,9 +1682,18 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             {messages.map((msg, idx) => (
                 <div key={msg.id} className={`flex flex-col ${msg.role === MessageRole.USER ? 'items-end' : (msg.role === MessageRole.SYSTEM ? 'items-center' : 'items-start')} animate-in fade-in slide-in-from-bottom-2`}>
                     {msg.role === MessageRole.SYSTEM ? (
-                        <div className={`w-full glass p-6 rounded-[32px] border-l-4 ${idx === 0 ? 'border-blue-500' : 'border-amber-500 bg-amber-500/5'} text-[11px] italic text-slate-400 leading-relaxed shadow-lg`}>
-                            {msg.content}
-                        </div>
+                        msg.is_gm_response ? (
+                            isAdmin ? (
+                              <div className="w-full glass p-6 rounded-[32px] border-l-4 border-fuchsia-500 bg-fuchsia-900/20 text-sm font-mono text-fuchsia-200 shadow-lg">
+                                <div className="flex items-center gap-2 mb-2 text-fuchsia-400 text-[10px] font-black uppercase tracking-widest"><Radio size={12}/> Game Master (System)</div>
+                                {msg.content}
+                              </div>
+                            ) : null
+                        ) : (
+                            <div className={`w-full glass p-6 rounded-[32px] border-l-4 ${idx === 0 ? 'border-blue-500' : 'border-amber-500 bg-amber-500/5'} text-[11px] italic text-slate-400 leading-relaxed shadow-lg`}>
+                                {msg.content}
+                            </div>
+                        )
                     ) : (
                         <div className="flex flex-col space-y-2 max-w-[90%] md:max-w-[85%]">
                             {msg.role === MessageRole.MODEL && msg.non_verbal && (
@@ -1670,8 +1709,16 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                 </div>
                             )}
                             
+                            {/* Админские GM команды и ответы */}
+                            {isAdmin && msg.is_gm_command && (
+                              <div className="p-4 md:p-6 rounded-[24px] md:rounded-[32px] rounded-tr-none text-sm shadow-2xl bg-fuchsia-800 text-white font-mono border border-fuchsia-500/50">
+                                <div className="flex items-center gap-2 mb-2 text-fuchsia-300 text-[10px] font-black uppercase tracking-widest"><ShieldAlert size={12}/> Вы (GM Command)</div>
+                                {msg.content}
+                              </div>
+                            )}
+
                             {/* Реплика учителя */}
-                            {msg.role === MessageRole.USER && (
+                            {msg.role === MessageRole.USER && !msg.is_gm_command && (
                               <div className="p-4 md:p-6 rounded-[24px] md:rounded-[32px] rounded-tr-none text-sm shadow-2xl bg-blue-600 text-white">
                                 {msg.content}
                               </div>
