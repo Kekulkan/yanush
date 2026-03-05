@@ -201,7 +201,9 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                    !analysis && 
                                    !awaitingContinue &&
                                    !isErrorMessage &&
-                                   !isInactivityMessage;
+                                   !isInactivityMessage &&
+                                   !activeGlobalEvent &&
+                                   !awaitingEventOpen;
     
     if (!shouldTrackInactivity) {
       // Сбрасываем таймер если учитель ответил или идёт загрузка
@@ -721,11 +723,12 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       };
       
       // FALLBACK: Если событие длится больше 10 ходов — принудительно завершаем
-      const forceComplete = turns >= 10;
-      if (forceComplete && !response.is_completed) {
-          console.warn('[Global Event] Force completing event due to turn limit');
-          gmMsg.content += "\n\n(Ситуация исчерпана, событие завершается)";
-      }
+      // Теперь закомментирован, чтобы событие длилось логически
+      // const forceComplete = turns >= 10;
+      // if (forceComplete && !response.is_completed) {
+      //     console.warn('[Global Event] Force completing event due to turn limit');
+      //     gmMsg.content += "\n\n(Ситуация исчерпана, событие завершается)";
+      // }
 
       // Обновляем состояние события
       setActiveGlobalEvent((prev: any) => ({
@@ -736,7 +739,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         trustDelta: (prev.trustDelta || 0) + response.trust_delta,
         stressDelta: (prev.stressDelta || 0) + response.stress_delta,
         availableTargets: response.available_targets.length > 0 ? response.available_targets : prev.availableTargets,
-        isCompleted: response.is_completed || forceComplete,
+        isCompleted: response.is_completed, // Убрали forceComplete
         description: response.description, // Обновляем текущее описание ситуации
         extreme_outcome: response.extreme_outcome // Запоминаем исход (если есть)
       }));
@@ -814,20 +817,21 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     setActiveGlobalEvent(null);
   };
 
-  // Открыть отложенное глобальное событие (после паузы «прочитайте реплики»)
-  const openPendingGlobalEvent = async () => {
-    const pending = pendingEventDataRef.current?.event;
-    if (!pending) {
-      setAwaitingEventOpen(false);
-      return;
-    }
-    setAwaitingEventOpen(false);
-    pendingEventDataRef.current = null;
+  // Открыть отложенное глобальное событие
+  // Теперь вызывается только по кнопке из карточки события в чате
+  const openPendingGlobalEvent = async (eventData: any) => {
+    setAwaitingEventOpen(false); // Прячем карточку ожидания
     setIsGlobalEventLoading(true);
+    
+    // Передаем контекст последних сообщений для анализа GM
+    // Чтобы GM понял, пошел ли ученик с нами
+    const recentContextMsgs = messages.slice(-4).map(m => `${m.role === MessageRole.USER ? 'УЧИТЕЛЬ' : 'УЧЕНИК'}: ${m.content}`).join('\n');
+    const initDescription = `${eventData.description}\n\n[КОНТЕКСТ ДИАЛОГА ПЕРЕД СОБЫТИЕМ:\n${recentContextMsgs}\n]`;
+
     try {
       const initResponse = await sendGlobalEventTurn(
-        [{ role: MessageRole.SYSTEM, content: pending.description, id: 'init', timestamp: Date.now() }],
-        pending.description,
+        [{ role: MessageRole.SYSTEM, content: initDescription, id: 'init', timestamp: Date.now() }],
+        eventData.description,
         "Начало события",
         "GM",
         0, 0,
@@ -835,10 +839,15 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         currentStress,
         0 // Начальный ход
       );
+      
+      // GM из контекста определяет, присутствует ли ученик, 
+      // но в текущей реализации мы передаем флаг через available_targets или неявным контекстом.
+      // По умолчанию в initResponse будут сгенерированные initial-цели.
+      
       setActiveGlobalEvent({
         isActive: true,
-        title: pending.type?.toUpperCase().replace(/_/g, ' ') || 'КРИЗИСНАЯ СИТУАЦИЯ',
-        description: pending.description,
+        title: eventData.type?.toUpperCase().replace(/_/g, ' ') || 'КРИЗИСНАЯ СИТУАЦИЯ',
+        description: initResponse.description || eventData.description, // Используем ответ GM как стартовое описание
         bonuses: 0,
         penalties: 0,
         trustDelta: 0,
@@ -846,7 +855,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         availableTargets: initResponse.available_targets?.length > 0
           ? initResponse.available_targets
           : [{ id: 'head_teacher', name: 'Завуч' }, { id: 'class', name: 'Класс' }, { id: 'student', name: 'Ученик' }],
-        history: [{ id: 'ev-init', role: MessageRole.MODEL, content: initResponse.description || pending.description, timestamp: Date.now() }],
+        history: [{ id: 'ev-init', role: MessageRole.MODEL, content: initResponse.description || eventData.description, timestamp: Date.now() }],
         isCompleted: false
       });
     } catch (e) {
@@ -971,12 +980,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       } : response.world_event; // Fallback на старую логику если GM не вызывался
 
       if (filteredWorldEvent) {
-        // Событие требует реакции — сначала пауза «прочитайте реплики», потом переход к событию
-        if (filteredWorldEvent.requires_response) {
-          console.log('[GM Event] Pausing for user to read, then opening:', filteredWorldEvent.type);
-          pendingEventDataRef.current = { event: filteredWorldEvent };
-          setAwaitingEventOpen(true);
-        }
+        // Раньше: если событие требует реакции, ставили на паузу.
+        // ТЕПЕРЬ: Не блокируем чат паузой. Событие просто появится в потоке чата, 
+        // и юзер сможет писать ученику (например: "пошли со мной к директору")
+        // до тех пор, пока сам не нажмет кнопку "Перейти к событию".
       }
 
       // Получаем предыдущие значения trust/stress
@@ -1188,10 +1195,8 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
 
   // Любая клавиша — переход к событию после паузы «прочитайте реплики»
   useEffect(() => {
-    if (!awaitingEventOpen) return;
-    const onKey = () => openPendingGlobalEvent();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // В новой логике мы не используем awaitingEventOpen
+    // Оставляем пустой useEffect для совместимости, потом удалим 
   }, [awaitingEventOpen]);
   
   if (analysis) {
@@ -1364,17 +1369,25 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     <div className="flex flex-col h-[100dvh] bg-[#0A0B1A] font-sans relative text-slate-200">
       
       {/* Пауза «прочитайте последние реплики» перед переходом к событию */}
-      {awaitingEventOpen && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
-          onClick={openPendingGlobalEvent}
-          role="button"
-          tabIndex={0}
-          aria-label="Перейти к событию"
-        >
-          <div className="text-center p-8 rounded-2xl border border-amber-500/40 bg-slate-900/95 max-w-md">
-            <p className="text-amber-200 font-bold mb-2">Прочитайте последние реплики выше.</p>
-            <p className="text-slate-400 text-sm">Нажмите любую клавишу или клик — переход к событию</p>
+      {/* Теперь мы не блокируем экран. Событие висит как кнопка в чате. */}
+      {awaitingEventOpen && pendingEventDataRef.current && (
+        <div className="fixed bottom-24 right-4 md:right-8 z-[50] animate-in slide-in-from-bottom-4">
+          <div className="glass p-4 rounded-2xl border-2 border-amber-500/50 shadow-[0_0_30px_rgba(245,158,11,0.3)] bg-slate-900/90 max-w-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <Radio size={16} className="text-amber-400 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                {pendingEventDataRef.current.event.type?.toUpperCase() || 'СОБЫТИЕ'}
+              </span>
+            </div>
+            <p className="text-amber-200/90 text-sm mb-3">
+              У вас есть время отреагировать или пригласить ученика с собой. Как будете готовы — нажмите кнопку ниже.
+            </p>
+            <button
+              onClick={() => openPendingGlobalEvent(pendingEventDataRef.current?.event)}
+              className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all"
+            >
+              Перейти к событию →
+            </button>
           </div>
         </div>
       )}
