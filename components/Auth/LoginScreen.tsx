@@ -84,7 +84,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
         if (password.length < 6) throw new Error('ПАРОЛЬ ДОЛЖЕН БЫТЬ ОТ 6 СИМВОЛОВ');
         const { error: updateErr } = await updatePassword(password);
         if (updateErr) {
-          setError('ОШИБКА ОБНОВЛЕНИЯ ПАРОЛЯ. ВОЗМОЖНО ССЫЛКА УСТАРЕЛА.');
+          setError(`ОШИБКА: ${updateErr}`);
         } else {
           // убираем хеш или параметры
           window.history.replaceState({}, document.title, window.location.pathname);
