@@ -424,8 +424,8 @@ const FALLBACK_RETRY_INTERVAL = 60_000; // Пробовать вернуться
 // ═══════════════════════════════════════════════════════════════════════════
 let apiCallCount = 0;
 let sessionStartTime: number | null = null;
-const MAX_API_CALLS_PER_SESSION = 200;    // Максимум 200 вызовов за сессию
-const MAX_SESSION_DURATION_MS = 3600_000; // Максимум 1 час на сессию
+const MAX_API_CALLS_PER_SESSION = 500;    // Максимум 500 вызовов за сессию
+const MAX_SESSION_DURATION_MS = 43200_000; // Максимум 12 часов на сессию
 
 export function resetApiLimits() {
   apiCallCount = 0;

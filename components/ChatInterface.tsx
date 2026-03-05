@@ -187,14 +187,13 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     // ВАЖНО: НЕ запускаем таймер если:
     // 1. Последнее сообщение — ошибка API или критическая развязка
     // 2. Сессия уже завершена (awaitingContinue)
-    // 3. Последнее сообщение сгенерировано таймером бездействия (содержит типичные фразы)
+    // 3. Последнее сообщение сгенерировано таймером бездействия (содержит метку AFK)
     const isErrorMessage = lastMsg?.content?.includes('Связь прервана') ||
                            lastMsg?.state?.thought?.includes('Ошибка API') ||
                            lastMsg?.state?.violation_reason?.includes('CATASTROPHE') ||
                            lastMsg?.state?.violation_reason?.includes('aborted');
-    const isInactivityMessage = lastMsg?.content === 'Эээ... алло? Вы там?' ||
-                                lastMsg?.content === '*смотрит на учителя с недоумением*' ||
-                                lastMsg?.content === 'Вы меня вообще слышите?';
+    const isInactivityMessage = lastMsg?.state?.thought?.includes('Он завис?') ||
+                                lastMsg?.state?.thought?.includes('отключился');
     
     const shouldTrackInactivity = lastMsg?.role === MessageRole.MODEL && 
                                    !isLoading && 
@@ -261,12 +260,25 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
     // Первый тик — удивление
     if (inactivityCount === 1) {
       const firstReactions = [
-        "Эээ... алло? Вы там?",
-        "*смотрит на учителя с недоумением*",
-        "Вы меня вообще слышите?",
+        "Вы здесь? Просто вы так долго молчите...",
+        "Эээ... алло? Вы меня слышите?",
+        "*непонимающе смотрит на вас*",
+        "Что-то не так? Вы ничего не говорите.",
+        "Мы закончили? Вы почему-то замолчали."
       ];
       
-      const trollMsg = firstReactions[Math.floor(Math.random() * firstReactions.length)];
+      const firstThoughts = [
+        'Он завис? Это странно...',
+        'Почему он молчит? Мне не по себе.',
+        'Может, он меня не слушает вообще?',
+        'Как-то неловко... Он просто смотрит и молчит.',
+        'Он меня игнорирует или задумался? Непонятно.'
+      ];
+      
+      const randIdx = Math.floor(Math.random() * firstReactions.length);
+      const trollMsg = firstReactions[randIdx];
+      const thoughtMsg = firstThoughts[randIdx];
+      
       const newTrust = Math.max(0, currentTrust - 10);
       const newStress = Math.min(100, currentStress + 15);
       
@@ -275,7 +287,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         role: MessageRole.MODEL,
         content: trollMsg,
         state: {
-          thought: 'Что с ним? Он завис? Это странно... Мне как-то не по себе.',
+          thought: thoughtMsg,
           trust: newTrust,
           stress: newStress
         },
