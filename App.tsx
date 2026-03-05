@@ -51,6 +51,14 @@ const App: React.FC = () => {
       window.location.search.includes('reset=true') || 
       window.location.hash.includes('type=recovery');
 
+    // Если идет процесс сброса пароля, принудительно остаемся на экране авторизации
+    // И НЕ СОХРАНЯЕМ юзера в стейт, чтобы приложение не считало нас "залогиненными"
+    // (ведь мы хотим просто ввести новый пароль, а не работать в системе)
+    if (isResettingPassword) {
+      setView('auth');
+      return; // прерываем выполнение useEffect, чтобы не делать setView('landing')
+    }
+
     if (supabaseUser) {
       // Формируем совместимый UserAccount из данных Supabase
       const account: UserAccount = {
@@ -66,13 +74,7 @@ const App: React.FC = () => {
       } catch (e) {
         console.error('[App] Failed to sync user to localStorage:', e);
       }
-
-      // Если мы восстанавливаем пароль, принудительно оставляем экран авторизации
-      if (isResettingPassword) {
-        setView('auth');
-      } else {
-        setView(prev => prev === 'auth' ? 'landing' : prev);
-      }
+      setView(prev => prev === 'auth' ? 'landing' : prev);
     } else {
       // Если это локальный админ-байпас, не сбрасываем его сессию
       // Проверяем localStorage напрямую, так как user state может быть еще не обновлен или рассинхронизирован
