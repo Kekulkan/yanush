@@ -17,6 +17,10 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   /** Выход */
   signOut: () => Promise<void>;
+  /** Сброс пароля */
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
+  /** Установка нового пароля */
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
 }
 
 // ─── Контекст ─────────────────────────────────────────────────────────────────
@@ -70,6 +74,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/?reset=true`,
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
+  const updatePassword = async (password: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
   // ─── Значение контекста ───────────────────────────────────────────────────
 
   const value: AuthContextValue = {
@@ -79,6 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
+    resetPassword,
+    updatePassword,
   };
 
   return (

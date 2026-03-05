@@ -13,12 +13,21 @@ interface Props {
   onEnterMuseum: () => void;
 }
 
-type Mode = 'welcome' | 'login' | 'register' | 'admin';
+type Mode = 'welcome' | 'login' | 'register' | 'admin' | 'forgot-password' | 'reset-password';
 
 const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword, updatePassword } = useAuth();
 
-  const [mode, setMode] = useState<Mode>('welcome');
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      // Если пришли по ссылке сброса пароля (используем хеш, так как supabase передает токены в хеше)
+      if (params.get('reset') === 'true' || window.location.hash.includes('type=recovery')) {
+        return 'reset-password';
+      }
+    }
+    return 'welcome';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +70,26 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
           // onAuthStateChange в AuthProvider обновит user автоматически;
           // сообщаем App.tsx, что вход выполнен
           onLogin(email, 'USER');
+        }
+      } else if (mode === 'forgot-password') {
+        if (!email.includes('@')) throw new Error('НЕВЕРНЫЙ EMAIL');
+        const { error: resetErr } = await resetPassword(email);
+        if (resetErr) {
+          setError('ОШИБКА ОТПРАВКИ ПИСЬМА СБРОСА ПАРОЛЯ');
+        } else {
+          setMode('login');
+          setError('ИНСТРУКЦИИ ДЛЯ СБРОСА ПАРОЛЯ ОТПРАВЛЕНЫ НА ПОЧТУ');
+        }
+      } else if (mode === 'reset-password') {
+        if (password.length < 6) throw new Error('ПАРОЛЬ ДОЛЖЕН БЫТЬ ОТ 6 СИМВОЛОВ');
+        const { error: updateErr } = await updatePassword(password);
+        if (updateErr) {
+          setError('ОШИБКА ОБНОВЛЕНИЯ ПАРОЛЯ. ВОЗМОЖНО ССЫЛКА УСТАРЕЛА.');
+        } else {
+          // убираем хеш или параметры
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setMode('login');
+          setError('ПАРОЛЬ УСПЕШНО ИЗМЕНЕН. ТЕПЕРЬ ВЫ МОЖЕТЕ ВОЙТИ.');
         }
       }
     } catch (err: any) {
@@ -146,7 +175,11 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
           >
             <div className="text-center space-y-2 mb-4">
               <h3 className="text-white font-black uppercase tracking-widest text-sm italic">
-                {mode === 'admin' ? 'Ядро Системы' : mode === 'login' ? 'Авторизация' : 'Регистрация'}
+                {mode === 'admin' ? 'Ядро Системы' 
+                 : mode === 'login' ? 'Авторизация' 
+                 : mode === 'forgot-password' ? 'Восстановление пароля'
+                 : mode === 'reset-password' ? 'Новый пароль'
+                 : 'Регистрация'}
               </h3>
               {error && (
                 <p className="text-[9px] text-rose-500 font-black uppercase tracking-widest">{error}</p>
@@ -154,7 +187,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
             </div>
 
             <div className="space-y-4">
-              {mode !== 'admin' && (
+              {mode !== 'admin' && mode !== 'reset-password' && (
                 <div className="relative group">
                   <Mail className="absolute left-6 top-5 text-slate-600" size={18} />
                   <input
@@ -167,17 +200,19 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
                   />
                 </div>
               )}
-              <div className="relative group">
-                <Lock className="absolute left-6 top-5 text-slate-600" size={18} />
-                <input
-                  required
-                  type="password"
-                  placeholder="ПАРОЛЬ"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full bg-slate-900/80 border border-white/5 rounded-2xl p-5 pl-16 text-white outline-none focus:border-blue-500/50"
-                />
-              </div>
+              {mode !== 'forgot-password' && (
+                <div className="relative group">
+                  <Lock className="absolute left-6 top-5 text-slate-600" size={18} />
+                  <input
+                    required
+                    type="password"
+                    placeholder={mode === 'reset-password' ? 'НОВЫЙ ПАРОЛЬ' : 'ПАРОЛЬ'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-white/5 rounded-2xl p-5 pl-16 text-white outline-none focus:border-blue-500/50"
+                  />
+                </div>
+              )}
             </div>
 
             <button
@@ -189,23 +224,41 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
             >
               {isProcessing
                 ? <Loader2 className="animate-spin" size={18} />
-                : mode === 'admin' ? 'Войти' : mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+                : mode === 'admin' ? 'Войти' 
+                : mode === 'login' ? 'Войти' 
+                : mode === 'forgot-password' ? 'Сбросить пароль'
+                : mode === 'reset-password' ? 'Сохранить пароль'
+                : 'Создать аккаунт'}
             </button>
 
             {/* Переключатель между входом и регистрацией */}
-            {(mode === 'login' || mode === 'register') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setMode(mode === 'login' ? 'register' : 'login');
-                }}
-                className="w-full text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
-              >
-                {mode === 'login'
-                  ? 'Нет аккаунта? Зарегистрироваться'
-                  : 'Уже есть аккаунт? Войти'}
-              </button>
+            {(mode === 'login' || mode === 'register' || mode === 'forgot-password') && (
+              <div className="space-y-3">
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setMode('forgot-password');
+                    }}
+                    className="w-full text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                  >
+                    Забыли пароль?
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setMode(mode === 'login' ? 'register' : 'login');
+                  }}
+                  className="w-full text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                >
+                  {mode === 'login'
+                    ? 'Нет аккаунта? Зарегистрироваться'
+                    : 'Уже есть аккаунт? Войти'}
+                </button>
+              </div>
             )}
 
             <button
