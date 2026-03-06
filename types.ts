@@ -114,6 +114,8 @@ export interface Message {
   non_verbal_valence?: number; // Окраска невербалики (-1..1)
   state?: SimulationState;
   timestamp: number;
+  is_gm_command?: boolean;
+  is_gm_response?: boolean;
 }
 
 export interface TeacherProfile {

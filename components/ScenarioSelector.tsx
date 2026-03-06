@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Play, Network, Activity, Terminal, Crown, Star, Info, HelpCircle } from 'lucide-react';
+import { Play, Network, Activity, Terminal, Crown, Star, Info, HelpCircle, ArrowRight } from 'lucide-react';
 import { SubscriptionInfo } from '../services/billingService';
 import DocumentsModal from './DocumentsModal';
 
@@ -51,20 +51,18 @@ const ScenarioSelector: React.FC<Props> = ({
           <h1 className="text-6xl sm:text-7xl md:text-9xl font-black tracking-tighter leading-none italic">
             ЯНУШ
           </h1>
-          <p className="text-xs md:text-sm text-slate-500 font-black uppercase tracking-[0.6em] opacity-80">
-            версия 2.5.0-stable
-          </p>
         </div>
         
         <div className="space-y-4 max-w-md">
           <p className="text-lg text-slate-300 font-light leading-relaxed italic">
-            «Ещё не патология, но уже не норма»
+            Ещё не патология, но уже не норма
           </p>
           <button
             onClick={onOpenMuseum}
-            className="text-[10px] text-slate-500 hover:text-blue-400 transition-colors uppercase tracking-widest font-bold border-b border-dashed border-slate-700 hover:border-blue-400 pb-1"
+            className="group text-[10px] text-slate-500 hover:text-blue-400 transition-colors uppercase tracking-widest font-bold border-b border-dashed border-slate-700 hover:border-blue-400 pb-1 flex items-center justify-center gap-2 mx-auto"
           >
             Выставка акцентуаций им. А. Личко
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
 
@@ -113,7 +111,7 @@ const ScenarioSelector: React.FC<Props> = ({
             onClick={() => openDoc('guide')}
             className="w-full sm:w-72 px-6 py-3 glass hover:bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
           >
-            <HelpCircle size={16} /> КАК ПОЛЬЗОВАТЬСЯ?
+            <HelpCircle size={16} /> ИНСТРУКЦИЯ
           </button>
         </div>
       </div>

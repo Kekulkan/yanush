@@ -109,19 +109,20 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
             <Activity size={48} className="animate-pulse" />
           </div>
           <h1 className="text-7xl font-black text-white tracking-tighter uppercase italic leading-none">ЯНУШ</h1>
+          <p className="text-white opacity-60 text-sm mt-2 font-medium tracking-wide">Тренажёр сложных разговоров с подростками</p>
         </div>
 
         {mode === 'welcome' ? (
           <div className="w-full space-y-6 animate-in fade-in zoom-in-95 duration-500">
             <button
               onClick={onEnterMuseum}
-              className="group w-full glass p-8 rounded-[45px] border-blue-500/20 hover:border-blue-500/50 transition-all hover:scale-[1.02] text-center"
+              className="group w-full glass p-8 rounded-[45px] border-blue-500/20 hover:border-blue-500/50 transition-all text-center"
             >
-              <div className="text-blue-400 font-black text-[10px] uppercase tracking-[0.5em] mb-4">Свободный Доступ</div>
+              <div className="text-blue-400 font-black text-[10px] uppercase tracking-[0.5em] mb-4">Познакомьтесь с собеседниками</div>
               <h2 className="text-2xl font-black text-white uppercase italic">Выставка акцентуаций</h2>
               <div className="pt-6 flex justify-center">
-                <span className="px-8 py-4 bg-white text-slate-950 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2">
-                  Открыть Экспозицию <ArrowRight size={14} />
+                <span className="px-8 py-4 bg-white text-slate-950 rounded-2xl font-black uppercase text-sm hover:scale-105 transition-transform duration-300 flex items-center gap-2">
+                  ПЕРЕЙТИ <ArrowRight size={16} />
                 </span>
               </div>
             </button>
@@ -136,7 +137,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
                 </div>
                 <div className="text-left">
                   <h3 className="text-white font-black uppercase tracking-widest text-sm">О тренажере</h3>
-                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Руководство и концепция</p>
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Инструкция и концепция</p>
                 </div>
               </div>
               <ArrowRight className="text-slate-600 group-hover:text-blue-400 transition-colors" size={16} />
