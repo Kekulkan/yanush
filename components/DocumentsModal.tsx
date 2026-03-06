@@ -14,16 +14,16 @@ interface DocumentsModalProps {
   initialDocId?: string;
 }
 
-const DOCUMENTS: Document[] = [
+const getDocuments = (setActiveDocId: (id: string) => void): Document[] => [
   {
     id: 'guide',
-    title: 'Руководство пользователя',
+    title: 'Инструкция пользователя',
     icon: <HelpCircle size={18} />,
     content: (
       <div className="space-y-8 text-slate-300 leading-relaxed pb-20">
         <header className="border-b border-slate-700 pb-6">
           <h2 className="text-2xl font-black text-white uppercase italic">
-            Руководство по использованию тренажёра «Януш»
+            Инструкция по использованию тренажёра «Януш»
           </h2>
           <p className="text-slate-500 mt-2">Всё, что нужно знать для эффективной тренировки</p>
         </header>
@@ -69,13 +69,13 @@ const DOCUMENTS: Document[] = [
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
               <p className="font-bold text-white mb-2">💬 Реплики</p>
               <p className="text-slate-400">Просто пишите то, что скажете ученику. Например:</p>
-              <p className="text-blue-300 italic mt-2">«Я вижу, что тебе сейчас непросто. Хочешь поговорить?»</p>
+              <p className="text-blue-300 italic mt-2">Я вижу, что тебе сейчас непросто. Хочешь поговорить?</p>
             </div>
             
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
               <p className="font-bold text-white mb-2">✨ Действия</p>
               <p className="text-slate-400">Используйте <strong>*звёздочки*</strong> для описания действий:</p>
-              <p className="text-blue-300 italic mt-2">«*Присаживаюсь рядом, но на расстоянии* Не против, если я тут посижу?»</p>
+              <p className="text-blue-300 italic mt-2">*Присаживаюсь рядом, но на расстоянии* Не против, если я тут посижу?</p>
             </div>
             
             <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5">
@@ -109,8 +109,7 @@ const DOCUMENTS: Document[] = [
             <ul className="space-y-2 text-slate-300">
               <li>💨 <strong>Побег</strong> — ученик убежал (критически низкое доверие + высокий стресс)</li>
               <li>👊 <strong>Агрессия</strong> — ученик перешёл к физическим действиям</li>
-              <li>🔇 <strong>Замыкание</strong> — ученик полностью отключился и отказывается говорить</li>
-              <li>🚨 <strong>Вызов помощи</strong> — ситуация вышла из-под контроля, пришлось звать подмогу</li>
+              <li>🔇 <strong>Ступор</strong> — ученик полностью отключился и отказывается говорить</li>
             </ul>
             <p className="text-red-400/80 text-sm mt-4 italic">При экстремальном исходе оценка комиссии будет существенно ниже</p>
           </div>
@@ -133,7 +132,7 @@ const DOCUMENTS: Document[] = [
           </div>
           <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 mt-4">
             <p className="text-slate-300 text-sm">
-              <strong>Цвет рамки реплики</strong> также отражает состояние: 
+              <strong>Цвет рамки реплики</strong> <span className="inline-block w-4 h-4 rounded-full bg-blue-500 align-middle ml-2 mr-2"></span> также отражает состояние: 
               <span className="text-emerald-400"> зелёный</span> — контакт установлен, 
               <span className="text-red-400"> красный</span> — критический стресс.
             </p>
@@ -181,9 +180,9 @@ const DOCUMENTS: Document[] = [
           </h3>
           <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
             <ul className="space-y-2 text-slate-300">
-              <li>❌ <strong>Угрозы и шантаж</strong> — «Если не успокоишься, вызову родителей»</li>
-              <li>❌ <strong>Морализаторство</strong> — «Ты должен понимать, что так нельзя»</li>
-              <li>❌ <strong>Обесценивание</strong> — «Это всё ерунда, бывает и хуже»</li>
+              <li>❌ <strong>Угрозы и шантаж</strong> — Если не успокоишься, вызову родителей</li>
+              <li>❌ <strong>Морализаторство</strong> — Ты должен понимать, что так нельзя</li>
+              <li>❌ <strong>Обесценивание</strong> — Это всё ерунда, бывает и хуже</li>
               <li>❌ <strong>Шаблонные фразы</strong> — подростки мгновенно чувствуют фальшь</li>
               <li>❌ <strong>Перебивание</strong> — дайте ученику договорить</li>
               <li>❌ <strong>Долгое молчание</strong> — если вы не отвечаете, ученик начинает нервничать</li>
@@ -684,204 +683,8 @@ export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide'
 
   if (!isOpen) return null;
 
-  // Определение документов внутри компонента для доступа к setActiveDocId
-  const getDocuments = (): Document[] => [
-    {
-      id: 'guide',
-      title: 'Инструкция пользователя',
-      icon: <HelpCircle size={18} />,
-      content: (
-        <div className="space-y-4 pb-20">
-          <header className="mb-8">
-            <h2 className="text-2xl font-black text-white uppercase italic">
-              Инструкция по использованию тренажёра «Януш»
-            </h2>
-            <p className="text-slate-500 mt-2">Всё, что нужно знать для эффективной тренировки</p>
-          </header>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Target size={20} className="text-blue-600" /> Что это такое?
-            </h3>
-            <p className="text-gray-900 text-base mb-2">
-              <strong>Януш</strong> — это интерактивный симулятор для тренировки навыков работы с «трудными» подростками. 
-              Вы играете роль учителя, а искусственный интеллект отыгрывает ученика с определённой психологической акцентуацией.
-            </p>
-            <p className="text-gray-900 text-base">
-              Каждая сессия — это уникальная ситуация: случайный ученик, случайный контекст, случайная проблема. 
-              Ваша задача — установить контакт, деэскалировать конфликт и помочь ребёнку, не навредив ему.
-            </p>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Zap size={20} className="text-blue-600" /> Как начать?
-            </h3>
-            <ol className="list-decimal ml-6 space-y-3 text-gray-900 text-base">
-              <li><strong>Нажмите «Начать тренинг»</strong> на главном экране</li>
-              <li><strong>Настройте параметры сессии:</strong>
-                <ul className="list-disc ml-6 mt-2 space-y-1 text-gray-600">
-                  <li>Ваше имя и пол (сохраняются для следующих сессий)</li>
-                  <li>Возраст и пол ученика</li>
-                  <li>Включить/выключить совещательную комиссию</li>
-                </ul>
-              </li>
-              <li><strong>Прочитайте вводную:</strong> перед началом диалога вы увидите описание ситуации</li>
-              <li><strong>Нажмите на аватар ученика</strong> чтобы просмотреть его досье — это поможет понять, с кем вы работаете</li>
-              <li><strong>Начните диалог:</strong> пишите реплики в поле ввода внизу экрана</li>
-            </ol>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <MessageSquare size={20} className="text-blue-600" /> Как общаться?
-            </h3>
-            <div className="space-y-4 text-gray-900 text-base">
-              <div>
-                <p className="font-bold mb-1">💬 Реплики</p>
-                <p className="text-gray-600 mb-2">Просто пишите то, что скажете ученику. Например:</p>
-                <p className="text-blue-600 italic">Я вижу, что тебе сейчас непросто. Хочешь поговорить?</p>
-              </div>
-              
-              <div>
-                <p className="font-bold mb-1">✨ Действия</p>
-                <p className="text-gray-600 mb-2">Используйте <strong>*звёздочки*</strong> для описания действий:</p>
-                <p className="text-blue-600 italic">*Присаживаюсь рядом, но на расстоянии* Не против, если я тут посижу?</p>
-              </div>
-              
-              <div>
-                <p className="font-bold mb-1">🎤 Голосовой ввод</p>
-                <p className="text-gray-600">Нажмите на иконку микрофона, чтобы диктовать реплики голосом.</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Trophy size={20} className="text-blue-600" /> Условия победы
-            </h3>
-            <div className="text-gray-900 text-base">
-              <p className="font-bold mb-3">Идеальное разрешение ситуации:</p>
-              <ul className="space-y-2 mb-4">
-                <li>✅ Ученик полностью вам доверяет и успокоился</li>
-                <li>✅ Конфликт деэскалирован</li>
-                <li>✅ Вы нашли подход к ребёнку, не навредив ему</li>
-              </ul>
-              <p className="text-gray-600 italic">При идеальном исходе вы получите бонус к оценке комиссии</p>
-            </div>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Skull size={20} className="text-blue-600" /> Условия проигрыша
-            </h3>
-            <div className="text-gray-900 text-base">
-              <p className="font-bold mb-3">Экстремальные исходы (сессия завершается автоматически):</p>
-              <ul className="space-y-2 mb-4">
-                <li>💨 <strong>Побег</strong> — ученик убежал (критически низкое доверие + высокий стресс)</li>
-                <li>👊 <strong>Агрессия</strong> — ученик перешёл к физическим действиям</li>
-                <li>🔇 <strong>Ступор</strong> — ученик полностью отключился и отказывается говорить</li>
-              </ul>
-              <p className="text-gray-600 italic">При экстремальном исходе оценка комиссии будет существенно ниже</p>
-            </div>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Eye size={20} className="text-blue-600" /> Индикаторы состояния
-            </h3>
-            <p className="text-gray-900 text-base mb-4">Под каждой репликой ученика отображаются два ключевых параметра:</p>
-            <div className="grid md:grid-cols-2 gap-4 text-gray-900 text-base mb-4">
-              <div>
-                <p className="font-bold mb-2">💚 Доверие</p>
-                <p className="text-gray-600">Насколько ученик вам доверяет. Растёт при эмпатии, активном слушании, уважении границ. Цель — довести до 100%.</p>
-              </div>
-              <div>
-                <p className="font-bold mb-2">❤️‍🔥 Стресс</p>
-                <p className="text-gray-600">Уровень напряжения ученика. Растёт при давлении, угрозах, обесценивании. Цель — снизить до 0%.</p>
-              </div>
-            </div>
-            <div className="text-gray-900 text-base">
-              <p>
-                <strong>Цвет рамки реплики</strong><span className="inline-block w-4 h-4 rounded-full bg-blue-500 align-middle ml-2 mr-2"></span>также отражает состояние: 
-                <span className="font-bold text-emerald-600"> зелёный</span> — контакт установлен, 
-                <span className="font-bold text-red-600"> красный</span> — критическое состояние.
-              </p>
-            </div>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Award size={20} className="text-blue-600" /> Как оценивается?
-            </h3>
-            <p className="text-gray-900 text-base mb-4">После завершения сессии ваши действия оценивает <strong>комиссия экспертов</strong>:</p>
-            
-            <div className="mb-4 text-gray-900 text-base">
-              <p className="font-bold mb-2">Основная комиссия</p>
-              <p className="text-gray-600">6-8 профессионалов (психологи, педагоги, криминологи). Их оценки формируют итоговый балл (0-100). <button onClick={() => { setActiveDocId('experts'); window.scrollTo(0, 0); const c = document.getElementById('docs-scroll-container'); if(c) c.scrollTo(0,0); }} className="text-blue-600 font-bold hover:underline">Подробнее - в разделе "Эксперты"</button>.</p>
-            </div>
-            
-            <div className="mb-4 text-gray-900 text-base">
-              <p className="font-bold mb-2">Совещательная комиссия (опционально)</p>
-              <p className="text-gray-600">Гротескные персонажи из реального мира — родители, чиновники, блогеры. Их мнения не влияют на балл, но показывают, с какими реакциями вы столкнётесь в реальности.</p>
-            </div>
-
-            <div className="mt-4 text-gray-900 text-base mb-4">
-              <p className="font-bold mb-2">Шкала оценок:</p>
-              <ul className="space-y-1">
-                <li><span className="font-bold">90-100:</span> Исключительная работа</li>
-                <li><span className="font-bold">75-89:</span> Хорошо, с мелкими недочётами</li>
-                <li><span className="font-bold">60-74:</span> Удовлетворительно</li>
-                <li><span className="font-bold">40-59:</span> Ниже среднего, серьёзные ошибки</li>
-                <li><span className="font-bold">0-39:</span> Плохо, грубые ошибки</li>
-              </ul>
-            </div>
-
-            <div className="text-gray-900 text-base">
-              <p className="text-gray-600">
-                ⚠️ <strong>Важно:</strong> Для получения оценки необходимо провести диалог минимум из 10 реплик. 
-                Слишком короткие сессии не анализируются.
-              </p>
-            </div>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <AlertTriangle size={20} className="text-blue-600" /> Чего избегать?
-            </h3>
-            <ul className="space-y-2 text-gray-900 text-base">
-              <li>❌ <strong>Угрозы и шантаж</strong> — Если не успокоишься, вызову родителей</li>
-              <li>❌ <strong>Морализаторство</strong> — Ты должен понимать, что так нельзя</li>
-              <li>❌ <strong>Обесценивание</strong> — Это всё ерунда, бывает и хуже</li>
-              <li>❌ <strong>Шаблонные фразы</strong> — подростки мгновенно чувствуют фальшь</li>
-              <li>❌ <strong>Перебивание</strong> — дайте ученику договорить</li>
-              <li>❌ <strong>Долгое молчание</strong> — если вы не отвечаете, ученик начинает нервничать</li>
-            </ul>
-          </section>
-
-          <section className="bg-white p-6 rounded-lg mb-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Zap size={20} className="text-blue-600" /> Полезные советы
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4 text-gray-900 text-base">
-              <div>
-                <p className="font-bold mb-2">👁️ Читайте цвета</p>
-                <p className="text-gray-600">Рамка реплик ученика меняет цвет: зелёный = контакт, красный = критическое состояние.</p>
-              </div>
-              <div>
-                <p className="font-bold mb-2">🤔 Паузы — это нормально</p>
-                <p className="text-gray-600">Иногда лучше просто кивнуть или сказать «я слушаю», чем давать советы.</p>
-              </div>
-            </div>
-          </section>
-        </div>
-      )
-    },
-    ...DOCUMENTS.filter(d => d.id !== 'guide')
-  ];
-
-  const docs = getDocuments();
-  const activeDoc = docs.find(d => d.id === activeDocId) || docs[0];
+  const DOCUMENTS = getDocuments(setActiveDocId);
+  const activeDoc = DOCUMENTS.find(d => d.id === activeDocId) || DOCUMENTS[0];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 md:p-8">
@@ -892,16 +695,10 @@ export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide'
         <div className="shrink-0 w-full md:w-80 bg-slate-900/50 border-b md:border-b-0 md:border-r border-white/5 p-3 md:p-6 md:space-y-2 overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
           <div className="hidden md:block mb-8 px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Документация</div>
           <div className="flex md:flex-col gap-2 min-w-max md:min-w-0">
-            {docs.map(doc => (
+            {DOCUMENTS.map(doc => (
               <button
                 key={doc.id}
-                onClick={() => {
-                  setActiveDocId(doc.id);
-                  window.scrollTo(0, 0);
-                  // Также прокручиваем контейнер модалки, если нужно
-                  const container = document.getElementById('docs-scroll-container');
-                  if (container) container.scrollTo(0, 0);
-                }}
+                onClick={() => { setActiveDocId(doc.id); const c = document.getElementById('docs-scroll-container'); if (c) c.scrollTo(0,0); window.scrollTo(0,0); }}
                 className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-2xl text-left transition-all whitespace-nowrap md:whitespace-normal md:w-full ${
                   activeDocId === doc.id 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
