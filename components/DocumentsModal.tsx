@@ -243,67 +243,35 @@ const getDocuments = (setActiveDocId: (id: string) => void): Document[] => [
           <p className="text-slate-400">Профессиональные эксперты, чьи оценки формируют итоговый балл (0-100).</p>
           
           <div className="space-y-4">
-            <div className="bg-slate-800/50 p-5 rounded-xl border border-emerald-500/20">
-              <p className="font-bold text-white text-lg">Маргарита Сергеевна Ковалёва</p>
-              <p className="text-emerald-400 text-sm font-bold uppercase tracking-wider">Председатель комиссии • Детский клинический психолог, д.пс.н.</p>
+            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
+              <p className="font-bold text-white text-lg">Валентина Васильевна Громова</p>
+              <p className="text-emerald-400 text-sm font-bold uppercase tracking-wider">Учитель «с земли» • Учитель математики, стаж 35 лет</p>
               <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Психологическая безопасность взаимодействия, соблюдение границ, эмпатия, техники активного слушания, риск ретравматизации.
+                <strong>Фокус оценки:</strong> Здравый смысл, удержание авторитета, управление классом, границы.
               </p>
             </div>
 
             <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Андрей Викторович Берёзин</p>
-              <p className="text-blue-400 text-sm font-bold uppercase tracking-wider">Детский психиатр, к.м.н.</p>
+              <p className="font-bold text-white text-lg">Аркадий Эдуардович Богословский</p>
+              <p className="text-blue-400 text-sm font-bold uppercase tracking-wider">Профессор педагогики • Д.п.н., автор учебников</p>
               <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Распознавание острых состояний, адекватность реакций на суицидальные маркеры, понимание границ педагогической компетенции.
+                <strong>Фокус оценки:</strong> Эмпатия, безоценочное принятие, фасилитация, отсутствие давления.
               </p>
             </div>
 
             <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Елена Павловна Соколова</p>
-              <p className="text-pink-400 text-sm font-bold uppercase tracking-wider">Семейный психолог, супервизор</p>
+              <p className="font-bold text-white text-lg">Елена Павловна Строгая</p>
+              <p className="text-pink-400 text-sm font-bold uppercase tracking-wider">Завуч по воспитательной работе • Администратор</p>
               <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Понимание семейного контекста, работа с переносом, нейтральность к «третьим лицам», избегание триангуляции.
+                <strong>Фокус оценки:</strong> Соблюдение регламентов, защита школы от жалоб, документация.
               </p>
             </div>
 
             <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
               <p className="font-bold text-white text-lg">Дмитрий Олегович Петров</p>
-              <p className="text-orange-400 text-sm font-bold uppercase tracking-wider">Криминолог, специалист по профилактике</p>
+              <p className="text-orange-400 text-sm font-bold uppercase tracking-wider">Криминолог / Безопасник • Специалист по профилактике</p>
               <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Распознавание маркеров деструктивного поведения, техники деэскалации, алгоритмы действий при угрозе насилия.
-              </p>
-            </div>
-
-            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Наталья Александровна Иванова</p>
-              <p className="text-cyan-400 text-sm font-bold uppercase tracking-wider">Социальный педагог, методист</p>
-              <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Межведомственное взаимодействие, знание ресурсов помощи, понимание своих функций по 120-ФЗ.
-              </p>
-            </div>
-
-            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Игорь Станиславович Волков</p>
-              <p className="text-violet-400 text-sm font-bold uppercase tracking-wider">Медиатор, конфликтолог</p>
-              <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Я-высказывания, отсутствие обвинений, работа с сопротивлением, поиск точек соприкосновения.
-              </p>
-            </div>
-
-            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Ольга Михайловна Кузнецова</p>
-              <p className="text-teal-400 text-sm font-bold uppercase tracking-wider">Подростковый психолог</p>
-              <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Понимание специфики подросткового возраста, уважение автономии, умение мотивировать без давления.
-              </p>
-            </div>
-
-            <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Владимир Николаевич Морозов</p>
-              <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">Юрист, специалист по правам несовершеннолетних</p>
-              <p className="text-slate-400 mt-2 text-sm">
-                <strong>Фокус оценки:</strong> Правовая корректность, защита прав ребёнка, соблюдение конфиденциальности.
+                <strong>Фокус оценки:</strong> Оценка рисков, деэскалация, безопасность жизни и здоровья.
               </p>
             </div>
           </div>
