@@ -1,4 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#1e40af"/>
-  <text x="16" y="22" font-size="18" text-anchor="middle" fill="white"><�</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a1a3e"/>
+      <stop offset="100%" stop-color="#2d1b69"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Фон -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+
+  <!-- Бирюзовый «глитч» (сдвинутая копия) -->
+  <path d="M28 11 L51 11 L51 53 L41 53 L41 34 L22 53 L13 53
+           L29 34 Q17 34 17 23 Q17 11 28 11 Z
+           M30 18 L41 18 L41 27 L30 27
+           Q24 27 24 23 Q24 18 30 18 Z"
+        fill-rule="evenodd" fill="#00e5cc" opacity="0.45"
+        transform="translate(2.5,-1.5)"/>
+
+  <!-- Основная белая буква Я -->
+  <path d="M28 11 L51 11 L51 53 L41 53 L41 34 L22 53 L13 53
+           L29 34 Q17 34 17 23 Q17 11 28 11 Z
+           M30 18 L41 18 L41 27 L30 27
+           Q24 27 24 23 Q24 18 30 18 Z"
+        fill-rule="evenodd" fill="white"/>
 </svg>
