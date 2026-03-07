@@ -171,6 +171,9 @@ export interface ContextModule {
   min_age?: number;                         // Минимальный возраст
   max_age?: number;                         // Максимальный возраст
   
+  // Теги для подтягивания базы знаний GM
+  knowledge_tags?: string[];
+  
   // Только для background - веса вероятности статуса видимости
   visibility_weights?: VisibilityWeights;
 }

@@ -6,6 +6,7 @@
 
 import { SessionContext } from '../types';
 import { NORMATIVE_CONSTRAINTS } from '../data/normativeConstraints';
+import { KNOWLEDGE_BASE } from '../data/knowledgeBase';
 
 interface GMPromptParams {
   // Контекст сцены
@@ -51,10 +52,27 @@ export function buildGMPrompt(params: GMPromptParams): string {
     .map(c => `- ${c.module.name}: ${c.module.prompt_text}`)
     .join('\n');
 
+  // Сбор тегов знаний из всех активных модулей
+  const knowledgeTags = new Set<string>();
+  contexts.forEach(c => {
+    if (c.module.knowledge_tags) {
+      c.module.knowledge_tags.forEach(tag => knowledgeTags.add(tag));
+    }
+  });
+
+  const knowledgeBaseText = Array.from(knowledgeTags)
+    .map(tag => KNOWLEDGE_BASE[tag])
+    .filter(Boolean)
+    .join('\n\n');
+
+  const knowledgeBaseSection = knowledgeBaseText 
+    ? `\n═══════════════════════════════════════════════════════════\nБАЗА ЗНАНИЙ (СИТУАТИВНЫЙ КОНТЕКСТ):\n═══════════════════════════════════════════════════════════\n${knowledgeBaseText}\n` 
+    : '';
+
   return `[РОЛЬ: GM — ГЕЙММАСТЕР]
 [ЗАДАЧА: Решить, нужно ли сгенерировать внешнее событие]
 ${NORMATIVE_CONSTRAINTS}
-
+${knowledgeBaseSection}
 ═══════════════════════════════════════════════════════════
 КОНТЕКСТ СЦЕНЫ:
 ═══════════════════════════════════════════════════════════

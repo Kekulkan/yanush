@@ -76,9 +76,16 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
       }
 
       if (result.action === 'logout') {
-        setTimeout(() => {
-          signOut();
-          // onBack не нужен, так как AuthContext изменится и App перерисуется
+        setTimeout(async () => {
+          try {
+            await signOut();
+          } catch (e) {
+            console.error('Logout error:', e);
+          }
+          // Очищаем локальную авторизацию (для админ-бэкдора)
+          localStorage.removeItem('janus_auth'); // или authService.logout(), если импортирован
+          // Принудительно перезагружаем страницу для полного сброса состояния
+          window.location.reload();
         }, 1000);
       }
       

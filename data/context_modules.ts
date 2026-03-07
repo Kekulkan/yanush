@@ -12,7 +12,8 @@ export default [
     "initial_stress": 85,
     "conflicts": [],
     "incompatible_accentuations": ["acc_psychasthenic"],
-    "weight": 50
+    "weight": 50,
+    "knowledge_tags": ["вейпы_сигареты_СДН"]
   },
   {
     "id": "inc_setup",
