@@ -17,6 +17,7 @@ import {
   confirmWipe,
   TerminalOutput
 } from '../services/kernelCommands';
+import { authService } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface CommandCenterProps {
@@ -82,10 +83,8 @@ const CommandCenter: React.FC<CommandCenterProps> = ({ user, onBack }) => {
           } catch (e) {
             console.error('Logout error:', e);
           }
-          // Очищаем локальную авторизацию (для админ-бэкдора)
-          localStorage.removeItem('janus_auth'); // или authService.logout(), если импортирован
-          // Принудительно перезагружаем страницу для полного сброса состояния
-          window.location.reload();
+          // Очищаем локальную авторизацию (через сервис, где правильный ключ)
+          authService.logout();
         }, 1000);
       }
       
