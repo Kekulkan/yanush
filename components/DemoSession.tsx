@@ -3,7 +3,7 @@ import {
   ArrowLeft, Play, Pause, SkipForward, 
   AlertTriangle, CheckCircle, XCircle,
   ChevronRight, Lightbulb, Target, Sparkles,
-  Eye, MessageCircle, HelpCircle, Award
+  Eye, MessageCircle, HelpCircle, Award, Send
 } from 'lucide-react';
 import { DemoScenario, DemoPhase, DemoDialogueLine, DemoChoice } from '../types';
 
@@ -22,6 +22,7 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
   const [trust, setTrust] = useState(50);
   const [stress, setStress] = useState(30);
   const [isDialogueFinished, setIsDialogueFinished] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   
   const dialogueRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -76,6 +77,22 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
     setTrust(t => Math.max(0, Math.min(100, t + choice.trustDelta)));
     setStress(s => Math.max(0, Math.min(100, s + choice.stressDelta)));
     setPhase('result');
+  };
+
+  const handleSimulatedSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+    
+    // В демо-режиме (онбординг) мы всегда даем "controlled win" - засчитываем лучший вариант
+    const goodChoice = scenario.choicePoint.choices.find(c => c.quality === 'good') || scenario.choicePoint.choices[0];
+    
+    // Подменяем текст выбора на то, что реально ввел пользователь
+    const customChoice = {
+      ...goodChoice,
+      text: inputValue
+    };
+    
+    handleChoiceSelect(customChoice);
   };
 
   const renderIntro = () => (
@@ -299,50 +316,92 @@ const DemoSession: React.FC<Props> = ({ scenario, onBack, onStartFullSession }) 
     );
   };
 
-  const renderChoice = () => (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      {/* Ситуация */}
-      <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center gap-2 text-blue-400">
-          <HelpCircle size={18} />
-          <span className="text-xs font-bold uppercase tracking-wider">А как бы вы поступили?</span>
-        </div>
-        <p className="text-slate-300">{scenario.choicePoint.situation}</p>
-        {scenario.choicePoint.curatorHint && (
-          <div className="bg-amber-500/10 border-l-2 border-amber-500 pl-4 py-2">
-            <p className="text-sm text-amber-200 italic">{scenario.choicePoint.curatorHint}</p>
+  const renderChoice = () => {
+    const goodChoice = scenario.choicePoint.choices.find(c => c.quality === 'good') || scenario.choicePoint.choices[0];
+    
+    return (
+      <div className="flex-1 flex flex-col h-full bg-[#0A0B1A]">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Ситуация */}
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-2 text-blue-400">
+              <HelpCircle size={18} />
+              <span className="text-xs font-bold uppercase tracking-wider">Ваш ход</span>
+            </div>
+            <p className="text-slate-300">{scenario.choicePoint.situation}</p>
+            {scenario.choicePoint.curatorHint && (
+              <div className="bg-amber-500/10 border-l-2 border-amber-500 pl-4 py-2">
+                <p className="text-sm text-amber-200 italic">{scenario.choicePoint.curatorHint}</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Индикаторы */}
-      <div className="flex items-center justify-center gap-8">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-slate-500">Доверие:</span>
-          <span className="text-lg font-bold text-green-400">{trust}%</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-slate-500">Стресс:</span>
-          <span className="text-lg font-bold text-red-400">{stress}%</span>
-        </div>
-      </div>
+          {/* Индикаторы */}
+          <div className="flex items-center justify-center gap-8">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-slate-500">Доверие:</span>
+              <span className="text-lg font-bold text-green-400">{trust}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-slate-500">Стресс:</span>
+              <span className="text-lg font-bold text-red-400">{stress}%</span>
+            </div>
+          </div>
 
-      {/* Варианты */}
-      <div className="space-y-4">
-        {scenario.choicePoint.choices.map((choice) => (
-          <button
-            key={choice.id}
-            onClick={() => handleChoiceSelect(choice)}
-            className="w-full text-left p-5 bg-slate-900/50 border border-slate-700/50 rounded-xl hover:border-blue-500/50 hover:bg-slate-800/50 transition-all group"
-          >
-            <p className="text-slate-200 group-hover:text-white transition-colors">
-              {choice.text}
+          {/* Онбординг-подсказка куратора */}
+          <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-5 space-y-3 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full pointer-events-none" />
+            <div className="flex items-center gap-2 text-blue-300">
+              <Lightbulb size={18} />
+              <span className="text-xs font-bold uppercase tracking-wider">Обучение: Как работать с тренажером</span>
+            </div>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              В полноценном сеансе нет вариантов ответов — вы пишете их сами, как в мессенджере. 
+              <br/><br/>
+              <span className="text-amber-300">💡 Секрет:</span> Вы можете передавать невербалику! Напишите своё действие или эмоцию в звездочках <code>*вот так*</code>, а затем сам текст.
             </p>
-          </button>
-        ))}
+            
+            <div className="mt-4 p-4 bg-slate-900/60 rounded-lg border border-slate-700/50">
+              <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider font-bold">Идеальный ответ для этой ситуации:</p>
+              <p className="text-sm text-slate-200 italic">"{goodChoice.text}"</p>
+              <button 
+                onClick={() => setInputValue(goodChoice.text)}
+                className="mt-3 text-xs bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 px-3 py-1.5 rounded-md transition-colors"
+              >
+                Скопировать в поле ввода
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Имитация поля ввода */}
+        <div className="p-4 bg-slate-900 border-t border-slate-800">
+          <form onSubmit={handleSimulatedSubmit} className="relative flex items-end gap-2 max-w-4xl mx-auto">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Напишите ваш ответ (можно использовать *действия*)..."
+              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all resize-none overflow-hidden text-sm sm:text-base min-h-[52px]"
+              rows={Math.min(5, inputValue.split('\n').length || 1)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSimulatedSubmit(e);
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="absolute right-2 bottom-2 p-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-xl transition-all"
+            >
+              <Send size={18} />
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderResult = () => {
     if (!selectedChoice) return null;
