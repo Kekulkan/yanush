@@ -649,6 +649,16 @@ const getDocuments = (setActiveDocId: (id: string) => void): Document[] => [
 export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide' }: DocumentsModalProps) {
   const [activeDocId, setActiveDocId] = React.useState(initialDocId);
 
+  const handleDocChange = (id: string) => {
+    setActiveDocId(id);
+    // Даем React время обновить DOM перед скроллом
+    setTimeout(() => {
+      const c = document.getElementById('docs-scroll-container');
+      if (c) c.scrollTo(0, 0);
+      window.scrollTo(0, 0);
+    }, 0);
+  };
+
   // Синхронизация activeDocId с initialDocId при открытии
   React.useEffect(() => {
     if (isOpen) {
@@ -658,7 +668,7 @@ export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide'
 
   if (!isOpen) return null;
 
-  const DOCUMENTS = getDocuments(setActiveDocId);
+  const DOCUMENTS = getDocuments(handleDocChange);
   const activeDoc = DOCUMENTS.find(d => d.id === activeDocId) || DOCUMENTS[0];
 
   return (
@@ -673,7 +683,7 @@ export default function DocumentsModal({ isOpen, onClose, initialDocId = 'guide'
             {DOCUMENTS.map(doc => (
               <button
                 key={doc.id}
-                onClick={() => { setActiveDocId(doc.id); const c = document.getElementById('docs-scroll-container'); if (c) c.scrollTo(0,0); window.scrollTo(0,0); }}
+                onClick={() => handleDocChange(doc.id)}
                 className={`flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-2xl text-left transition-all whitespace-nowrap md:whitespace-normal md:w-full ${
                   activeDocId === doc.id 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
