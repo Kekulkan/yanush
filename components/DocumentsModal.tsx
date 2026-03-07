@@ -244,7 +244,7 @@ const getDocuments = (setActiveDocId: (id: string) => void): Document[] => [
           
           <div className="space-y-4">
             <div className="bg-slate-800/50 p-5 rounded-xl border border-white/5">
-              <p className="font-bold text-white text-lg">Валентина Васильевна Громова</p>
+              <p className="font-bold text-white text-lg">Классный руководитель "с земли" Валентина Васильевна Громова, заслуженный учитель РФ</p>
               <p className="text-emerald-400 text-sm font-bold uppercase tracking-wider">Учитель «с земли» • Учитель математики, стаж 35 лет</p>
               <p className="text-slate-400 mt-2 text-sm">
                 <strong>Фокус оценки:</strong> Здравый смысл, удержание авторитета, управление классом, границы.
@@ -361,7 +361,14 @@ const getDocuments = (setActiveDocId: (id: string) => void): Document[] => [
 
         <section className="pt-6 border-t border-slate-700">
           <p className="text-slate-500 text-sm italic">
-            Подробнее о педагогическом смысле совещательной комиссии — в разделе «Методологическое обоснование».
+            Подробнее о педагогическом смысле совещательной комиссии — в разделе{' '}
+            <button 
+              onClick={() => setActiveDocId('methodology')} 
+              className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+            >
+              «Методологическое обоснование»
+            </button>
+            .
           </p>
         </section>
       </div>

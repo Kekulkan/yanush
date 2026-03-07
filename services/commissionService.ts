@@ -20,7 +20,7 @@ import {
 export const MAIN_COMMISSION: MainCommissionMember[] = [
   {
     id: 'practitioner',
-    name: 'Валентина Васильевна Громова',
+    name: 'Классный руководитель "с земли" Валентина Васильевна Громова, заслуженный учитель РФ',
     role: 'Учитель «с земли»',
     specialty: 'Учитель математики высшей категории, стаж 35 лет',
     avatar: '/avatars/commission/practitioner',
