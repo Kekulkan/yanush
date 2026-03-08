@@ -66,7 +66,8 @@ export default [
     "initial_stress": 60,
     "conflicts": [],
     "incompatible_accentuations": ["acc_psychasthenic", "acc_sensitive"],
-    "weight": 50
+    "weight": 50,
+    "knowledge_tags": ["закон_о_телефонах_на_уроке"]
   },
   {
     "id": "inc_fight",
@@ -79,7 +80,8 @@ export default [
     "initial_stress": 95,
     "conflicts": [],
     "incompatible_accentuations": ["acc_sensitive", "acc_schizoid", "acc_asthenic", "acc_psychasthenic"],
-    "weight": 40
+    "weight": 40,
+    "knowledge_tags": ["протокол_травматизма_в_школе"]
   },
   {
     "id": "inc_sleep",
@@ -106,7 +108,8 @@ export default [
     "conflicts": [],
     "incompatible_accentuations": ["acc_sensitive", "acc_psychasthenic"],
     "max_age": 14,
-    "weight": 30
+    "weight": 30,
+    "knowledge_tags": ["материальная_ответственность_в_школе"]
   },
   {
     "id": "inc_cheating",
@@ -132,7 +135,8 @@ export default [
     "initial_stress": 90,
     "conflicts": [],
     "incompatible_accentuations": ["acc_conformal"],
-    "weight": 30
+    "weight": 30,
+    "knowledge_tags": ["досмотр_вещей_закон"]
   },
   {
     "id": "inc_earbuds",
@@ -171,7 +175,8 @@ export default [
     "initial_stress": 100,
     "conflicts": ["bg_golden", "bg_blogger"],
     "incompatible_accentuations": ["acc_hyperthymic", "acc_epileptoid"],
-    "weight": 25
+    "weight": 25,
+    "knowledge_tags": ["алгоритм_первой_помощи_психологическая"]
   },
   
   // --- НАРКОТИКИ / ПАВ (Сложные, зона соцпедагога) ---
@@ -188,7 +193,8 @@ export default [
     "conflicts": ["bg_golden", "bg_honor_student"],
     "incompatible_accentuations": ["acc_conformal", "acc_sensitive"],
     "min_age": 14,
-    "weight": 8
+    "weight": 8,
+    "knowledge_tags": ["наркотики_ПАВ_в_школе_регламент", "вовлечение_несовершеннолетних_в_наркоторговлю"]
   },
   {
     "id": "inc_stimulants",
@@ -202,7 +208,8 @@ export default [
     "conflicts": ["bg_honor_student"],
     "incompatible_accentuations": ["acc_asthenic", "acc_psychasthenic"],
     "min_age": 14,
-    "weight": 10
+    "weight": 10,
+    "knowledge_tags": ["признаки_употребления_ПАВ", "протокол_опьянение_в_школе"]
   },
   {
     "id": "inc_courier",
