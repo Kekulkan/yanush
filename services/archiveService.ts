@@ -85,7 +85,12 @@ export async function fetchServerLogs(adminKey?: string): Promise<SessionLog[]> 
         status: row.status,
         messages: row.chat_history || [],
         result: row.metrics_log || undefined,
-        sessionSnapshot: row.scenario_config || undefined,
+        sessionSnapshot: {
+          ...row.scenario_config,
+          chaosDetails: row.scenario_config?.chaosDetails || {
+            accentuation: row.scenario_config?.accentuation || 'unknown'
+          }
+        },
         userId: row.user_id
       } as SessionLog));
     }
@@ -240,7 +245,12 @@ export async function getUserArchive(userId: string): Promise<SessionLog[]> {
         status: row.status,
         messages: row.chat_history || [],
         result: row.metrics_log || undefined,
-        sessionSnapshot: row.scenario_config || undefined,
+        sessionSnapshot: {
+          ...row.scenario_config,
+          chaosDetails: row.scenario_config?.chaosDetails || {
+            accentuation: row.scenario_config?.accentuation || 'unknown'
+          }
+        },
         userId: row.user_id
       } as SessionLog));
       
@@ -465,8 +475,8 @@ export function getArchiveStats(archive: SessionLog[]): ArchiveStats {
   return {
     totalSessions: archive.length,
     averageScore,
-    completedSessions: archive.filter(s => s.status === 'completed').length,
-    interruptedSessions: archive.filter(s => s.status === 'interrupted' || s.status === 'manual').length,
+    completedSessions: archive.filter(s => s.status === 'completed' || s.status === 'finished').length,
+    interruptedSessions: archive.filter(s => s.status === 'interrupted' || s.status === 'manual' || s.status === 'aborted').length,
     accentuationStats,
     lastSessionDate: archive.length > 0 ? archive[0].timestamp : null
   };
