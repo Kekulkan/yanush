@@ -63,18 +63,12 @@ export async function sendLogToServer(sessionLog: SessionLog): Promise<boolean> 
  */
 export async function fetchServerLogs(adminKey?: string): Promise<SessionLog[]> {
   try {
-    // Если мы админы, мы должны использовать adminKey или просто получать все логи через Supabase RPC/auth
-    // В данном случае мы просто используем встроенный supabase client
-    // Если настроен RLS, админ должен быть залогинен и иметь роль admin в базе.
-    // Для простоты оставим прямую загрузку (если RLS позволяет)
-    
+    // Используем защищенную RPC функцию в Supabase, передаем пароль из админки
     const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .rpc('get_all_sessions', { admin_password: adminKey || '4308' });
       
     if (error) {
-      console.warn('Failed to fetch server logs from Supabase:', error.message);
+      console.warn('Failed to fetch server logs via RPC:', error.message);
       return [];
     }
     
