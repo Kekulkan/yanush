@@ -3,60 +3,57 @@
  * Двойное сохранение: личный архив юзера + глобальный архив (серверный)
  */
 
-import { SessionLog } from '../types';
+import { SessionLog, Message } from '../types';
+import { supabase } from '../lib/supabase';
+import { dbService } from './dbService';
 
 const USER_ARCHIVE_PREFIX = 'user_archive_';
 const GLOBAL_ARCHIVE_KEY = 'global_sessions_archive';
 
-// URL для серверного API логов
-const getLogsApiUrl = () => {
-  const env: any = (import.meta as any).env || {};
-  const proxyUrl = env.VITE_REMOTE_PROXY_URL;
-  if (proxyUrl) {
-    // Извлекаем базовый URL из proxy URL
-    const base = proxyUrl.replace('/api/proxy', '');
-    return `${base}/api/logs`;
-  }
-  return 'https://api.yanush-sim.ru/api/logs';
-};
-
 // ============ ОТПРАВКА НА СЕРВЕР ============
 
 /**
- * Отправить лог на сервер для глобального архива
+ * Отправить лог на сервер (в Supabase sessions)
  */
 export async function sendLogToServer(sessionLog: SessionLog): Promise<boolean> {
   try {
-    console.log('[sendLogToServer] Sending log with ID:', sessionLog.id);
-    console.log('[sendLogToServer] URL:', getLogsApiUrl());
+    console.log('[sendLogToServer] Sending log to Supabase with ID:', sessionLog.id);
     
-    const bodyStr = JSON.stringify(sessionLog);
-    console.log('[sendLogToServer] Body size:', bodyStr.length, 'chars');
-    
-    const response = await fetch(getLogsApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: bodyStr
-    });
-    
-    const responseText = await response.text();
-    console.log('[sendLogToServer] Response status:', response.status);
-    console.log('[sendLogToServer] Response body:', responseText);
-    
-    if (!response.ok) {
-      console.warn('Failed to send log to server:', response.status, responseText);
+    // Получаем текущего пользователя для привязки лога (если RLS требует)
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || (sessionLog as any).userId || 'cb8b65b1-bb52-42db-8bdc-3ad1af08ff06'; // fallback
+
+    let status = sessionLog.status || 'completed';
+    if (status === 'incomplete' || status === 'autoplay' || status === 'manual' || status === 'interrupted') {
+        status = 'aborted';
+    } else if (status === 'completed') {
+        status = 'finished';
+    }
+
+    const row = {
+        id: sessionLog.id,
+        user_id: userId,
+        created_at: new Date(sessionLog.timestamp).toISOString(),
+        status: status,
+        scenario_config: sessionLog.sessionSnapshot || {},
+        chat_history: sessionLog.messages || [],
+        metrics_log: sessionLog.result || null,
+        feedback: (sessionLog as any).feedback || null
+    };
+
+    const { error } = await supabase
+      .from('sessions')
+      .upsert(row);
+
+    if (error) {
+      console.warn('Failed to send log to Supabase:', error.message);
       return false;
     }
     
-    try {
-      const data = JSON.parse(responseText);
-      console.log('Log sent to server:', data);
-    } catch {
-      console.log('Log sent (non-JSON response)');
-    }
+    console.log('Log sent to Supabase successfully.');
     return true;
   } catch (e) {
-    console.error('Error sending log to server:', e);
+    console.error('Error sending log to Supabase:', e);
     return false;
   }
 }
@@ -64,26 +61,41 @@ export async function sendLogToServer(sessionLog: SessionLog): Promise<boolean> 
 /**
  * Получить глобальные логи с сервера (только для админа)
  */
-export async function fetchServerLogs(adminKey: string): Promise<SessionLog[]> {
+export async function fetchServerLogs(adminKey?: string): Promise<SessionLog[]> {
   try {
-    const response = await fetch(`${getLogsApiUrl()}?adminKey=${encodeURIComponent(adminKey)}`, {
-      method: 'GET',
-      headers: { 'X-Admin-Key': adminKey }
-    });
+    // Если мы админы, мы должны использовать adminKey или просто получать все логи через Supabase RPC/auth
+    // В данном случае мы просто используем встроенный supabase client
+    // Если настроен RLS, админ должен быть залогинен и иметь роль admin в базе.
+    // Для простоты оставим прямую загрузку (если RLS позволяет)
     
-    if (!response.ok) {
-      console.warn('Failed to fetch server logs:', response.status);
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.warn('Failed to fetch server logs from Supabase:', error.message);
       return [];
     }
     
-    const data = await response.json();
-    
-    // Защитная проверка — убеждаемся что logs это массив
-    if (data && Array.isArray(data.logs)) {
-      return data.logs;
+    // Возвращаем данные как SessionLog[]
+    if (data && Array.isArray(data)) {
+      // Маппинг формата БД обратно в SessionLog для UI
+      return data.map(row => ({
+        id: row.id,
+        timestamp: new Date(row.created_at).getTime(),
+        duration_seconds: row.scenario_config?.duration_seconds || 0,
+        teacher: row.scenario_config?.legacy_teacher || row.scenario_config?.teacher || { name: 'Unknown', gender: 'male' },
+        student_name: row.scenario_config?.student_name || row.scenario_config?.student?.name || 'Unknown',
+        scenario_description: row.scenario_config?.legacy_scenario_description || row.scenario_config?.scenario_description || '',
+        status: row.status,
+        messages: row.chat_history || [],
+        result: row.metrics_log || undefined,
+        sessionSnapshot: row.scenario_config || undefined,
+        userId: row.user_id
+      } as SessionLog));
     }
     
-    console.warn('Server returned invalid logs format:', data);
     return [];
   } catch (e) {
     console.error('Error fetching server logs:', e);
@@ -96,12 +108,16 @@ export async function fetchServerLogs(adminKey: string): Promise<SessionLog[]> {
  */
 export async function deleteServerLog(adminKey: string, logId: string): Promise<boolean> {
   try {
-    const response = await fetch(`${getLogsApiUrl()}?id=${encodeURIComponent(logId)}&adminKey=${encodeURIComponent(adminKey)}`, {
-      method: 'DELETE',
-      headers: { 'X-Admin-Key': adminKey }
-    });
-    
-    return response.ok;
+    const { error } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', logId);
+      
+    if (error) {
+      console.error('Error deleting server log:', error.message);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error('Error deleting server log:', e);
     return false;
@@ -112,22 +128,11 @@ export async function deleteServerLog(adminKey: string, logId: string): Promise<
  * Очистить все логи на сервере (только для админа)
  */
 export async function wipeServerLogs(adminKey: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${getLogsApiUrl()}?id=all&adminKey=${encodeURIComponent(adminKey)}`, {
-      method: 'DELETE',
-      headers: { 'X-Admin-Key': adminKey }
-    });
-    
-    return response.ok;
-  } catch (e) {
-    console.error('Error wiping server logs:', e);
-    return false;
-  }
+  // Реализация полного удаления через Supabase может быть опасной без RPC,
+  // так как RLS обычно запрещает delete без условий.
+  // Оставим пока так.
+  return false;
 }
-
-import { dbService } from './dbService';
-
-// ... (existing imports)
 
 // ============ MIGRATION ============
 export async function migrateToIDB(): Promise<void> {
@@ -223,9 +228,43 @@ export async function saveToUserArchive(userId: string, sessionLog: SessionLog):
  */
 export async function getUserArchive(userId: string): Promise<SessionLog[]> {
   try {
+    // Пытаемся получить из Supabase (если есть интернет и мы залогинены)
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (!error && data && Array.isArray(data)) {
+      const logs = data.map(row => ({
+        id: row.id,
+        timestamp: new Date(row.created_at).getTime(),
+        duration_seconds: row.scenario_config?.duration_seconds || 0,
+        teacher: row.scenario_config?.legacy_teacher || row.scenario_config?.teacher || { name: 'Unknown', gender: 'male' },
+        student_name: row.scenario_config?.student_name || row.scenario_config?.student?.name || 'Unknown',
+        scenario_description: row.scenario_config?.legacy_scenario_description || row.scenario_config?.scenario_description || '',
+        status: row.status,
+        messages: row.chat_history || [],
+        result: row.metrics_log || undefined,
+        sessionSnapshot: row.scenario_config || undefined,
+        userId: row.user_id
+      } as SessionLog));
+      
+      // Параллельно обновляем локальную базу
+      for (const log of logs) {
+        await dbService.saveLog(log);
+      }
+      return logs;
+    }
+  } catch (e) {
+    console.warn('Supabase fetch failed for user archive, falling back to local DB', e);
+  }
+
+  // Fallback на локальную базу (IndexedDB)
+  try {
     return await dbService.getUserLogs(userId);
   } catch (e) {
-    console.error('Failed to get user archive:', e);
+    console.error('Failed to get user archive from local DB:', e);
     return [];
   }
 }
@@ -268,11 +307,13 @@ export async function saveToGlobalArchive(sessionLog: SessionLog): Promise<void>
 }
 
 /**
- * Получить глобальный архив (все сессии всех юзеров)
+ * Получить весь глобальный архив локально 
+ * (для админа, теперь лучше использовать fetchServerLogs напрямую,
+ * но оставим для совместимости)
  */
 export async function getGlobalArchive(): Promise<SessionLog[]> {
   try {
-    return await dbService.getAllLogs();
+    return await fetchServerLogs(); // Вызов Supabase напрямую
   } catch (e) {
     console.error('Failed to get global archive:', e);
     return [];
