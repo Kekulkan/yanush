@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, ArrowLeft, Terminal, Layers, AlertTriangle, Plus, X, Save, Trash2, Activity as ActivityIcon, Target, Download, Upload, Edit2, Eye, EyeOff, Archive, Database, BarChart3, Gavel, Users, MessageSquare, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { getSessionHistory } from '../services/logService';
-import { SessionLog, ContextModule, VisibilityWeights, MessageRole, Message } from '../types';
+import { SessionLog, ContextModule, VisibilityWeights, MessageRole, Message, UserAccount } from '../types';
 import { DEFAULT_ACCENTUATIONS, DEFAULT_CONTEXT_MODULES } from '../constants';
 import { supabase } from '../lib/supabase';
 import {
@@ -31,7 +31,10 @@ import {
   wipeServerLogs
 } from '../services/archiveService';
 
+import KernelTerminal from './KernelTerminal';
+
 interface Props {
+  user?: UserAccount | null;
   onBack: () => void;
   onRestoreSession: (log: SessionLog) => void;
 }
@@ -55,10 +58,10 @@ const emptyModule = (category: 'incident' | 'background'): Partial<ContextModule
   visibility_weights: category === 'background' ? { known: 40, rumor: 35, secret: 25 } : undefined
 });
 
-const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
+const AdminPanel: React.FC<Props> = ({ user, onBack, onRestoreSession }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [activeTab, setActiveTab] = useState<'stats' | 'database' | 'logs' | 'promos'>('database');
+  const [activeTab, setActiveTab] = useState<'terminal' | 'stats' | 'database' | 'logs' | 'promos'>('terminal');
   const [history, setHistory] = useState<SessionLog[]>([]);
   const [modules, setModules] = useState<ContextModule[]>([]);
   
@@ -662,17 +665,17 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
             <div className="flex items-center gap-6">
                 <button onClick={onBack} className="p-3 text-slate-500 hover:text-white bg-white/5 rounded-2xl border border-white/5 transition-all"><ArrowLeft size={18} /></button>
                 <div className="font-black text-white uppercase text-xl italic tracking-tighter flex items-center gap-3">
-                    <Terminal size={24} className="text-blue-500" /> Kernel_Root
+                    <Terminal size={24} className="text-blue-500" /> Командный Центр
                 </div>
             </div>
             <div className="flex gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5">
-                {['stats', 'database', 'logs', 'promos'].map((t) => (
+                {['terminal', 'stats', 'database', 'logs', 'promos'].map((t) => (
                     <button 
                         key={t} 
                         onClick={() => setActiveTab(t as any)} 
                         className={`uppercase font-black tracking-widest px-4 md:px-6 py-2 md:py-3 rounded-xl transition-all ${activeTab === t ? 'text-white bg-blue-600' : 'text-slate-500'}`}
                     >
-                        {t === 'stats' ? 'СТАТ' : (t === 'database' ? 'БАЗА' : (t === 'logs' ? 'ЛОГИ' : 'ПРОМО'))}
+                        {t === 'terminal' ? 'ТЕРМИНАЛ' : (t === 'stats' ? 'СТАТ' : (t === 'database' ? 'БАЗА' : (t === 'logs' ? 'ЛОГИ' : 'ПРОМО')))}
                     </button>
                 ))}
             </div>
@@ -693,6 +696,12 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                         </div>
                     ))}
                 </div>
+
+                {activeTab === 'terminal' && user && (
+                    <div className="h-[600px] animate-in fade-in duration-500">
+                        <KernelTerminal user={user} />
+                    </div>
+                )}
 
                 {activeTab === 'database' && (
                     <div className="space-y-12 animate-in fade-in duration-500">

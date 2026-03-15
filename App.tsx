@@ -182,16 +182,16 @@ const App: React.FC = () => {
           <ScenarioSelector
               onStart={() => setView('setup')}
               onOpenMuseum={() => setView('museum')}
-              onOpenCommandCenter={() => setView('command_center')}
+              onOpenCommandCenter={() => setView(user?.role === 'ADMIN' ? 'admin' : 'command_center')}
               onOpenSubscription={() => setIsSubModalOpen(true)}
               subscription={subscription}
+              isAdmin={user?.role === 'ADMIN'}
           />
         )}
 
         {view === 'setup' && (
            <SetupScreen
               onStart={startSession}
-              onOpenAdmin={() => setView('admin')}
               onBack={() => setView('landing')}
               subscription={subscription}
               onOpenSubscription={() => setIsSubModalOpen(true)}
@@ -211,7 +211,8 @@ const App: React.FC = () => {
 
         {view === 'admin' && (
           <AdminPanel 
-            onBack={() => setView('setup')}
+            user={user}
+            onBack={() => setView('landing')}
             onRestoreSession={handleRestoreSession}
           />
         )}

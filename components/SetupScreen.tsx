@@ -26,13 +26,12 @@ import { FooterLinks } from './FooterLinks';
 
 interface Props {
   onStart: (teacher: TeacherProfile, student: StudentProfile) => void;
-  onOpenAdmin: () => void;
   onBack: () => void;
   subscription?: SubscriptionInfo;
   onOpenSubscription?: () => void;
 }
 
-const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscription, onOpenSubscription }) => {
+const SetupScreen: React.FC<Props> = ({ onStart, onBack, subscription, onOpenSubscription }) => {
   // Загружаем сохранённые настройки учителя из localStorage
   const getSavedTeacherSettings = () => {
     try {
@@ -97,11 +96,6 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
                 <p className="text-blue-500 text-[9px] font-black uppercase tracking-[0.4em]">Параметры Сеанса</p>
             </div>
             <div className="flex gap-2">
-                {isAdmin && (
-                    <button onClick={onOpenAdmin} className="p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-400 hover:text-blue-500 transition-all">
-                        <Settings size={20} />
-                    </button>
-                )}
                 <button onClick={() => authService.logout()} className="p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-400 hover:text-white transition-all">
                     <LogOut size={20} />
                 </button>

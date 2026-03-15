@@ -11,6 +11,7 @@ interface Props {
   onOpenCommandCenter?: () => void;
   onOpenSubscription?: () => void;
   subscription?: SubscriptionInfo;
+  isAdmin?: boolean;
 }
 
 const ScenarioSelector: React.FC<Props> = ({
@@ -18,7 +19,8 @@ const ScenarioSelector: React.FC<Props> = ({
   onOpenMuseum,
   onOpenCommandCenter,
   onOpenSubscription,
-  subscription
+  subscription,
+  isAdmin
 }) => {
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [initialDocId, setInitialDocId] = useState('methodology');
@@ -82,7 +84,7 @@ const ScenarioSelector: React.FC<Props> = ({
           onClick={onOpenCommandCenter}
           className="w-full sm:w-72 px-6 py-4 glass hover:bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
         >
-          <Terminal size={16} /> УЧИТЕЛЬСКАЯ
+          <Terminal size={16} /> {isAdmin ? 'КОМАНДНЫЙ ЦЕНТР' : 'УЧИТЕЛЬСКАЯ'}
         </button>
       )}
 
