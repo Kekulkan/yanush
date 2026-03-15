@@ -13,14 +13,30 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [docModalTab, setDocModalTab] = useState('terms');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoMessage, setPromoMessage] = useState({ text: '', isError: false });
 
   if (!isOpen) return null;
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setIsProcessing(true);
+    const result = await applyPromoCode(promoCode);
+    setIsProcessing(false);
+    setPromoMessage({ text: result.message, isError: !result.success });
+    if (result.success) {
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 1500);
+    }
+  };
 
   const handlePurchase = (sessions: number) => {
     setIsProcessing(true);
     // Имитация оплаты
     setTimeout(() => {
-      purchaseSubscription(1); // just activate premium for now
+      purchaseSubscription(sessions); 
       setIsProcessing(false);
       onSuccess();
       onClose();
@@ -134,11 +150,39 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   </button>
                 </div>
               </div>
-              <div className="flex items-start md:items-center gap-3 p-4 bg-slate-800/30 rounded-2xl border border-white/5">
+              <div className="flex items-start md:items-center gap-3 p-4 bg-slate-800/30 rounded-2xl border border-white/5 mt-6">
                 <CreditCard size={20} className="text-slate-400 shrink-0" />
                 <p className="text-[10px] text-slate-400 leading-relaxed uppercase tracking-widest">
                   Безопасная оплата картой любого банка РФ. НДС не облагается (НПД). После оплаты на ваш email придёт электронный кассовый чек. Нажимая кнопку покупки, вы подтверждаете согласие с условиями <a href="#" onClick={(e) => openDoc(e, 'terms')} className="text-blue-400 hover:underline cursor-pointer">Оферты</a>.
                 </p>
+              </div>
+
+              {/* Promo Code */}
+              <div className="pt-8 mt-8 border-t border-white/5">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">У МЕНЯ ЕСТЬ ПРОМОКОД</h3>
+                <div className="flex flex-col md:flex-row gap-2 max-w-xl">
+                  <div className="relative flex-1">
+                    <Gift size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input 
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      placeholder="ВВЕДИТЕ ПРОМОКОД"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white font-mono text-sm outline-none focus:border-violet-500/50 transition-colors uppercase"
+                    />
+                  </div>
+                  <button 
+                    onClick={handleApplyPromo}
+                    className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all"
+                  >
+                    АКТИВИРОВАТЬ
+                  </button>
+                </div>
+                {promoMessage.text && (
+                  <p className={`mt-3 text-[10px] font-bold uppercase ${promoMessage.isError ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {promoMessage.text}
+                  </p>
+                )}
               </div>
             </section>
 

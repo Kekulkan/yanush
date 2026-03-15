@@ -35,15 +35,15 @@ const ScenarioSelector: React.FC<Props> = ({
   };
 
   return (
-    <div className="h-[100dvh] bg-[#0A0B1A] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-[#0A0B1A] text-white flex flex-col items-center justify-between p-6 relative overflow-y-auto custom-scroll">
       
       {/* Динамический фон */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
+      <div className="absolute inset-0 opacity-20 pointer-events-none fixed">
           <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[120px] animate-pulse"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-800 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      <div className="relative z-10 text-center max-w-2xl flex flex-col items-center space-y-8">
+      <div className="relative z-10 text-center max-w-2xl flex flex-col items-center space-y-8 mt-12 mb-20">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] uppercase tracking-[0.3em] text-blue-400 font-black mb-2 animate-float">
           <Activity size={12} className="text-blue-500" /> ЯНУШ // ШКОЛЬНЫЙ ПСИХОСИМУЛЯТОР
         </div>
@@ -125,9 +125,9 @@ const ScenarioSelector: React.FC<Props> = ({
         </p>
       </div>
 
-      <div className="absolute bottom-6 w-full px-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
-         <div className="flex flex-col items-center md:items-start gap-2">
-           <div className="flex flex-wrap justify-center md:justify-start gap-6">
+      <div className="w-full mt-auto relative z-10 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0 pb-6 md:pb-0">
+         <div className="flex flex-col items-center md:items-start gap-0">
+           <div className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-6 mb-[-16px]">
               <button 
                 onClick={() => openDoc('methodology')}
                 className="text-[9px] text-slate-500 hover:text-blue-400 font-black uppercase tracking-[0.2em] transition-colors flex items-center gap-2"
@@ -141,7 +141,7 @@ const ScenarioSelector: React.FC<Props> = ({
                 Контакты
               </button>
            </div>
-           <div className="-ml-4 -mt-4">
+           <div>
              <FooterLinks onOpenDocs={openDoc} onOpenTariffs={onOpenSubscription} />
            </div>
          </div>

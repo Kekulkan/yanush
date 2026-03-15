@@ -58,7 +58,7 @@ const emptyModule = (category: 'incident' | 'background'): Partial<ContextModule
 const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [activeTab, setActiveTab] = useState<'stats' | 'database' | 'logs'>('database');
+  const [activeTab, setActiveTab] = useState<'stats' | 'database' | 'logs' | 'promos'>('database');
   const [history, setHistory] = useState<SessionLog[]>([]);
   const [modules, setModules] = useState<ContextModule[]>([]);
   
@@ -74,6 +74,30 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
   const [detailExpandedAdvisory, setDetailExpandedAdvisory] = useState<boolean>(true);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [logsSource, setLogsSource] = useState<'server' | 'local'>('local');
+
+  // Промокоды
+  const [promoCodes, setPromoCodes] = useState<string[]>([]);
+  const [promoAmount, setPromoAmount] = useState(10);
+  const [promoSessions, setPromoSessions] = useState(5);
+  const [promoPrefix, setPromoPrefix] = useState('PROMO-');
+  const [isGeneratingPromos, setIsGeneratingPromos] = useState(false);
+
+  const generatePromos = async () => {
+    setIsGeneratingPromos(true);
+    try {
+      const { data, error } = await supabase.rpc('generate_promo_codes', { 
+        amount_of_codes: promoAmount, 
+        sessions_per_code: promoSessions,
+        prefix: promoPrefix
+      });
+      if (error) throw error;
+      setPromoCodes(data.map((row: any) => row.generated_code));
+    } catch (e: any) {
+      alert('Ошибка при генерации: ' + e.message);
+    } finally {
+      setIsGeneratingPromos(false);
+    }
+  };
 
   /** Санитизация лога перед открытием модалки: убираем undefined из commission/advisory/aquarium, чтобы не было чтения .name у undefined */
   const sanitizeSessionLogForDetail = (log: SessionLog): SessionLog => {
@@ -642,13 +666,13 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                 </div>
             </div>
             <div className="flex gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5">
-                {['stats', 'database', 'logs'].map((t) => (
+                {['stats', 'database', 'logs', 'promos'].map((t) => (
                     <button 
                         key={t} 
                         onClick={() => setActiveTab(t as any)} 
                         className={`uppercase font-black tracking-widest px-4 md:px-6 py-2 md:py-3 rounded-xl transition-all ${activeTab === t ? 'text-white bg-blue-600' : 'text-slate-500'}`}
                     >
-                        {t === 'stats' ? 'СТАТ' : (t === 'database' ? 'БАЗА' : 'ЛОГИ')}
+                        {t === 'stats' ? 'СТАТ' : (t === 'database' ? 'БАЗА' : (t === 'logs' ? 'ЛОГИ' : 'ПРОМО'))}
                     </button>
                 ))}
             </div>
@@ -1070,6 +1094,82 @@ const AdminPanel: React.FC<Props> = ({ onBack, onRestoreSession }) => {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'promos' && (
+                    <div className="space-y-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center gap-4 text-emerald-500 uppercase font-black tracking-[0.3em] border-l-4 border-emerald-500 pl-4">
+                                <Database size={20} /> ГЕНЕРАЦИЯ ПРОМОКОДОВ
+                            </div>
+                        </div>
+                        
+                        <div className="glass p-8 rounded-3xl border border-white/5 space-y-6 max-w-2xl">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-500 uppercase">Количество промокодов</label>
+                              <input 
+                                type="number" 
+                                value={promoAmount}
+                                onChange={(e) => setPromoAmount(Number(e.target.value))}
+                                className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-emerald-500/50"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-slate-500 uppercase">Сессий за промокод</label>
+                              <input 
+                                type="number" 
+                                value={promoSessions}
+                                onChange={(e) => setPromoSessions(Number(e.target.value))}
+                                className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-emerald-500/50"
+                              />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <label className="text-[10px] font-black text-slate-500 uppercase">Префикс кода (опционально)</label>
+                              <input 
+                                type="text" 
+                                value={promoPrefix}
+                                onChange={(e) => setPromoPrefix(e.target.value)}
+                                className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-emerald-500/50"
+                                placeholder="Например: PROMO-, SALE-"
+                              />
+                            </div>
+                          </div>
+                          
+                          <button 
+                            onClick={generatePromos}
+                            disabled={isGeneratingPromos}
+                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {isGeneratingPromos ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Plus size={16} />
+                            )}
+                            Сгенерировать коды
+                          </button>
+                          
+                          {promoCodes.length > 0 && (
+                            <div className="mt-8 space-y-4">
+                              <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center justify-between">
+                                <span>Сгенерированные промокоды ({promoCodes.length}):</span>
+                                <button 
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(promoCodes.join('\n'));
+                                    alert('Скопировано в буфер обмена!');
+                                  }}
+                                  className="text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-colors"
+                                >
+                                  Копировать все
+                                </button>
+                              </div>
+                              <div className="bg-slate-900 rounded-xl p-4 max-h-[300px] overflow-y-auto custom-scroll border border-white/5">
+                                <pre className="text-emerald-400 font-mono text-xs">{promoCodes.join('\n')}</pre>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                     </div>
                 )}
             </div>

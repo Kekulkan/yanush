@@ -15,7 +15,7 @@ import { buildDynamicPrompt } from './services/chaosEngine';
 import { clearSessionBackup } from './services/storageService';
 import { authService } from './services/authService';
 import { preloadPrompts } from './services/promptsService';
-import { getSubscriptionInfo, SubscriptionInfo } from './services/billingService';
+import { getSubscriptionInfo, SubscriptionInfo, consumeSession } from './services/billingService';
 import { resetApiLimits } from './services/geminiService';
 import { migrateToIDB } from './services/archiveService';
 import { initModules } from './services/modulesService';
@@ -136,6 +136,12 @@ const App: React.FC = () => {
   const startSession = async (teacher: TeacherProfile, student: StudentProfile) => {
     const isPremium = authService.isPremium();
     
+    // Списываем сессию, если премиум
+    if (isPremium) {
+      consumeSession();
+      refreshSubscription(); // Обновляем UI счетчика сессий
+    }
+
     // Очищаем бэкап предыдущей сессии перед созданием новой
     clearSessionBackup();
     
