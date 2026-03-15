@@ -121,15 +121,14 @@ const App: React.FC = () => {
 
   // Вызывается из LoginScreen после успешного входа/регистрации
   const handleLogin = (email: string, role: any = 'USER') => {
-    // Для admin-bypass (без Supabase) — устанавливаем user вручную
-    if (role === 'ADMIN') {
-      const adminAccount: UserAccount = {
-        id: 'admin',
-        email,
-        role: 'ADMIN',
-      };
-      setUser(adminAccount);
-    }
+    const isAdmin = role === 'ADMIN' || authService.isAdmin();
+    // Устанавливаем пользователя вручную, чтобы состояние обновилось сразу
+    const newAccount: UserAccount = {
+      id: isAdmin ? 'admin' : email,
+      email,
+      role: isAdmin ? 'ADMIN' : 'USER',
+    };
+    setUser(newAccount);
     setView('landing');
   };
 
