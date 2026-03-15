@@ -948,7 +948,7 @@ const getDocuments = (setActiveDocId: (id: string) => void): Document[] => [
         <h2 className="text-xl font-bold text-white">Связаться с нами</h2>
         <p>По вопросам сотрудничества и технической поддержки:</p>
         <div className="p-4 bg-slate-800/50 rounded-xl border border-white/5">
-          <p className="text-white">Email: yanush.trainer@gmail.com</p>
+          <p className="text-white">Email: <a href="mailto:support@yanush-sim.ru" className="text-blue-400 hover:underline">support@yanush-sim.ru</a></p>
           <p className="text-slate-500 text-sm mt-1">Отвечаем в течение 24 часов</p>
         </div>
       </div>
