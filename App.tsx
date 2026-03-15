@@ -167,7 +167,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (view === 'auth') return <LoginScreen onLogin={handleLogin} onEnterMuseum={() => setView('museum')} />;
+    if (view === 'auth') return <LoginScreen onLogin={handleLogin} onEnterMuseum={() => setView('museum')} onOpenTariffs={() => setIsSubModalOpen(true)} />;
     if (view === 'museum') return (
       <MuseumView
         onBack={() => setView(user ? 'landing' : 'auth')}

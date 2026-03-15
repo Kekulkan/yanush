@@ -12,11 +12,12 @@ import { FooterLinks } from '../FooterLinks';
 interface Props {
   onLogin: (email: string, role?: string) => void;
   onEnterMuseum: () => void;
+  onOpenTariffs?: () => void;
 }
 
 type Mode = 'welcome' | 'login' | 'register' | 'admin' | 'forgot-password' | 'reset-password';
 
-const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
+const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs }) => {
   const { signIn, signUp, resetPassword, updatePassword } = useAuth();
 
   const [mode, setMode] = useState<Mode>(() => {
@@ -364,6 +365,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
             setDocModalTab(tab);
             setIsDocModalOpen(true);
           }} 
+          onOpenTariffs={onOpenTariffs}
         />
       </div>
 
