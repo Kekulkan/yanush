@@ -81,7 +81,13 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
 
         const { error: signUpError } = await signUp(email, password, metadata);
         if (signUpError) {
-          setError(signUpError.toUpperCase());
+          if (signUpError.toLowerCase().includes('sending confirmation email')) {
+            setError('ОШИБКА: ЛИМИТ ОТПРАВКИ ПИСЕМ ПРЕВЫШЕН. ПОПРОБУЙТЕ ПОЗЖЕ ИЛИ ОБРАТИТЕСЬ В ПОДДЕРЖКУ.');
+          } else if (signUpError.toLowerCase().includes('already registered')) {
+            setError('EMAIL УЖЕ ЗАРЕГИСТРИРОВАН');
+          } else {
+            setError(signUpError.toUpperCase());
+          }
         } else {
           // Supabase может потребовать подтверждения email —
           // сообщаем пользователю и переключаем на вход
