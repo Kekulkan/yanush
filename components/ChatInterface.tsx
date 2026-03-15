@@ -667,7 +667,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
             messages,
             session.chaosDetails.accentuation,
             'Принудительное завершение',
-            { includeAdvisory: true }
+            { includeAdvisory: session.teacher.settings?.advisoryCommission, isPremium }
           );
           setAnalysis(result);
           archiveSession(messages, result, 'manual');
@@ -1183,7 +1183,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
         pendingTermination.messages,
         session.chaosDetails.accentuation,
         pendingTermination.reason,
-        { includeAdvisory: true }
+        { includeAdvisory: session.teacher.settings?.advisoryCommission, isPremium }
       );
       setAnalysis(result);
       // Используем существующий ID чтобы обновить предварительную запись
@@ -1257,9 +1257,10 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                           <Gavel size={14} className="text-blue-500" />
                           ОСНОВНАЯ СУПЕРВИЗОРСКАЯ КОМИССИЯ
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {analysis.commission.map((member, i) => {
-                                const isExpanded = expandedProfessional === i;
+                        {analysis.commission && analysis.commission.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {analysis.commission.map((member, i) => {
+                                  const isExpanded = expandedProfessional === i;
                                 return (
                                     <div 
                                         key={i} 
@@ -1311,7 +1312,20 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                                     </div>
                                 );
                             })}
-                        </div>
+                          </div>
+                        ) : (
+                          <div className="glass rounded-[28px] border-white/5 p-8 text-center space-y-4 relative overflow-hidden">
+                              <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6 text-center">
+                                  <Lock size={32} className="text-slate-500 mb-3" />
+                                  <div className="text-[12px] font-black text-white uppercase tracking-widest mb-1">Недоступно на базовом тарифе</div>
+                                  <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-4 max-w-sm mx-auto">Развернутый вердикт 4-х экспертов доступен только в Premium</div>
+                              </div>
+                              <div className="opacity-30 grid grid-cols-1 md:grid-cols-2 gap-4 filter grayscale blur-sm pointer-events-none">
+                                  <div className="h-32 bg-slate-800 rounded-xl"></div>
+                                  <div className="h-32 bg-slate-800 rounded-xl"></div>
+                              </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* === СОВЕЩАТЕЛЬНАЯ КОМИССИЯ (сатира) === */}

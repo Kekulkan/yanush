@@ -223,7 +223,7 @@ export const buildDynamicPrompt = (
     const randomAcc = selectAccentuation(isPremium);
     
     // 2. Каскадные броски для интенсивности
-    const intensity = rollIntensity(randomAcc.id);
+    const intensity = isPremium ? rollIntensity(randomAcc.id) : 1;
     
     // 3. Устанавливаем аватар с учетом пола и возраста
     student.avatarUrl = getStudentAvatar(student.gender, student.age);

@@ -14,7 +14,8 @@ import {
   X,
   Loader2,
   ShieldCheck,
-  MessageSquare
+  MessageSquare,
+  Lock
 } from 'lucide-react';
 import { generateStudentName } from '../services/chaosEngine';
 import { authService } from '../services/authService';
@@ -216,11 +217,24 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
             <div className="flex items-center gap-3 text-emerald-500 text-[10px] font-black uppercase tracking-[0.3em] ml-2">
                 <ShieldCheck size={14} /> Режим Супервизии
             </div>
-            <div className="glass p-8 rounded-[40px] space-y-6 border-white/5">
-                {/* Главная комиссия всегда активна */}
-                <div className="w-full flex items-center justify-between p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+            <div className="glass p-8 rounded-[40px] space-y-6 border-white/5 relative overflow-hidden">
+                {!isPremium && (
+                    <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-6 text-center">
+                        <Lock size={32} className="text-slate-500 mb-3" />
+                        <div className="text-[10px] font-black text-white uppercase tracking-widest mb-1">Недоступно на базовом тарифе</div>
+                        <div className="text-[8px] text-slate-400 uppercase tracking-wider mb-4">Развернутый вердикт 4-х экспертов и совещательная комиссия</div>
+                        <button 
+                            onClick={() => onOpenSubscription?.()} 
+                            className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-full text-[9px] font-black text-white uppercase tracking-widest transition-colors"
+                        >
+                            Открыть доступ
+                        </button>
+                    </div>
+                )}
+                {/* Главная комиссия всегда активна для Premium */}
+                <div className={`w-full flex items-center justify-between p-4 rounded-2xl border ${isPremium ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-white/5 opacity-50'}`}>
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-emerald-500 text-white">
+                        <div className={`p-2 rounded-lg ${isPremium ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
                             <ShieldCheck size={16} />
                         </div>
                         <div className="text-left">
@@ -228,24 +242,25 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
                             <div className="text-[8px] text-slate-500 font-bold uppercase mt-0.5">Обязательный педагогический вердикт</div>
                         </div>
                     </div>
-                    <div className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">ВСЕГДА ВКЛ</div>
+                    <div className={`text-[8px] font-black uppercase tracking-widest ${isPremium ? 'text-emerald-500' : 'text-slate-600'}`}>ВСЕГДА ВКЛ</div>
                 </div>
 
                 <button 
-                    onClick={() => setAdvisoryCommission(!advisoryCommission)}
-                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${advisoryCommission ? 'bg-purple-500/10 border-purple-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}
+                    onClick={() => isPremium && setAdvisoryCommission(!advisoryCommission)}
+                    disabled={!isPremium}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${isPremium && advisoryCommission ? 'bg-purple-500/10 border-purple-500/30' : 'bg-white/5 border-white/10 opacity-60'}`}
                 >
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${advisoryCommission ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                        <div className={`p-2 rounded-lg ${isPremium && advisoryCommission ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
                             <MessageSquare size={16} />
                         </div>
                         <div className="text-left">
-                            <div className={`text-[10px] font-black uppercase tracking-widest ${advisoryCommission ? 'text-white' : 'text-slate-500'}`}>Совещательная Комиссия</div>
+                            <div className={`text-[10px] font-black uppercase tracking-widest ${isPremium && advisoryCommission ? 'text-white' : 'text-slate-500'}`}>Совещательная Комиссия</div>
                             <div className="text-[8px] text-slate-500 font-bold uppercase mt-0.5">Мнения специалистов</div>
                         </div>
                     </div>
-                    <div className={`w-10 h-6 rounded-full relative transition-all ${advisoryCommission ? 'bg-purple-500' : 'bg-slate-700'}`}>
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${advisoryCommission ? 'left-5' : 'left-1'}`}></div>
+                    <div className={`w-10 h-6 rounded-full relative transition-all ${isPremium && advisoryCommission ? 'bg-purple-500' : 'bg-slate-700'}`}>
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isPremium && advisoryCommission ? 'left-5' : 'left-1'}`}></div>
                     </div>
                 </button>
             </div>

@@ -1176,7 +1176,7 @@ export const analyzeChatSession = async (
   history: Message[],
   scenarioName: string,
   endReason: string,
-  options?: { includeAdvisory?: boolean }
+  options?: { includeAdvisory?: boolean; isPremium?: boolean }
 ): Promise<AnalysisResult> => {
   const transcript = history.map((m) => {
     let line = `${m.role}: ${m.content}`;
@@ -1184,6 +1184,28 @@ export const analyzeChatSession = async (
     // if (m.state?.thought) line += `\n[МЫСЛЬ: ${m.state.thought}]`; 
     return line;
   }).join("\n\n");
+
+  // Если не премиум - базовая оценка без комиссии
+  if (options?.isPremium === false) {
+    const summaryPrompt = `Ты - система базовой оценки симулятора "Януш". Проанализируй этот диалог и выдай ТОЛЬКО JSON-ответ без markdown:
+{"overall_score": <число 0-100>, "summary": "<Краткий статус завершения диалога и 1-2 предложения комментария по эмпатии и стрессу>"}
+
+ТРАНСКРИПТ:
+${transcript}`;
+    const simpleText = await queryAI(GHOST_MODEL, summaryPrompt, 0.4, 30_000);
+    const simpleJsonStr = extractFirstJsonObject(simpleText) ?? stripCodeFences(simpleText);
+    try {
+      const parsed = JSON.parse(simpleJsonStr);
+      return {
+        overall_score: parsed.overall_score ?? 50,
+        summary: parsed.summary ?? "Анализ завершён.",
+        commission: [],
+        timestamp: Date.now()
+      };
+    } catch(e) {
+      return { overall_score: 50, summary: "Анализ завершён.", commission: [], timestamp: Date.now() };
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ОСНОВНАЯ КОМИССИЯ (влияет на итоговый балл)
