@@ -132,7 +132,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
   };
 
   return (
-    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="h-[100dvh] bg-[#0A0B1A] flex flex-col items-center justify-center p-6 pb-24 relative overflow-y-auto overflow-x-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
 
       <div className="w-full max-w-lg relative z-30 flex flex-col items-center space-y-12">
@@ -365,14 +365,16 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
         )}
       </div>
 
-      <div className="absolute bottom-4 left-0 right-0 z-20">
-        <FooterLinks 
-          onOpenDocs={(tab) => {
-            setDocModalTab(tab);
-            setIsDocModalOpen(true);
-          }} 
-          onOpenTariffs={onOpenTariffs}
-        />
+      <div className="absolute bottom-4 left-0 right-0 z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+          <FooterLinks 
+            onOpenDocs={(tab) => {
+              setDocModalTab(tab);
+              setIsDocModalOpen(true);
+            }} 
+            onOpenTariffs={onOpenTariffs}
+          />
+        </div>
       </div>
 
       <DocumentsModal
