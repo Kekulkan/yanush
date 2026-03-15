@@ -259,6 +259,21 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
                     ? 'Нет аккаунта? Зарегистрироваться'
                     : 'Уже есть аккаунт? Войти'}
                 </button>
+                
+                {mode === 'register' && (
+                  <div className="text-center mt-4">
+                    <p className="text-[10px] text-slate-500">
+                      Нажимая кнопку «Создать аккаунт», вы принимаете условия{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setIsDocModalOpen(true)}
+                        className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors inline"
+                      >
+                        Пользовательского соглашения (Оферты)
+                      </button>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
