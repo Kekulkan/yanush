@@ -6,6 +6,8 @@ import { getDemoScenario } from '../data/demoScenarios';
 import { DemoScenario, } from '../types';
 import { SubscriptionInfo, getSubscriptionInfo } from '../services/billingService';
 import { authService } from '../services/authService';
+import DocumentsModal from './DocumentsModal';
+import { FooterLinks } from './FooterLinks';
 
 const FREE_ACCENTUATIONS = ['hyperthymic', 'sensitive'];
 
@@ -214,6 +216,8 @@ interface Props {
 const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription, subscription }) => {
     const [selected, setSelected] = useState<Exhibit | null>(null);
     const [activeDemo, setActiveDemo] = useState<DemoScenario | null>(null);
+    const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+    const [docModalTab, setDocModalTab] = useState('terms');
     const checkIsPremium = () => {
         // Проверяем и через authService (для залогиненных), и напрямую через billingService (для гостей)
         const subInfo = getSubscriptionInfo();
@@ -523,6 +527,22 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription, subscription 
                     </div>
                 </div>
             )}
+
+            <div className="relative z-10 w-full mt-auto bg-[#0A0B1A]">
+                <FooterLinks 
+                    onOpenDocs={(tab) => {
+                        setDocModalTab(tab);
+                        setIsDocModalOpen(true);
+                    }} 
+                    onOpenTariffs={onOpenSubscription}
+                />
+            </div>
+
+            <DocumentsModal 
+                isOpen={isDocModalOpen} 
+                onClose={() => setIsDocModalOpen(false)} 
+                initialDocId={docModalTab}
+            />
         </div>
     );
 };

@@ -14,7 +14,7 @@ interface AuthContextValue {
   /** Вход по email + пароль */
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   /** Регистрация по email + пароль */
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, metadata?: any) => Promise<{ error: string | null }>;
   /** Выход */
   signOut: () => Promise<void>;
   /** Сброс пароля */
@@ -64,8 +64,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: null };
   };
 
-  const signUp = async (email: string, password: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  const signUp = async (email: string, password: string, metadata?: any): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: metadata
+      }
+    });
     if (error) return { error: error.message };
     return { error: null };
   };

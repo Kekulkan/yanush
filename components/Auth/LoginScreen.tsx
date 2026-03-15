@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
 import DocumentsModal from '../DocumentsModal';
+import { FooterLinks } from '../FooterLinks';
 
 interface Props {
   onLogin: (email: string, role?: string) => void;
@@ -33,6 +34,12 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docModalTab, setDocModalTab] = useState('terms');
+
+  // Checkboxes state
+  const [agreed18, setAgreed18] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedMarketing, setAgreedMarketing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +59,26 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
       } else if (mode === 'register') {
         if (!email.includes('@')) throw new Error('НЕВЕРНЫЙ EMAIL');
         if (password.length < 6) throw new Error('ПАРОЛЬ ДОЛЖЕН БЫТЬ ОТ 6 СИМВОЛОВ');
+        if (!agreed18 || !agreedTerms) throw new Error('НЕОБХОДИМО ПРИНЯТЬ УСЛОВИЯ И ПОДТВЕРДИТЬ ВОЗРАСТ');
 
-        const { error: signUpError } = await signUp(email, password);
+        let clientIp = 'unknown';
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json');
+          if (ipRes.ok) {
+            const ipData = await ipRes.json();
+            clientIp = ipData.ip;
+          }
+        } catch(e) { console.error('Failed to get IP', e); }
+
+        const metadata = {
+           accepted_terms_version: '1.0',
+           accepted_privacy_version: '1.0',
+           marketing_consent: agreedMarketing,
+           registration_ip: clientIp,
+           registration_timestamp: new Date().toISOString()
+        };
+
+        const { error: signUpError } = await signUp(email, password, metadata);
         if (signUpError) {
           setError(signUpError.toUpperCase());
         } else {
@@ -216,12 +241,71 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
               )}
             </div>
 
+            {mode === 'register' && (
+              <div className="w-full space-y-3 mb-4 bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      className="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                      checked={agreed18}
+                      onChange={(e) => setAgreed18(e.target.checked)}
+                    />
+                    <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-[11px] text-slate-300 leading-tight group-hover:text-white transition-colors">
+                    Мне исполнилось 18 лет <span className="text-rose-500">*</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      className="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                      checked={agreedTerms}
+                      onChange={(e) => setAgreedTerms(e.target.checked)}
+                    />
+                    <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-[11px] text-slate-300 leading-tight group-hover:text-white transition-colors">
+                    Я принимаю условия{' '}
+                    <button type="button" onClick={(e) => { e.preventDefault(); setDocModalTab('terms'); setIsDocModalOpen(true); }} className="text-blue-400 hover:underline">Оферты</button>
+                    {' '}и даю согласие на обработку персональных данных в соответствии с{' '}
+                    <button type="button" onClick={(e) => { e.preventDefault(); setDocModalTab('privacy'); setIsDocModalOpen(true); }} className="text-blue-400 hover:underline">Политикой конфиденциальности</button>
+                    {' '}<span className="text-rose-500">*</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      className="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md checked:bg-blue-600 checked:border-blue-600 transition-colors"
+                      checked={agreedMarketing}
+                      onChange={(e) => setAgreedMarketing(e.target.checked)}
+                    />
+                    <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-[11px] text-slate-300 leading-tight group-hover:text-white transition-colors">
+                    Я хочу получать письма об обновлениях Платформы
+                  </span>
+                </label>
+              </div>
+            )}
+
             <button
-              disabled={isProcessing}
+              disabled={isProcessing || (mode === 'register' && (!agreed18 || !agreedTerms))}
               type="submit"
               className={`w-full py-6 rounded-3xl font-black text-xs uppercase tracking-[0.4em] shadow-xl flex items-center justify-center gap-3 transition-all ${
                 mode === 'admin' ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500'
-              } text-white disabled:opacity-60`}
+              } text-white disabled:opacity-60 disabled:cursor-not-allowed`}
             >
               {isProcessing
                 ? <Loader2 className="animate-spin" size={18} />
@@ -260,20 +344,6 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
                     : 'Уже есть аккаунт? Войти'}
                 </button>
                 
-                {mode === 'register' && (
-                  <div className="text-center mt-4">
-                    <p className="text-[10px] text-slate-500">
-                      Нажимая кнопку «Создать аккаунт», вы принимаете условия{' '}
-                      <button 
-                        type="button" 
-                        onClick={() => setIsDocModalOpen(true)}
-                        className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors inline"
-                      >
-                        Пользовательского соглашения (Оферты)
-                      </button>
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -287,9 +357,20 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum }) => {
           </form>
         )}
       </div>
+
+      <div className="absolute bottom-4 left-0 right-0 z-20">
+        <FooterLinks 
+          onOpenDocs={(tab) => {
+            setDocModalTab(tab);
+            setIsDocModalOpen(true);
+          }} 
+        />
+      </div>
+
       <DocumentsModal
         isOpen={isDocModalOpen}
         onClose={() => setIsDocModalOpen(false)}
+        initialDocId={docModalTab}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Play, Network, Activity, Terminal, Crown, Star, Info, HelpCircle, ArrowRight } from 'lucide-react';
 import { SubscriptionInfo } from '../services/billingService';
 import DocumentsModal from './DocumentsModal';
+import { FooterLinks } from './FooterLinks';
 
 interface Props {
   onStart: () => void;
@@ -125,25 +126,24 @@ const ScenarioSelector: React.FC<Props> = ({
       </div>
 
       <div className="absolute bottom-6 w-full px-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
-         <div className="flex flex-wrap justify-center gap-6">
-            <button 
-              onClick={() => openDoc('methodology')}
-              className="text-[9px] text-slate-500 hover:text-blue-400 font-black uppercase tracking-[0.2em] transition-colors flex items-center gap-2"
-            >
-              <Info size={12} /> Методология
-            </button>
-            <button 
-              onClick={() => openDoc('terms')}
-              className="text-[9px] text-slate-500 hover:text-slate-300 font-black uppercase tracking-[0.2em] transition-colors"
-            >
-              Оферта
-            </button>
-            <button 
-              onClick={() => openDoc('contacts')}
-              className="text-[9px] text-slate-500 hover:text-slate-300 font-black uppercase tracking-[0.2em] transition-colors"
-            >
-              Контакты
-            </button>
+         <div className="flex flex-col items-center md:items-start gap-2">
+           <div className="flex flex-wrap justify-center md:justify-start gap-6">
+              <button 
+                onClick={() => openDoc('methodology')}
+                className="text-[9px] text-slate-500 hover:text-blue-400 font-black uppercase tracking-[0.2em] transition-colors flex items-center gap-2"
+              >
+                <Info size={12} /> Методология
+              </button>
+              <button 
+                onClick={() => openDoc('contacts')}
+                className="text-[9px] text-slate-500 hover:text-slate-300 font-black uppercase tracking-[0.2em] transition-colors"
+              >
+                Контакты
+              </button>
+           </div>
+           <div className="-ml-4 -mt-4">
+             <FooterLinks onOpenDocs={openDoc} onOpenTariffs={onOpenSubscription} />
+           </div>
          </div>
 
          <div className="flex flex-col items-center md:items-end gap-3">

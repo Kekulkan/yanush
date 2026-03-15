@@ -188,6 +188,7 @@ const App: React.FC = () => {
               onOpenAdmin={() => setView('admin')}
               onBack={() => setView('landing')}
               subscription={subscription}
+              onOpenSubscription={() => setIsSubModalOpen(true)}
            />
         )}
         

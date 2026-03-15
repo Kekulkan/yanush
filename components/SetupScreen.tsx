@@ -20,15 +20,18 @@ import { generateStudentName } from '../services/chaosEngine';
 import { authService } from '../services/authService';
 import { COMMERCIAL_CONFIG } from '../constants';
 import { SubscriptionInfo } from '../services/billingService';
+import DocumentsModal from './DocumentsModal';
+import { FooterLinks } from './FooterLinks';
 
 interface Props {
   onStart: (teacher: TeacherProfile, student: StudentProfile) => void;
   onOpenAdmin: () => void;
   onBack: () => void;
   subscription?: SubscriptionInfo;
+  onOpenSubscription?: () => void;
 }
 
-const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscription }) => {
+const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscription, onOpenSubscription }) => {
   // Загружаем сохранённые настройки учителя из localStorage
   const getSavedTeacherSettings = () => {
     try {
@@ -50,8 +53,8 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
   const [studentAge, setStudentAge] = useState(14);
   const [studentGender, setStudentGender] = useState<'male' | 'female'>('male');
   const [advisoryCommission, setAdvisoryCommission] = useState(true);
-  const [showPayment, setShowPayment] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docModalTab, setDocModalTab] = useState('terms');
 
   const isPremium = subscription?.tier === 'premium' || authService.isPremium();
   const isAdmin = authService.isAdmin();
@@ -76,20 +79,6 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
       },
       { name: randomName, age: studentAge, gender: studentGender }
     );
-  };
-
-  const processPayment = async () => {
-      setIsProcessingPayment(true);
-      
-      // Логика перехода на реальную оплату
-      // В будущем: window.location.href = `${COMMERCIAL_CONFIG.PAYMENT_PROVIDER_URL}?user=${authService.getCurrentUser()?.id}`;
-      
-      await new Promise(r => setTimeout(r, 2000));
-      
-      await authService.upgradeToPremium(COMMERCIAL_CONFIG.SUBSCRIPTION_DAYS);
-      setIsProcessingPayment(false);
-      setShowPayment(false);
-      window.location.reload(); 
   };
 
   return (
@@ -142,7 +131,7 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
                     </div>
                 </div>
                 <button 
-                    onClick={() => setShowPayment(true)}
+                    onClick={() => onOpenSubscription?.()}
                     className="w-full py-4 bg-white text-blue-600 rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
                 >
                     <Sparkles size={14} /> КУПИТЬ ПОЛНЫЙ ДОСТУП
@@ -269,42 +258,21 @@ const SetupScreen: React.FC<Props> = ({ onStart, onOpenAdmin, onBack, subscripti
             НАЧАТЬ СЕАНС <ChevronRight size={28} />
         </button>
 
+        <FooterLinks 
+          onOpenDocs={(tab) => {
+            setDocModalTab(tab);
+            setIsDocModalOpen(true);
+          }} 
+        />
+
       </div>
 
-      {showPayment && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
-              <div className="w-full max-w-md glass rounded-[50px] p-10 space-y-8 border-blue-500/30 shadow-2xl relative">
-                  {!isProcessingPayment && (
-                      <button onClick={() => setShowPayment(false)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-                  )}
-                  <div className="text-center space-y-4">
-                      <div className="inline-flex p-4 bg-blue-600/20 rounded-[32px] text-blue-400">
-                          <CreditCard size={48} />
-                      </div>
-                      <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">ОПЛАТА ДОСТУПА</h3>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-widest">Переход в защищенный платежный шлюз</p>
-                  </div>
-                  
-                  <div className="space-y-4 bg-white/5 p-8 rounded-[40px] border border-white/5 text-center">
-                      <div className="text-white font-black text-4xl mb-2">{COMMERCIAL_CONFIG.PRICE_RUB} ₽</div>
-                      <div className="text-[9px] text-slate-500 uppercase tracking-widest">Единоразовый платеж за {COMMERCIAL_CONFIG.SUBSCRIPTION_DAYS} дней</div>
-                  </div>
+      <DocumentsModal 
+        isOpen={isDocModalOpen} 
+        onClose={() => setIsDocModalOpen(false)} 
+        initialDocId={docModalTab}
+      />
 
-                  <button 
-                    disabled={isProcessingPayment}
-                    onClick={processPayment}
-                    className="w-full py-6 bg-blue-600 text-white rounded-[28px] font-black uppercase tracking-[0.4em] text-xs shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
-                  >
-                    {isProcessingPayment ? <Loader2 className="animate-spin" size={20} /> : 'ПЕРЕЙТИ К ОПЛАТЕ'}
-                  </button>
-                  
-                  <div className="space-y-2">
-                      <p className="text-[7px] text-center text-slate-700 uppercase tracking-[0.2em]">Платежи защищены по стандарту PCI DSS</p>
-                      <p className="text-[7px] text-center text-slate-800 uppercase tracking-[0.1em]">После оплаты вы будете автоматически перенаправлены обратно</p>
-                  </div>
-              </div>
-          </div>
-      )}
     </div>
   );
 };
