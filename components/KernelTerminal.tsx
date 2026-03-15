@@ -102,7 +102,7 @@ const KernelTerminal: React.FC<KernelTerminalProps> = ({ user, onWipeConfirm }) 
   const handleWipeCancel = useCallback(() => {
     setTerminalHistory(prev => [...prev, {
       type: 'info' as const,
-      text: 'Wipe cancelled.',
+      text: 'Очистка отменена.',
       timestamp: Date.now()
     }]);
     setWipeConfirmPending(false);
@@ -124,7 +124,7 @@ const KernelTerminal: React.FC<KernelTerminalProps> = ({ user, onWipeConfirm }) 
       {/* Terminal header */}
       <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-green-500/10 border-b border-green-500/30">
         <Terminal size={14} className="text-green-400" />
-        <span className="text-[10px] font-black text-green-400 tracking-widest uppercase">Kernel Terminal</span>
+        <span className="text-[10px] font-black text-green-400 tracking-widest uppercase">Терминал Ядра</span>
       </div>
 
       {/* Terminal output */}

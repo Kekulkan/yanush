@@ -56,7 +56,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         {/* Header (Sticky) */}
         <div className="shrink-0 p-6 flex justify-between items-center border-b border-white/10 bg-[#0A0B1A]/90 backdrop-blur-sm z-10">
           <div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">ТАРИФЫ (PRICING)</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic">ТАРИФЫ</h2>
             <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">
               Настоящая страница является неотъемлемой частью <a href="#" onClick={(e) => openDoc(e, 'terms')} className="text-blue-400 hover:underline cursor-pointer">Лицензионного договора-оферты</a>.
             </p>
@@ -104,7 +104,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             <section>
               <h3 className="text-xl font-black text-white uppercase tracking-tight mb-4 flex items-center gap-3">
                 <div className="p-2 bg-violet-500/20 rounded-xl"><Crown size={20} className="text-violet-400" /></div>
-                БЛОК 2. Premium-пакеты (Профессиональная отработка)
+                БЛОК 2. Премиум-пакеты (Профессиональная отработка)
               </h3>
               <p className="text-slate-400 text-sm mb-6 max-w-3xl leading-relaxed">
                 У каждого ученика появляются контекстные обстоятельства, о которых может быть или не быть известно заранее. Выраженность акцентуации может оказаться на грани патологии. Результат сессии оценивает комиссия из 4-х экспертов, кроме того, подаёт голос <a href="#" onClick={(e) => openDoc(e, 'methodology')} className="text-blue-400 hover:underline cursor-pointer">совещательная комиссия</a>.
@@ -190,7 +190,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             <section>
               <h3 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-3">
                 <div className="p-2 bg-emerald-500/20 rounded-xl"><Sparkles size={20} className="text-emerald-400" /></div>
-                БЛОК 3. Что открывается в Premium-доступе?
+                БЛОК 3. Что открывается в Премиум-доступе?
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-slate-900/50 p-6 rounded-[24px] border border-white/5">
@@ -217,7 +217,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     <h4 className="font-bold uppercase text-sm">Развернутый вердикт</h4>
                   </div>
                   <p className="text-slate-400 text-sm leading-relaxed">
-                    Сразу после завершения Premium-сессии весь ваш лог отправится на анализ. Вы получите детальный разбор ваших реплик от лица четырёх экспертов: Психолога, Опытного педагога, Завуча и Юриста.
+                    Сразу после завершения Премиум-сессии весь ваш лог отправится на анализ. Вы получите детальный разбор ваших реплик от лица четырёх экспертов: Психолога, Опытного педагога, Завуча и Юриста.
                   </p>
                 </div>
               </div>
@@ -227,7 +227,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             <section>
               <h3 className="text-xl font-black text-white uppercase tracking-tight mb-6 flex items-center gap-3">
                 <div className="p-2 bg-slate-800 rounded-xl"><HelpCircle size={20} className="text-slate-300" /></div>
-                БЛОК 4. FAQ (Частые вопросы)
+                БЛОК 4. Частые ответы
               </h3>
               <div className="space-y-4">
                 <div className="bg-slate-900/30 p-6 rounded-2xl border border-white/5">

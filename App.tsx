@@ -80,27 +80,32 @@ const App: React.FC = () => {
       // Проверяем localStorage напрямую, так как user state может быть еще не обновлен или рассинхронизирован
       const storedUser = localStorage.getItem('janus_session_v1');
       let isLocalAdmin = false;
+      let isPremiumUser = false;
       try {
-        if (storedUser && JSON.parse(storedUser).role === 'ADMIN') {
+        const parsedStored = storedUser ? JSON.parse(storedUser) : null;
+        if (parsedStored && parsedStored.role === 'ADMIN') {
           isLocalAdmin = true;
+        }
+        if (parsedStored && parsedStored.role === 'PREMIUM') {
+          isPremiumUser = true;
         }
       } catch (e) {
         console.error('[App] JSON parse error:', e);
       }
 
-      if (!isLocalAdmin) {
+      if (!isLocalAdmin && !isPremiumUser) {
         setUser(null);
         localStorage.removeItem('janus_session_v1');
         setView('auth');
       } else {
-        // Восстанавливаем локального админа в state, если он там отсутствует
+        // Восстанавливаем локального пользователя в state, если он там отсутствует
         try {
-          const adminUser = JSON.parse(storedUser!);
-          if (!user) setUser(adminUser);
+          const validUser = JSON.parse(storedUser!);
+          if (!user) setUser(validUser);
           // Если мы на экране авторизации, переходим на лендинг
           setView(prev => prev === 'auth' ? 'landing' : prev);
         } catch (e) {
-             console.error('[App] Failed to restore admin user:', e);
+             console.error('[App] Failed to restore valid user:', e);
              setUser(null);
              localStorage.removeItem('janus_session_v1');
              setView('auth');

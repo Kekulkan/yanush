@@ -64,10 +64,10 @@ export const GlobalEventModal: React.FC<GlobalEventModalProps> = ({
                     <p className="text-slate-400 text-sm uppercase tracking-widest mb-2">Влияние на ученика</p>
                     <div className="flex justify-center gap-6">
                         <span className={`text-lg font-bold ${(eventState.trustDelta || 0) > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            Trust: {(eventState.trustDelta || 0) > 0 ? '+' : ''}{eventState.trustDelta || 0}
+                            Доверие: {(eventState.trustDelta || 0) > 0 ? '+' : ''}{eventState.trustDelta || 0}
                         </span>
                         <span className={`text-lg font-bold ${(eventState.stressDelta || 0) < 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            Stress: {(eventState.stressDelta || 0) > 0 ? '+' : ''}{eventState.stressDelta || 0}
+                            Стресс: {(eventState.stressDelta || 0) > 0 ? '+' : ''}{eventState.stressDelta || 0}
                         </span>
                     </div>
                 </div>
@@ -114,10 +114,10 @@ export const GlobalEventModal: React.FC<GlobalEventModalProps> = ({
             {((eventState.trustDelta || 0) !== 0 || (eventState.stressDelta || 0) !== 0) && (
                 <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg mr-2">
                     <span className={`text-xs font-bold ${(eventState.trustDelta || 0) > 0 ? 'text-emerald-400' : (eventState.trustDelta || 0) < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                        Trust {(eventState.trustDelta || 0) > 0 ? '+' : ''}{eventState.trustDelta || 0}
+                        Доверие {(eventState.trustDelta || 0) > 0 ? '+' : ''}{eventState.trustDelta || 0}
                     </span>
                     <span className={`text-xs font-bold ${(eventState.stressDelta || 0) < 0 ? 'text-emerald-400' : (eventState.stressDelta || 0) > 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                        Stress {(eventState.stressDelta || 0) > 0 ? '+' : ''}{eventState.stressDelta || 0}
+                        Стресс {(eventState.stressDelta || 0) > 0 ? '+' : ''}{eventState.stressDelta || 0}
                     </span>
                 </div>
             )}

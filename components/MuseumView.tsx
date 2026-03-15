@@ -497,7 +497,7 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription, subscription 
                                                         }`}
                                                     >
                                                         {isLocked ? <Lock size={14} /> : <Eye size={14} />}
-                                                        {isLocked ? 'Разблокировать Demo (Premium)' : 'Демо-режим'}
+                                                        {isLocked ? 'Разблокировать Демо (Премиум)' : 'Демо-режим'}
                                                     </button>
                                                 ) : (
                                                     <button 
@@ -515,7 +515,7 @@ const MuseumView: React.FC<Props> = ({ onBack, onOpenSubscription, subscription 
                                                             : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                                                     }`}
                                                 >
-                                                    <Sparkles size={12} /> Полноценный сеанс {isLocked && '(Premium)'}
+                                                    <Sparkles size={12} /> Полноценный сеанс {isLocked && '(Премиум)'}
                                                 </button>
                                             </>
                                         );

@@ -99,11 +99,11 @@ const ScenarioSelector: React.FC<Props> = ({
             >
               {isPremium ? (
                 <>
-                  <Star size={16} fill="currentColor" /> PREMIUM АКТИВЕН
+                  <Star size={16} fill="currentColor" /> ПРЕМИУМ АКТИВЕН
                 </>
               ) : (
                 <>
-                  <Crown size={16} /> КУПИТЬ PREMIUM
+                  <Crown size={16} /> ПОЛНЫЙ ФУНКЦИОНАЛ
                 </>
               )}
             </button>
