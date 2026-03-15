@@ -182,10 +182,10 @@ const App: React.FC = () => {
           <ScenarioSelector
               onStart={() => setView('setup')}
               onOpenMuseum={() => setView('museum')}
-              onOpenCommandCenter={() => setView(user?.role === 'ADMIN' ? 'admin' : 'command_center')}
+              onOpenCommandCenter={() => setView(user?.role === 'ADMIN' || authService.isAdmin() ? 'admin' : 'command_center')}
               onOpenSubscription={() => setIsSubModalOpen(true)}
               subscription={subscription}
-              isAdmin={user?.role === 'ADMIN'}
+              isAdmin={user?.role === 'ADMIN' || authService.isAdmin()}
           />
         )}
 
