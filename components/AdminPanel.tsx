@@ -168,8 +168,8 @@ const AdminPanel: React.FC<Props> = ({ user, onBack, onRestoreSession }) => {
           averageScore: withScores.length > 0
             ? Math.round(withScores.reduce((a, s) => a + (s.result?.overall_score || 0), 0) / withScores.length)
             : 0,
-          completedSessions: serverLogs.filter(s => s.status === 'completed').length,
-          interruptedSessions: serverLogs.filter(s => s.status !== 'completed').length,
+          completedSessions: serverLogs.filter(s => s.status === 'completed' || s.status === 'finished').length,
+          interruptedSessions: serverLogs.filter(s => s.status !== 'completed' && s.status !== 'finished').length,
           accentuationStats: {},
           lastSessionDate: serverLogs[0]?.timestamp || null
         };
@@ -1024,7 +1024,7 @@ const AdminPanel: React.FC<Props> = ({ user, onBack, onRestoreSession }) => {
                                                     {log.result?.overall_score || 0}
                                                 </span>
                                                 <span className={`text-[8px] font-black uppercase px-2 py-1 rounded ${
-                                                    log.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                                                    (log.status === 'completed' || log.status === 'finished') ? 'bg-emerald-500/20 text-emerald-400' :
                                                     log.status === 'manual' ? 'bg-amber-500/20 text-amber-400' :
                                                     'bg-red-500/20 text-red-400'
                                                 }`}>
