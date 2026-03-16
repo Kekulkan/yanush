@@ -10,6 +10,7 @@ import CommandCenter from './components/CommandCenter';
 import SecurityShield from './components/SecurityShield';
 import SubscriptionModal from './components/SubscriptionModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import CookieBanner from './components/CookieBanner';
 import { ActiveSession, TeacherProfile, StudentProfile, Message, SessionLog, UserAccount } from './types';
 import { buildDynamicPrompt } from './services/chaosEngine';
 import { clearSessionBackup } from './services/storageService';
@@ -239,6 +240,7 @@ const App: React.FC = () => {
         onClose={() => setIsSubModalOpen(false)}
         onSuccess={refreshSubscription}
       />
+      <CookieBanner />
     </SecurityShield>
   );
 };
