@@ -132,8 +132,9 @@ const App: React.FC = () => {
     const newAccount: UserAccount = {
       id: isAdmin ? 'admin' : email,
       email,
-      role: isAdmin ? 'ADMIN' : 'USER',
+      role: isAdmin ? 'ADMIN' : (role === 'PREMIUM' ? 'PREMIUM' : 'USER'),
     };
+    refreshSubscription();
     setUser(newAccount);
     setView('landing');
   };

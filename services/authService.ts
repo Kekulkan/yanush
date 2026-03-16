@@ -97,6 +97,12 @@ export const authService = {
         return admin;
     },
 
+    guest_login: (email: string) => {
+        const guest: UserAccount = { id: `guest-${Date.now()}`, email, role: 'PREMIUM' };
+        localStorage.setItem(AUTH_KEY, JSON.stringify(guest));
+        return guest;
+    },
+
     upgradeToPremium: async (days: number = 30): Promise<UserAccount | null> => {
         const currentUser = authService.getCurrentUser();
         if (!currentUser) return null;

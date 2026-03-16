@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
+import { saveSubscriptionInfo } from '../../services/billingService';
 import DocumentsModal from '../DocumentsModal';
 import { FooterLinks } from '../FooterLinks';
 
@@ -191,6 +192,23 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Регистрация</span>
               </button>
             </div>
+
+            <button
+              onClick={() => {
+                authService.guest_login('yookassa@guest.local');
+                saveSubscriptionInfo({
+                  tier: 'premium',
+                  expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+                  sessionsCount: 3,
+                  usedPromos: []
+                });
+                onLogin('yookassa@guest.local', 'PREMIUM');
+              }}
+              className="w-full mt-4 p-4 glass rounded-[35px] border-white/5 hover:border-blue-500/30 flex flex-col items-center gap-2 transition-all bg-blue-900/10"
+            >
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Войти как гость (ЮКасса)</span>
+              <span className="text-[9px] text-slate-500 uppercase">3 премиум-сессии</span>
+            </button>
 
             <div className="flex justify-center">
               <button
