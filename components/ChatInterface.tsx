@@ -1452,7 +1452,7 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
                   <div className="absolute inset-0 bg-blue-500/20 blur-[120px] rounded-full animate-pulse"></div>
                   <Gavel size={80} className="text-blue-500 animate-bounce relative z-10" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-black text-white uppercase italic tracking-tighter mb-4">КОМИССИЯ СОЗВАНА</h2>
+              <h2 className="text-3xl md:text-4xl font-black text-white uppercase italic tracking-tighter mb-4">КОМИССИЯ ОЦЕНИВАЕТ ДИАЛОГ</h2>
               <p className="text-blue-500 font-black text-[10px] uppercase tracking-[0.4em] mb-12">ФОРМИРОВАНИЕ ПЕДАГОГИЧЕСКОГО ВЕРДИКТА...</p>
               <div className="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full bg-blue-500 animate-[loading_3s_infinite_ease-in-out]"></div>

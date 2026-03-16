@@ -1226,39 +1226,96 @@ const AdminPanel: React.FC<Props> = ({ user, onBack, onRestoreSession }) => {
               </div>
 
               <div className="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
-                {/* Кто проходил сессию — явный блок для админа */}
-                <div className="glass p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5">
-                  <div className="text-[10px] font-black text-amber-500/80 uppercase tracking-widest mb-2">Кто проходил сессию</div>
-                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-                    {detailSessionLog.userId ? (
-                      <div>
-                        <span className="text-slate-500 text-[10px] uppercase tracking-wider">ID: </span>
-                        <span className="text-amber-400 font-mono break-all">{detailSessionLog.userId}</span>
+                {/* Мета-информация о сессии */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Кто проходил сессию */}
+                  <div className="glass p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5">
+                    <div className="text-[10px] font-black text-amber-500/80 uppercase tracking-widest mb-2">Данные пользователя</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider w-16">ID:</span>
+                        {detailSessionLog.userId ? (
+                          <span className="text-amber-400 font-mono break-all">{detailSessionLog.userId}</span>
+                        ) : (
+                          <span className="text-slate-500 italic">Гость</span>
+                        )}
                       </div>
-                    ) : (
-                      <span className="text-slate-500">ID не указан</span>
-                    )}
-                    {detailSessionLog.userEmail ? (
-                      <div>
-                        <span className="text-slate-500 text-[10px] uppercase tracking-wider">Email: </span>
-                        <span className="text-cyan-400 break-all">{detailSessionLog.userEmail}</span>
+                      {detailSessionLog.userEmail && (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-slate-500 text-[10px] uppercase tracking-wider w-16">Email:</span>
+                          <span className="text-cyan-400 break-all">{detailSessionLog.userEmail}</span>
+                        </div>
+                      )}
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider w-16">Имя:</span>
+                        <span className="text-slate-300">
+                          {detailSessionLog.sessionSnapshot?.teacher?.name || detailSessionLog.teacher?.name || 'Не указано'}
+                        </span>
                       </div>
-                    ) : (
-                      <span className="text-slate-500">Email не указан</span>
-                    )}
-                    {!detailSessionLog.userId && !detailSessionLog.userEmail && (
-                      <span className="text-slate-500 italic">Гость (вход не выполнен)</span>
-                    )}
+                    </div>
+                  </div>
+
+                  {/* Данные ученика */}
+                  <div className="glass p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5">
+                    <div className="text-[10px] font-black text-blue-500/80 uppercase tracking-widest mb-2">Данные ученика</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider w-24 shrink-0">Имя и возраст:</span>
+                        <span className="text-slate-300">
+                          {detailSessionLog.student_name}
+                          {detailSessionLog.sessionSnapshot?.student?.age ? `, ${detailSessionLog.sessionSnapshot.student.age} лет` : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider w-24 shrink-0">Акцентуация:</span>
+                        <span className="text-slate-300">
+                          {detailSessionLog.sessionSnapshot?.chaosDetails?.accentuation || 'Не указана'}
+                          {detailSessionLog.sessionSnapshot?.chaosDetails?.intensity ? ` (Интенсивность: ${detailSessionLog.sessionSnapshot.chaosDetails.intensity}/5)` : ''}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1 mt-1">
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider">Контекст (модули):</span>
+                        <div className="flex flex-wrap gap-1">
+                          {detailSessionLog.sessionSnapshot?.chaosDetails?.modules?.length ? (
+                            detailSessionLog.sessionSnapshot.chaosDetails.modules.map((mod: string, idx: number) => {
+                              // Попробуем найти веса видимости
+                              const ctx = (detailSessionLog.sessionSnapshot?.chaosDetails?.contexts as any[])?.find((c: any) => c.module?.name === mod || c.module?.id === mod || c.id === mod || c.name === mod);
+                              let visibilityLabel = '';
+                              if (ctx?.visibility) {
+                                if (ctx.visibility === 'known') visibilityLabel = ' (Известно)';
+                                else if (ctx.visibility === 'rumor') visibilityLabel = ' (Слухи)';
+                                else if (ctx.visibility === 'secret') visibilityLabel = ' (Тайна)';
+                              } else if (ctx?.visibility_weights) {
+                                const weights = ctx.visibility_weights;
+                                if (weights.known > weights.rumor && weights.known > weights.secret) visibilityLabel = ' (Известно)';
+                                else if (weights.rumor > weights.known && weights.rumor > weights.secret) visibilityLabel = ' (Слухи)';
+                                else if (weights.secret > weights.known && weights.secret > weights.rumor) visibilityLabel = ' (Тайна)';
+                              }
+                              return (
+                                <span key={idx} className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">
+                                  {mod}{visibilityLabel}
+                                </span>
+                              );
+                            })
+                          ) : (
+                            <span className="text-slate-500 italic text-xs">Нет модулей</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Сценарий */}
-                {detailSessionLog.scenario_description && (
-                  <div className="glass p-4 rounded-2xl border border-white/5">
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Сценарий</div>
-                    <p className="text-sm text-slate-300">{detailSessionLog.scenario_description}</p>
-                  </div>
-                )}
+                {/* Сценарий / Экспозиция */}
+                <div className="glass p-4 rounded-2xl border border-white/5">
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Экспозиция (Сценарий)</div>
+                  <p className="text-sm text-slate-300">
+                    {detailSessionLog.sessionSnapshot?.chaosDetails?.contextSummary || 
+                     detailSessionLog.sessionSnapshot?.chaosDetails?.incident?.prompt_text || 
+                     detailSessionLog.scenario_description || 
+                     'Сценарий не описан'}
+                  </p>
+                </div>
 
                 {/* Диалог — все сообщения полностью */}
                 <div className="space-y-2">
@@ -1296,6 +1353,32 @@ const AdminPanel: React.FC<Props> = ({ user, onBack, onRestoreSession }) => {
                           {msg.role === MessageRole.MODEL && msg.state?.safeguard_applied && (
                             <div className="mt-2 pt-2 border-t border-amber-500/30 text-[10px] text-amber-400/90 bg-amber-500/10 rounded-lg p-2">
                               Защита от обрыва: было {msg.state.safeguard_applied.previous_trust}/{msg.state.safeguard_applied.previous_stress}%, модель запросила 0/100. {msg.state.safeguard_applied.model_violation_reason || ''}
+                            </div>
+                          )}
+                          {msg.role === MessageRole.MODEL && msg.state?.world_event && (
+                            <div className="mt-2 pt-2 border-t border-emerald-500/30 text-[11px] text-emerald-400 bg-emerald-500/10 rounded-lg p-2">
+                              <strong>[Событие: {msg.state.world_event.type}]</strong> {msg.state.world_event.description}
+                              {msg.state.world_event.npc_dialogue && (
+                                <div className="mt-1 italic">
+                                  {msg.state.world_event.npc_name} ({msg.state.world_event.npc_role}): "{msg.state.world_event.npc_dialogue}"
+                                </div>
+                              )}
+                              {msg.state.world_event.dilemma && (
+                                <div className="mt-1 opacity-80">
+                                  Дилемма: {msg.state.world_event.dilemma}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {msg.role === MessageRole.MODEL && msg.state?.active_npc && (
+                            <div className="mt-2 pt-2 border-t border-violet-500/30 text-[11px] text-violet-400 bg-violet-500/10 rounded-lg p-2">
+                              <strong>[NPC Активен: {msg.state.active_npc.name} ({msg.state.active_npc.role})]</strong>
+                              {msg.state.active_npc.dialogue && <span className="italic"> "{msg.state.active_npc.dialogue}"</span>}
+                            </div>
+                          )}
+                          {msg.role === MessageRole.MODEL && msg.state?.violation_reason && (
+                            <div className="mt-2 pt-2 border-t border-rose-500/30 text-[11px] text-rose-400 bg-rose-500/10 rounded-lg p-2">
+                              <strong>[Статус]</strong> {msg.state.violation_reason}
                             </div>
                           )}
                         </div>

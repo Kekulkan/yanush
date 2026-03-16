@@ -3,7 +3,7 @@ import { DEFAULT_CONTEXT_MODULES, DEFAULT_ACCENTUATIONS } from '../constants';
 import { supabase } from '../lib/supabase';
 
 const RECENT_INCIDENTS_KEY = 'recent_incidents';
-const MAX_RECENT_INCIDENTS = 5; // Запоминаем последние 5 инцидентов
+const MAX_RECENT_INCIDENTS = 10; // Запоминаем последние 10 инцидентов для большего разнообразия
 
 // Локальный кеш модулей (загружается из БД)
 let modulesCache: ContextModule[] = [];
