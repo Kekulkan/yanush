@@ -33,14 +33,16 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handlePurchase = (sessions: number) => {
-    setIsProcessing(true);
-    // Имитация оплаты
-    setTimeout(() => {
-      purchaseSubscription(sessions); 
-      setIsProcessing(false);
-      onSuccess();
-      onClose();
-    }, 2000);
+    // Временно блокируем покупку до интеграции с ЮKassa
+    alert('Оплата картой временно недоступна. Пожалуйста, воспользуйтесь промокодом или обратитесь в поддержку.');
+    // setIsProcessing(true);
+    // // Имитация оплаты
+    // setTimeout(() => {
+    //   purchaseSubscription(sessions); 
+    //   setIsProcessing(false);
+    //   onSuccess();
+    //   onClose();
+    // }, 2000);
   };
 
   const openDoc = (e: React.MouseEvent, tab: string) => {
