@@ -51,6 +51,10 @@ export async function onRequest(context) {
     Object.entries(corsHeaders).forEach(([key, value]) => {
       responseHeaders.set(key, value);
     });
+    
+    // Удаляем заголовки, которые могут сломать потоковую передачу или размер контента при декомпрессии
+    responseHeaders.delete("content-length");
+    responseHeaders.delete("content-encoding");
 
     return new Response(upstream.body, {
       status: upstream.status,
