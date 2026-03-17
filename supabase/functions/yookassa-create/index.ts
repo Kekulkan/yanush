@@ -18,15 +18,22 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+    
+    // Создаем клиента с сервисным ключом для записи в БД в обход RLS
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Verify token
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    // Verify token using Anon Key and user's token
+    const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+    
+    const { data: { user }, error: userError } = await supabaseUserClient.auth.getUser()
     
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      console.error('Auth Error:', userError)
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: userError }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const { amount, sessions, returnUrl } = await req.json()
@@ -75,7 +82,7 @@ serve(async (req) => {
     const paymentData = await yookassaResp.json()
 
     // Save pending payment
-    const { error: dbError } = await supabase.from('yookassa_payments').insert({
+    const { error: dbError } = await supabaseAdmin.from('yookassa_payments').insert({
       user_id: user.id,
       payment_id: paymentData.id,
       amount: amount,
