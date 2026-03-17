@@ -86,6 +86,27 @@ export const applyPromoCode = async (code: string): Promise<{ success: boolean; 
   }
 };
 
+export const createYookassaPayment = async (sessions: number, amount: number): Promise<string | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('yookassa-create', {
+      body: {
+        sessions,
+        amount,
+        returnUrl: window.location.href
+      }
+    });
+
+    if (error) throw error;
+    return data?.confirmationUrl || null;
+  } catch (err) {
+    console.error('Error creating payment:', err);
+    return null;
+  }
+};
+
 export const purchaseSubscription = (sessions: number): void => {
   const now = Date.now();
   // По тарифу купленные сессии действуют 12 месяцев
@@ -125,5 +146,37 @@ export const consumeSession = (): boolean => {
 export const formatSubscriptionDate = (timestamp: number | null): string => {
   if (!timestamp) return 'Нет подписки';
   return new Date(timestamp).toLocaleDateString('ru-RU');
+};
+
+export const syncSubscriptionInfo = async (): Promise<void> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('sessions_count')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (error) {
+      if (error.code !== 'PGRST116') { // Ignore missing profile
+        console.error('Error syncing subscription:', error);
+      }
+      return;
+    }
+    
+    const current = getSubscriptionInfo();
+    if (data && typeof data.sessions_count === 'number') {
+      const newInfo: SubscriptionInfo = {
+        ...current,
+        sessionsCount: data.sessions_count,
+        tier: data.sessions_count > 0 ? 'premium' : 'free',
+      };
+      saveSubscriptionInfo(newInfo);
+    }
+  } catch (err) {
+    console.error('Failed to sync subscription:', err);
+  }
 };
 

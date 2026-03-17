@@ -32,17 +32,22 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  const handlePurchase = (sessions: number) => {
-    // Временно блокируем покупку до интеграции с ЮKassa
-    alert('Оплата картой временно недоступна. Пожалуйста, воспользуйтесь промокодом или обратитесь в поддержку.');
-    // setIsProcessing(true);
-    // // Имитация оплаты
-    // setTimeout(() => {
-    //   purchaseSubscription(sessions); 
-    //   setIsProcessing(false);
-    //   onSuccess();
-    //   onClose();
-    // }, 2000);
+  const handlePurchase = async (sessions: number, amount: number) => {
+    setIsProcessing(true);
+    try {
+      const { createYookassaPayment } = await import('../services/billingService');
+      const confirmationUrl = await createYookassaPayment(sessions, amount);
+      if (confirmationUrl) {
+        window.location.href = confirmationUrl;
+      } else {
+        alert('Ошибка при создании платежа. Пожалуйста, попробуйте позже.');
+        setIsProcessing(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Ошибка при создании платежа. Пожалуйста, попробуйте позже.');
+      setIsProcessing(false);
+    }
   };
 
   const openDoc = (e: React.MouseEvent, tab: string) => {
@@ -120,7 +125,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   <div className="text-4xl font-black text-violet-400 italic mb-2">5 сессий</div>
                   <div className="text-xl font-bold text-white mb-2">1 000 ₽</div>
                   <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-6">200 ₽ за сессию</div>
-                  <button onClick={() => handlePurchase(5)} className="mt-auto w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all">
+                  <button onClick={() => handlePurchase(5, 1000)} className="mt-auto w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all">
                     Купить за 1 000 ₽
                   </button>
                 </div>
@@ -135,7 +140,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   <div className="text-4xl font-black text-white italic mb-2">10 сессий</div>
                   <div className="text-xl font-bold text-white mb-2">1 600 ₽</div>
                   <div className="text-[10px] text-emerald-400 uppercase tracking-widest mb-6 font-bold">160 ₽ за сессию — Выгода 20%</div>
-                  <button onClick={() => handlePurchase(10)} className="mt-auto w-full py-4 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg shadow-violet-600/20">
+                  <button onClick={() => handlePurchase(10, 1600)} className="mt-auto w-full py-4 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg shadow-violet-600/20">
                     Купить за 1 600 ₽
                   </button>
                 </div>
@@ -147,7 +152,7 @@ const SubscriptionModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   <div className="text-4xl font-black text-violet-400 italic mb-2">20 сессий</div>
                   <div className="text-xl font-bold text-white mb-2">2 800 ₽</div>
                   <div className="text-[10px] text-emerald-400 uppercase tracking-widest mb-6 font-bold">140 ₽ за сессию — Выгода 30%</div>
-                  <button onClick={() => handlePurchase(20)} className="mt-auto w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all">
+                  <button onClick={() => handlePurchase(20, 2800)} className="mt-auto w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all">
                     Купить за 2 800 ₽
                   </button>
                 </div>
