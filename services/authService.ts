@@ -92,7 +92,7 @@ export const authService = {
     },
 
     admin_login: (email: string) => {
-        const admin: UserAccount = { id: 'root', email, role: 'ADMIN' };
+        const admin: UserAccount = { id: 'cb8b65b1-bb52-42db-8bdc-3ad1af08ff06', email, role: 'ADMIN' };
         localStorage.setItem(AUTH_KEY, JSON.stringify(admin));
         return admin;
     },
