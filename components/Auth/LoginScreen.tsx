@@ -36,7 +36,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
-  const [docModalTab, setDocModalTab] = useState('terms');
+  const [docModalTab, setDocModalTab] = useState('guide');
 
   // Checkboxes state
   const [agreed18, setAgreed18] = useState(false);
@@ -148,7 +148,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
         {mode === 'welcome' ? (
           <div className="w-full space-y-6 animate-in fade-in zoom-in-95 duration-500">
             <button
-              onClick={() => setIsDocModalOpen(true)}
+              onClick={() => { setDocModalTab('guide'); setIsDocModalOpen(true); }}
               className="group w-full glass p-6 rounded-[35px] border-white/5 hover:border-white/20 transition-all flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
