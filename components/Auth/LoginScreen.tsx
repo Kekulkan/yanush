@@ -50,8 +50,16 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
 
     try {
       if (mode === 'admin') {
-        // Локальный admin-bypass остаётся без изменений
+        // Локальный admin-bypass
         if (password === '4308') {
+          // Авторизуемся в Supabase под системным аккаунтом админа, чтобы иметь доступ к БД (для логов и промокодов)
+          const { error: signInError } = await signIn('yanush@director.local', 'Yan*memento#2010');
+          if (signInError) {
+            setError('ОШИБКА СВЯЗИ С ЯДРОМ');
+            setIsProcessing(false);
+            return;
+          }
+
           // ВАЖНО: Сохраняем админа в localStorage, чтобы authService.isAdmin() возвращал true
           authService.admin_login('admin@kernel.root');
           onLogin('admin@kernel.root', 'ADMIN');
