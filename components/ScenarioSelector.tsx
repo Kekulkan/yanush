@@ -60,13 +60,6 @@ const ScenarioSelector: React.FC<Props> = ({
           <p className="text-lg text-slate-300 font-light leading-relaxed italic">
             Ещё не патология, но уже не норма
           </p>
-          <button
-            onClick={onOpenMuseum}
-            className="group text-[10px] text-slate-500 hover:text-blue-400 transition-colors uppercase tracking-widest font-bold border-b border-dashed border-slate-700 hover:border-blue-400 pb-1 flex items-center justify-center gap-2 mx-auto"
-          >
-            Выставка акцентуаций им. А. Личко
-            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-          </button>
         </div>
 
         <div className="flex flex-col w-full sm:w-auto gap-4 pt-8">
@@ -77,6 +70,13 @@ const ScenarioSelector: React.FC<Props> = ({
             <span className="flex items-center justify-center gap-3">
                НАЧАТЬ ТРЕНИНГ <Play fill="currentColor" size={18} />
             </span>
+          </button>
+
+          <button
+            onClick={onOpenMuseum}
+            className="w-full sm:w-72 px-6 py-4 glass hover:bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 rounded-[32px] font-black text-xs uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3"
+          >
+            ВЫСТАВКА АКЦЕНТУАЦИЙ <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </button>
 
       {onOpenCommandCenter && (

@@ -148,19 +148,6 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
         {mode === 'welcome' ? (
           <div className="w-full space-y-6 animate-in fade-in zoom-in-95 duration-500">
             <button
-              onClick={onEnterMuseum}
-              className="group w-full glass p-8 rounded-[45px] border-blue-500/20 hover:border-blue-500/50 transition-all text-center"
-            >
-              <div className="text-blue-400 font-black text-[10px] uppercase tracking-[0.5em] mb-4">Познакомьтесь с собеседниками</div>
-              <h2 className="text-2xl font-black text-white uppercase italic">Выставка акцентуаций</h2>
-              <div className="pt-6 flex justify-center">
-                <span className="px-8 py-4 bg-white text-slate-950 rounded-2xl font-black uppercase text-sm hover:scale-105 transition-transform duration-300 flex items-center gap-2">
-                  ПЕРЕЙТИ <ArrowRight size={16} />
-                </span>
-              </div>
-            </button>
-
-            <button
               onClick={() => setIsDocModalOpen(true)}
               className="group w-full glass p-6 rounded-[35px] border-white/5 hover:border-white/20 transition-all flex items-center justify-between"
             >
@@ -193,22 +180,7 @@ const LoginScreen: React.FC<Props> = ({ onLogin, onEnterMuseum, onOpenTariffs })
               </button>
             </div>
 
-            <button
-              onClick={() => {
-                authService.guest_login('yookassa@guest.local');
-                saveSubscriptionInfo({
-                  tier: 'premium',
-                  expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-                  sessionsCount: 3,
-                  usedPromos: []
-                });
-                onLogin('yookassa@guest.local', 'PREMIUM');
-              }}
-              className="w-full mt-4 p-4 glass rounded-[35px] border-white/5 hover:border-blue-500/30 flex flex-col items-center gap-2 transition-all bg-blue-900/10"
-            >
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Войти как гость (ЮКасса)</span>
-              <span className="text-[9px] text-slate-500 uppercase">3 премиум-сессии</span>
-            </button>
+
 
             <div className="flex justify-center">
               <button

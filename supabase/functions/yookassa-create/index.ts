@@ -95,10 +95,21 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Failed to save payment record' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    return new Response(JSON.stringify({ 
+    const jsonString = JSON.stringify({ 
       confirmationUrl: paymentData.confirmation.confirmation_url,
       paymentId: paymentData.id
-    }), {
+    })
+    
+    // Возвращаем поток (stream), чтобы избежать генерации заголовка Content-Length,
+    // который ломается при прохождении через Cloudflare Proxy (баг с декомпрессией).
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(jsonString))
+        controller.close()
+      }
+    })
+
+    return new Response(stream, {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
