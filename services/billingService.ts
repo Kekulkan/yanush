@@ -42,7 +42,7 @@ export const saveSubscriptionInfo = (info: SubscriptionInfo) => {
 };
 
 export const applyPromoCode = async (code: string): Promise<{ success: boolean; message: string }> => {
-  const cleanCode = code.trim().toUpperCase();
+  const cleanCode = code.trim();
   
   const current = getSubscriptionInfo();
   if (current.usedPromos?.includes(cleanCode)) {
@@ -50,7 +50,12 @@ export const applyPromoCode = async (code: string): Promise<{ success: boolean; 
   }
   
   try {
+    console.log('[applyPromoCode] Sending RPC apply_promo_code with:', cleanCode);
     const { data: sessionsAmount, error } = await supabase.rpc('apply_promo_code', { input_code: cleanCode });
+    
+    if (error) {
+      console.error('[applyPromoCode] Supabase RPC Error:', error);
+    }
     
     if (error) {
       console.error('Error applying promo code:', error);
