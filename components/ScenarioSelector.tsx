@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Play, Network, Activity, Terminal, Crown, Star, Info, HelpCircle, ArrowRight } from 'lucide-react';
+import { Play, Network, Activity, Terminal, Crown, Star, Info, HelpCircle, ArrowRight, Infinity } from 'lucide-react';
 import { SubscriptionInfo } from '../services/billingService';
 import DocumentsModal from './DocumentsModal';
 import { FooterLinks } from './FooterLinks';
@@ -119,12 +119,24 @@ const ScenarioSelector: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Цитата Г.К. */}
-      <div className="absolute top-12 right-12 text-right opacity-20 pointer-events-none hidden md:block">
-        <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-slate-400">
+      {/* Цитата Г.К. и Инфо о подписке */}
+      <div className="absolute top-12 right-12 text-right pointer-events-none hidden md:block">
+        <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed text-slate-400 opacity-20 mb-4">
           «Раньше было сложно,<br/>дальше будет трудно»<br/>
           <span className="text-blue-500">— Г.К.</span>
         </p>
+
+        {/* Блок с сессиями */}
+        <div className="pointer-events-auto mt-4 inline-flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-2xl backdrop-blur-md shadow-lg">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Сеансы:</span>
+          {subscription?.isLifetime || isAdmin ? (
+            <Infinity size={16} className="text-blue-400" />
+          ) : (
+            <span className={`text-sm font-black ${(subscription?.sessionsCount || 0) > 0 ? 'text-blue-400' : 'text-red-500'}`}>
+              {subscription?.sessionsCount || 0}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="w-full mt-auto relative z-10 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0 pb-6 md:pb-0">
