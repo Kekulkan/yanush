@@ -207,7 +207,7 @@ const App: React.FC = () => {
         {view === 'chat' && activeSession && (
           <ChatInterface
             session={activeSession}
-            isAdmin={user?.role === 'ADMIN'}
+            isAdmin={user?.role === 'ADMIN' || authService.isAdmin()}
             user={user}
             onExit={() => { setCurrentSessionId(null); setView('landing'); }}
             initialMessages={restoredMessages}
