@@ -490,10 +490,16 @@ export function buildMainCommissionPrompt(
   ).join('\n\n---\n\n');
 
   // Подсчет реплик для калибровки
+  // Если реплики имеют role "user", считаем их (включая команды GM)
   const userReplies = (dialogSummary.match(/user:/gi) || []).length;
-  const isShortSession = userReplies < 15;
+  
+  // Явная проверка на успешное завершение
   const isIdealResolution = terminationReason.toLowerCase().includes('успех') || 
                             terminationReason.toLowerCase().includes('разрешен');
+                            
+  // Штрафуем за короткую сессию ТОЛЬКО если это не триумфальное/успешное завершение.
+  // Если педагог решил проблему за несколько фраз - это признак мастерства, а не повод для штрафа.
+  const isShortSession = userReplies < 15 && !isIdealResolution;
 
   return `
 [СИСТЕМА: ОСНОВНАЯ СУПЕРВИЗОРСКАЯ КОМИССИЯ]

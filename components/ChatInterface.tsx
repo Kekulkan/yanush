@@ -807,13 +807,18 @@ const ChatInterface: React.FC<Props> = ({ session, isAdmin, user, onExit, initia
       });
     }
 
+    const eventHistory = activeGlobalEvent.history || [];
+
     const summaryMsg: Message = {
       id: `event-end-${Date.now()}`,
       role: MessageRole.SYSTEM,
       content: `ГЛОБАЛЬНОЕ СОБЫТИЕ ЗАВЕРШЕНО.\nИтог: Бонусы +${activeGlobalEvent.bonuses}, Штрафы -${activeGlobalEvent.penalties}.\nВозвращаемся к уроку.`,
       timestamp: Date.now()
     };
-    setMessages(prev => [...prev, summaryMsg]);
+    
+    // Добавляем реплики из глобального события в основной чат, чтобы они учитывались
+    // при подсчете длины сессии и были видны комиссии экспертов.
+    setMessages(prev => [...prev, ...eventHistory, summaryMsg]);
     setActiveGlobalEvent(null);
   };
 
