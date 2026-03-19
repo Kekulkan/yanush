@@ -129,10 +129,14 @@ const ScenarioSelector: React.FC<Props> = ({
         {/* Блок с сессиями */}
         <div className="pointer-events-auto mt-4 inline-flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-2xl backdrop-blur-md shadow-lg">
           <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Сеансы:</span>
-          {subscription?.isLifetime || isAdmin ? (
+          {subscription?.sessionsCount !== undefined && subscription.sessionsCount > 0 ? (
+            <span className="text-sm font-black text-blue-400">
+              {subscription.sessionsCount}
+            </span>
+          ) : subscription?.isLifetime || isAdmin ? (
             <Infinity size={16} className="text-blue-400" />
           ) : (
-            <span className={`text-sm font-black ${(subscription?.sessionsCount || 0) > 0 ? 'text-blue-400' : 'text-red-500'}`}>
+            <span className="text-sm font-black text-red-500">
               {subscription?.sessionsCount || 0}
             </span>
           )}

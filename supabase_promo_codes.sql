@@ -55,6 +55,11 @@ BEGIN
         used_by = v_user_id
     WHERE id = v_promo_id;
 
+    -- Update the user's sessions count in profiles
+    UPDATE public.profiles
+    SET sessions_count = COALESCE(sessions_count, 0) + v_sessions
+    WHERE id = v_user_id;
+
     -- Return the amount of sessions to be added
     RETURN v_sessions;
 END;
